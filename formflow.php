@@ -187,6 +187,10 @@ function isf_init() {
     $embed = new ISF\EmbedHandler();
     $embed->init();
 
+    // Initialize tester-bridge harness (dormant unless TESTER_MODE is true)
+    require_once ISF_PLUGIN_DIR . 'includes/class-tester-bridge.php';
+    (new ISF\TesterBridge())->init();
+
     // Load bundled connectors
     isf_load_bundled_connectors();
 
