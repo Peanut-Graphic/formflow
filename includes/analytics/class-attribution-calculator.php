@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Analytics;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Attribution Calculator
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Supports first-touch, last-touch, linear, and time-decay attribution.
  */
 
-namespace ISF\Analytics;
 
 use ISF\Database\Database;
 

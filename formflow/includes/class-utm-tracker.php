@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * UTM Tracker
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Tracks marketing attribution via UTM parameters, referrers, and landing pages.
  */
 
-namespace ISF;
 
 class UTMTracker {
 

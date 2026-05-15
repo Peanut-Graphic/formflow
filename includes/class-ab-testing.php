@@ -1,13 +1,15 @@
 <?php
+namespace ISF;
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+
 /**
  * A/B Testing Handler
  *
  * Manages form variation testing and conversion tracking.
  */
 
-namespace ISF;
 
 class ABTesting {
 

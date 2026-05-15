@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Email Digest Handler
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Feature-togglable per instance via FeatureManager.
  */
 
-namespace ISF;
 
 class EmailDigest {
 

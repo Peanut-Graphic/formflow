@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Api;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * XML Parser
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Based on the legacy xml2array function from inc_xmlparser.php
  */
 
-namespace ISF\Api;
 
 class XmlParser {
 

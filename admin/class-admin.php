@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Admin;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Admin Controller
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Handles the WordPress admin interface for managing forms.
  */
 
-namespace ISF\Admin;
 
 use ISF\Database\Database;
 use ISF\Security;

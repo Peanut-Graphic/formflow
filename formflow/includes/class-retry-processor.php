@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Retry Processor
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Processes the retry queue for failed API submissions.
  */
 
-namespace ISF;
 
 use ISF\Api\ApiClient;
 use ISF\Database\Database;

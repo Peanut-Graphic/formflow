@@ -1,7 +1,10 @@
 <?php
+namespace ISF\ML;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Form Prediction
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * and receive simplification recommendations.
  */
 
-namespace ISF\ML;
 
 class FormPrediction {
 

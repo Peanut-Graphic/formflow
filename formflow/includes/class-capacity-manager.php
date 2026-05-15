@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Capacity Manager
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Manages appointment capacity, blackout dates, and waitlist.
  */
 
-namespace ISF;
 
 class CapacityManager {
 

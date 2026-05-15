@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Analytics;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Handoff Tracker
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Creates trackable URLs and records handoff events for attribution.
  */
 
-namespace ISF\Analytics;
 
 use ISF\Database\Database;
 

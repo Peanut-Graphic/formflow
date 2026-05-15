@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Analytics;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Visitor Tracker
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Provides visitor identification for attribution tracking.
  */
 
-namespace ISF\Analytics;
 
 use ISF\Database\Database;
 

@@ -4,11 +4,11 @@
  *
  * Multi-tenant white-label management interface
  *
- * @package suspended FormFlow
+ * @package FormFlow
  * @since 2.0.0
  */
 
-namespace suspended ISF\Admin\Views;
+namespace ISF\Admin\Views;
 
 if (!defined('ABSPATH')) {
     exit;

@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Document Upload Handler
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Handles file uploads for enrollment forms (photos, documents).
  */
 
-namespace ISF;
 
 class DocumentUpload {
 

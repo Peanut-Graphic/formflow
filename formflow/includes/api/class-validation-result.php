@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Api;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Validation Result
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Based on the legacy ValidateAccountResult class from validateXml.php
  */
 
-namespace ISF\Api;
 
 class ValidationResult {
 

@@ -1,13 +1,15 @@
 <?php
+namespace ISF\Api;
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+
+
 /**
  * API Client
  *
  * Handles HTTP communication with the PowerPortal IntelliSOURCE API.
  */
 
-namespace ISF\Api;
 
 use ISF\Database\Database;
 

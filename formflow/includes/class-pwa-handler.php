@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * PWA Handler
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Provides Progressive Web App functionality for enrollment forms.
  */
 
-namespace ISF;
 
 class PWAHandler {
 

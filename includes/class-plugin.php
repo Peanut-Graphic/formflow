@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Main Plugin Class
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Orchestrates the plugin by loading dependencies and registering hooks.
  */
 
-namespace ISF;
 
 class Plugin {
 

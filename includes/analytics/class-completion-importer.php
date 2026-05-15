@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Analytics;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Completion Importer
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Attempts to match imported completions to existing handoffs/visitors.
  */
 
-namespace ISF\Analytics;
 
 use ISF\Database\Database;
 
