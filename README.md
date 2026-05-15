@@ -561,6 +561,9 @@ See `includes/class-hooks.php` for full documentation. Key hooks include:
 
 ## Changelog
 
+### 2.8.6 (2026-05-15)
+- Fix fatal — move ABSPATH guard after namespace declaration in 100 namespaced files (cd6f378 regression that 500'd sites). Prod hotfixed 2026-05-15; durable release.
+
 ### 2.8.3 (2025-12-29)
 - Fixed scheduled reports cron error (optional frequency parameter)
 - Database class refactored with 8 traits for better maintainability
