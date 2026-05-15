@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Analytics;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * GTM Helper
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Handles dataLayer initialization and GA4 Measurement Protocol.
  */
 
-namespace ISF\Analytics;
 
 use ISF\FeatureManager;
 

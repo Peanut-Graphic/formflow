@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Analytics;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Touch Recorder
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Tracks page views, form interactions, and handoffs.
  */
 
-namespace ISF\Analytics;
 
 use ISF\Database\Database;
 

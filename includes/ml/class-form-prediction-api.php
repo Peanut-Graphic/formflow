@@ -1,7 +1,10 @@
 <?php
+namespace ISF\ML;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Form Prediction API
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Provides access to ML-powered form optimization and training.
  */
 
-namespace ISF\ML;
 
 use WP_REST_Request;
 use WP_REST_Response;

@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Appointment Self-Service Handler
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Allows customers to reschedule or cancel appointments via email links.
  */
 
-namespace ISF;
 
 class AppointmentSelfService {
 

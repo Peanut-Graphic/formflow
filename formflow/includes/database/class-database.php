@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Database;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Database Operations
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Handles all CRUD operations for plugin database tables.
  */
 
-namespace ISF\Database;
 
 use ISF\Encryption;
 

@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Api;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Handoff Endpoint
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Handles the redirect flow for external enrollment tracking.
  */
 
-namespace ISF\Api;
 
 use ISF\Analytics\HandoffTracker;
 use ISF\Analytics\VisitorTracker;

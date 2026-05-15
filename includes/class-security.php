@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Security Utilities
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Handles input sanitization, nonce verification, and rate limiting.
  */
 
-namespace ISF;
 
 class Security {
 

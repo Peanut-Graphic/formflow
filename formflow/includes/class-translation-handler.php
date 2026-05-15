@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Translation Handler
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Currently supports English and Spanish.
  */
 
-namespace ISF;
 
 class TranslationHandler {
 

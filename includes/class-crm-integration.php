@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * CRM Integration Handler
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Syncs enrollment data to external CRM systems (Salesforce, HubSpot, custom).
  */
 
-namespace ISF;
 
 class CRMIntegration {
 

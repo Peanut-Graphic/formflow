@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Admin;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Admin Webhook Handlers Trait
@@ -11,7 +14,6 @@ if (!defined('ABSPATH')) {
  * @since      2.8.4
  */
 
-namespace ISF\Admin;
 
 use ISF\Security;
 

@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Api;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Scheduling Result
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Based on the legacy SchedulingResult class from schedulingXml.php
  */
 
-namespace ISF\Api;
 
 class SchedulingResult {
 

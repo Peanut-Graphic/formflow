@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Calendar Integration Handler
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Creates calendar events for appointments (Google Calendar, Outlook, iCal).
  */
 
-namespace ISF;
 
 class CalendarIntegration {
 

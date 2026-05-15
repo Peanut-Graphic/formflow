@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Analytics;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Completion Receiver
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * Supports webhooks, redirect callbacks, and manual imports.
  */
 
-namespace ISF\Analytics;
 
 use ISF\Database\Database;
 use WP_REST_Request;

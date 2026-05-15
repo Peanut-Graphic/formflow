@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Database\Traits;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * GDPR compliance database operations.
@@ -29,7 +32,6 @@ if (!defined('ABSPATH')) {
  * @since   2.9.0
  */
 
-namespace ISF\Database\Traits;
 
 if ( ! defined( 'WPINC' ) ) {
 	die;

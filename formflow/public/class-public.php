@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Frontend;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Frontend Controller
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Handles public-facing functionality including shortcode rendering and AJAX handlers.
  */
 
-namespace ISF\Frontend;
 
 use ISF\Database\Database;
 use ISF\Security;

@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Webhook Handler
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Handles sending webhook notifications for enrollment events.
  */
 
-namespace ISF;
 
 use ISF\Database\Database;
 

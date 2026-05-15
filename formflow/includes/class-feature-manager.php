@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Feature Manager
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Manages per-instance feature toggles and configurations.
  */
 
-namespace ISF;
 
 class FeatureManager {
 

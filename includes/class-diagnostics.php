@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Diagnostics & Health Check System
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Provides end-to-end testing and system verification for the plugin.
  */
 
-namespace ISF;
 
 use ISF\Database\Database;
 use ISF\Api\ApiClient;

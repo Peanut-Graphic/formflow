@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Report Generator
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Generates and sends scheduled and custom reports.
  */
 
-namespace ISF;
 
 use ISF\Database\Database;
 

@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Frontend;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Frontend AJAX Handlers Trait
@@ -11,7 +14,6 @@ if (!defined('ABSPATH')) {
  * @since      2.8.4
  */
 
-namespace ISF\Frontend;
 
 use ISF\Database\Database;
 use ISF\Security;

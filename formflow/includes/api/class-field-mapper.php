@@ -1,7 +1,10 @@
 <?php
+namespace ISF\Api;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * API Field Mapper
@@ -10,7 +13,6 @@ if (!defined('ABSPATH')) {
  * This ensures data is sent with the exact field names the API expects.
  */
 
-namespace ISF\Api;
 
 class FieldMapper {
 

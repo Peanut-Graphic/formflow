@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Plugin Activator
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Handles plugin activation, including database table creation.
  */
 
-namespace ISF;
 
 class Activator {
 

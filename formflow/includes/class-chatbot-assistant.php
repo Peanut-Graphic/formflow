@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Chatbot Assistant
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Provides AI-powered help during enrollment process.
  */
 
-namespace ISF;
 
 class ChatbotAssistant {
 

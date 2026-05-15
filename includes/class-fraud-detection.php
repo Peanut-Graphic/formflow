@@ -1,7 +1,10 @@
 <?php
+namespace ISF;
+
 if (!defined('ABSPATH')) {
     exit;
 }
+
 
 /**
  * Fraud Detection
@@ -9,7 +12,6 @@ if (!defined('ABSPATH')) {
  * Detects and prevents fraudulent enrollment submissions.
  */
 
-namespace ISF;
 
 class FraudDetection {
 
