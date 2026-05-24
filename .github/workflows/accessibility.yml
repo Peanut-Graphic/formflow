@@ -30,7 +30,7 @@ concurrency:
 jobs:
   accessibility:
     name: Accessibility Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, peanut-ci]
 
     steps:
       - name: Checkout code
