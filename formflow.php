@@ -149,6 +149,11 @@ function isf_init() {
     // Load core classes
     require_once ISF_PLUGIN_DIR . 'includes/api/interface-api-connector.php';
     require_once ISF_PLUGIN_DIR . 'includes/api/class-connector-registry.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/interface-destination.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-result.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-base-destination.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-destination-registry.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-log.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-branding.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-cache-manager.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-queue-manager.php';
@@ -159,6 +164,7 @@ function isf_init() {
 
     // Initialize singletons
     ISF\Api\ConnectorRegistry::instance();
+    ISF\Destinations\DestinationRegistry::instance();
     ISF\CacheManager::instance();
     ISF\LicenseManager::instance();
 

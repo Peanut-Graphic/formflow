@@ -636,6 +636,12 @@ class Activator {
         dbDelta($sql_api_usage);
         dbDelta($sql_resume_tokens);
         dbDelta($sql_scheduled_reports);
+
+        // Destinations subsystem (2.9.0+): per-submission delivery log
+        if (class_exists('\\ISF\\Destinations\\DeliveryLog')) {
+            dbDelta(\ISF\Destinations\DeliveryLog::get_schema_sql());
+        }
+
         dbDelta($sql_audit_log);
         dbDelta($sql_gdpr_requests);
         dbDelta($sql_visitors);
