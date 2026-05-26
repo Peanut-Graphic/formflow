@@ -146,6 +146,21 @@ function isf_init() {
         return;
     }
 
+    // Composer autoloader — required for phpseclib3 (SFTP destination) and
+    // any future vendored runtime dependencies. Guarded so a dev clone
+    // without `composer install --no-dev` doesn't fatal; instead surfaces
+    // a clear admin notice.
+    if (file_exists(ISF_PLUGIN_DIR . 'vendor/autoload.php')) {
+        require_once ISF_PLUGIN_DIR . 'vendor/autoload.php';
+    } else {
+        add_action('admin_notices', function() {
+            echo '<div class="notice notice-error"><p><strong>FormFlow:</strong> ';
+            echo esc_html__('vendor/ is missing. Run `composer install --no-dev` in the plugin directory, or reinstall from a packaged release zip.', 'formflow');
+            echo '</p></div>';
+        });
+        return;
+    }
+
     // Load core classes
     require_once ISF_PLUGIN_DIR . 'includes/api/interface-api-connector.php';
     require_once ISF_PLUGIN_DIR . 'includes/api/class-connector-registry.php';
