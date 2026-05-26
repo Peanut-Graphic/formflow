@@ -121,6 +121,7 @@ class Plugin {
         add_action('wp_ajax_isf_save_instance', [$this->admin, 'ajax_save_instance']);
         add_action('wp_ajax_isf_delete_instance', [$this->admin, 'ajax_delete_instance']);
         add_action('wp_ajax_isf_test_api', [$this->admin, 'ajax_test_api']);
+        add_action('wp_ajax_isf_test_destination', [$this->admin, 'ajax_test_destination']);
         add_action('wp_ajax_isf_get_logs', [$this->admin, 'ajax_get_logs']);
         add_action('wp_ajax_isf_test_form', [$this->admin, 'ajax_test_form']);
         add_action('wp_ajax_isf_mark_test_data', [$this->admin, 'ajax_mark_test_data']);

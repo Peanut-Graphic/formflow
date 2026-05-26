@@ -408,6 +408,13 @@ $wizard_steps = [
                                     </div>
                                 </div>
 
+                                <!-- Destinations pod (2.9.0+): submission delivery (SFTP, etc.) -->
+                                <?php
+                                if (class_exists('\\ISF\\Destinations\\DestinationRegistry')) {
+                                    include ISF_PLUGIN_DIR . 'admin/views/partials/destinations-pod.php';
+                                }
+                                ?>
+
                                 <!-- Demo Accounts Pod (shown only in demo mode) -->
                                 <?php $demo_accounts = \ISF\Api\MockApiClient::get_demo_accounts_info(); ?>
                                 <div class="isf-pod isf-pod-full isf-demo-accounts" id="isf-demo-accounts" style="display: <?php echo ($instance['settings']['demo_mode'] ?? false) ? 'block' : 'none'; ?>;">

@@ -959,6 +959,47 @@ class Admin {
             'demo_mode' => !empty($_POST['demo_mode']) && $_POST['demo_mode'] !== '0'
         ]);
 
+        // Destinations (2.9.0+): posted as a separate destinations_json
+        // string by the destinations pod's inline JS. Server-side:
+        //   1. decode the JSON
+        //   2. for each destination, encrypt sensitive config fields
+        //      (preserving stored value when admin left field blank)
+        //   3. replace settings['destinations'] wholesale
+        if (isset($_POST['destinations_json']) && class_exists('\\ISF\\Destinations\\DestinationRegistry')) {
+            $posted = json_decode(stripslashes((string) $_POST['destinations_json']), true);
+            if (is_array($posted)) {
+                $existing_destinations = $existing_settings['destinations'] ?? [];
+                $registry = \ISF\Destinations\DestinationRegistry::instance();
+                $clean = [];
+                foreach ($posted as $idx => $dest) {
+                    if (!is_array($dest) || empty($dest['type'])) {
+                        continue;
+                    }
+                    $type = sanitize_text_field((string) $dest['type']);
+                    $name = sanitize_text_field((string) ($dest['name'] ?? $type));
+                    $is_active = !empty($dest['is_active']);
+                    $new_config = is_array($dest['config'] ?? null) ? $dest['config'] : [];
+                    $existing_config = $existing_destinations[$idx]['config'] ?? [];
+
+                    $destination = $registry->get($type);
+                    if ($destination instanceof \ISF\Destinations\BaseDestination) {
+                        $new_config = $destination->encrypt_sensitive_fields($new_config, $existing_config);
+                    } else {
+                        // Unknown destination type — preserve existing config untouched.
+                        $new_config = $existing_config;
+                    }
+
+                    $clean[] = [
+                        'type'      => $type,
+                        'name'      => $name,
+                        'is_active' => (bool) $is_active,
+                        'config'    => $new_config,
+                    ];
+                }
+                $settings['destinations'] = $clean;
+            }
+        }
+
         $data = [
             'name' => sanitize_text_field($_POST['name'] ?? ''),
             'slug' => sanitize_title($_POST['slug'] ?? ''),
@@ -1091,6 +1132,95 @@ class Admin {
     /**
      * Test API connection via AJAX
      */
+    /**
+     * Test a destination's connection from the admin "Test Connection" button.
+     *
+     * Accepts a single posted destination slot (type/name/is_active/config)
+     * and calls $destination->test_connection() with the supplied config.
+     * Sensitive fields posted blank are merged with the existing stored
+     * config (preserve-on-empty), then decrypted in-memory for the test
+     * call. Nothing is persisted by this handler.
+     */
+    public function ajax_test_destination(): void {
+        if (!Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
+            return;
+        }
+        if (!class_exists('\\ISF\\Destinations\\DestinationRegistry')) {
+            wp_send_json_error(['message' => __('Destinations subsystem unavailable.', 'formflow')]);
+            return;
+        }
+
+        $raw = isset($_POST['destination']) ? stripslashes((string) $_POST['destination']) : '';
+        $posted = json_decode($raw, true);
+        if (!is_array($posted) || empty($posted['type'])) {
+            wp_send_json_error(['message' => __('Invalid destination payload.', 'formflow')]);
+            return;
+        }
+
+        $type = sanitize_text_field((string) $posted['type']);
+        $destination = \ISF\Destinations\DestinationRegistry::instance()->get($type);
+        if (!$destination) {
+            wp_send_json_error([
+                'message' => sprintf(
+                    /* translators: %s: destination type id */
+                    __('Destination type "%s" is not registered.', 'formflow'),
+                    $type
+                ),
+            ]);
+            return;
+        }
+
+        $posted_config = is_array($posted['config'] ?? null) ? $posted['config'] : [];
+
+        // Preserve-on-empty: merge in the stored destination's encrypted
+        // values for any sensitive field the admin left blank, so Test
+        // Connection works against the existing creds.
+        $instance_id = isset($_POST['instance_id']) ? (int) $_POST['instance_id'] : 0;
+        if ($instance_id > 0 && $destination instanceof \ISF\Destinations\BaseDestination) {
+            $existing_instance = $this->db->get_instance($instance_id);
+            $existing_destinations = $existing_instance['settings']['destinations'] ?? [];
+            $existing_config = [];
+            $name = (string) ($posted['name'] ?? $type);
+            foreach ($existing_destinations as $d) {
+                if (($d['type'] ?? '') === $type && ($d['name'] ?? '') === $name) {
+                    $existing_config = $d['config'] ?? [];
+                    break;
+                }
+            }
+            $posted_config = $destination->encrypt_sensitive_fields($posted_config, $existing_config);
+            $posted_config = $destination->decrypt_sensitive_fields($posted_config);
+        }
+
+        // Validate before testing — surface obvious misconfig faster.
+        $errors = $destination->validate_config($posted_config);
+        if (!empty($errors)) {
+            wp_send_json_error([
+                'message' => implode(' / ', array_slice($errors, 0, 3)),
+            ]);
+            return;
+        }
+
+        try {
+            $result = $destination->test_connection($posted_config);
+        } catch (\Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage() ?: __('Test failed.', 'formflow')]);
+            return;
+        }
+
+        if (!empty($result['success'])) {
+            wp_send_json_success([
+                'message' => $result['message'] ?? __('Connection OK.', 'formflow'),
+                'code'    => $result['code'] ?? 'ok',
+            ]);
+            return;
+        }
+
+        wp_send_json_error([
+            'message' => $result['message'] ?? __('Test failed.', 'formflow'),
+            'code'    => $result['code'] ?? 'unknown',
+        ]);
+    }
+
     public function ajax_test_api(): void {
         if (!Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
             return;
