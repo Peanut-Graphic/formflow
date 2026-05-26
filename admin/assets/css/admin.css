@@ -4330,3 +4330,103 @@ table .ui-sortable-placeholder td {
     position: relative;
     top: -1px;
 }
+
+/* ----------------------------------------------------------------
+   Instance Editor — Quick Edit polish (2.8.7)
+
+   Quick Edit mode dumps every panel onto one page. Before 2.8.7
+   that meant a leggy, hard-to-scan scroll. These rules add:
+     - a sticky in-page section nav (only visible in Quick Edit)
+     - calmer dividers + tighter vertical rhythm between panels
+     - lighter panel headers so the page reads as one document
+       instead of seven slammed-together pages
+---------------------------------------------------------------- */
+
+/* Quick-nav is hidden by default (wizard mode hides it); only renders
+   in Quick Edit. Sticks just under the WP admin bar. */
+.isf-quick-nav {
+    display: none;
+}
+
+.isf-quick-edit-mode .isf-quick-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    position: sticky;
+    top: 32px; /* WP admin bar */
+    z-index: 30;
+    margin: 0 0 18px 0;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+@media screen and (max-width: 782px) {
+    .isf-quick-edit-mode .isf-quick-nav {
+        top: 46px; /* mobile admin bar is taller */
+    }
+}
+
+.isf-quick-nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    line-height: 1;
+    color: #50575e;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.isf-quick-nav-link:hover,
+.isf-quick-nav-link:focus {
+    background: #f0f0f1;
+    color: #1d2327;
+    outline: none;
+    box-shadow: none;
+}
+
+.isf-quick-nav-link.is-active {
+    background: #f0f6fc;
+    color: #2271b1;
+    font-weight: 500;
+}
+
+.isf-quick-nav-link .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* Quick Edit spacing — calmer divisions between panels. The base rules
+   ship a hard 1px gray border between every panel; in Quick Edit that
+   reads as seven boxed sections. Soften to a single hairline. */
+.isf-quick-edit-mode .isf-wizard-panel {
+    border-bottom: 1px solid #f0f0f1;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    scroll-margin-top: 96px; /* anchors land below sticky nav */
+}
+
+.isf-quick-edit-mode .isf-panel-header {
+    background: transparent;
+    border-bottom: none;
+    padding: 18px 25px 6px;
+}
+
+.isf-quick-edit-mode .isf-panel-header h2 {
+    font-size: 16px;
+    color: #1d2327;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.isf-quick-edit-mode .isf-panel-header p {
+    color: #646970;
+    font-size: 13px;
+}
+

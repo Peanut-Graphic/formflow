@@ -243,12 +243,18 @@ class Marketplace {
 
     /**
      * Add admin menu
+     *
+     * Menu label drops the "New" badge — the storefront cards on this page
+     * are still placeholders. Real functionality (template Import/Export)
+     * lives inside this page on its own tab. To re-enable the storefront
+     * cards: define('ISF_MARKETPLACE_STOREFRONT', true) in wp-config.php
+     * (consumed by the marketplace view).
      */
     public function add_admin_menu(): void {
         add_submenu_page(
             'isf-dashboard',
-            __('Marketplace', 'formflow'),
-            __('Marketplace', 'formflow') . ' <span class="isf-badge-new">New</span>',
+            __('Templates', 'formflow'),
+            __('Templates', 'formflow'),
             'manage_options',
             'isf-marketplace',
             [$this, 'render_marketplace_page']

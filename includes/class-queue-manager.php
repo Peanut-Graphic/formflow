@@ -107,7 +107,13 @@ class QueueManager {
             return;
         }
 
-        echo '<div class="notice notice-warning"><p>';
+        // Don't interrupt the instance-editor flow with a perf warning —
+        // it belongs on Dashboard / Tools.
+        if (strpos($screen->id, 'isf-instance-editor') !== false) {
+            return;
+        }
+
+        echo '<div class="notice notice-warning is-dismissible"><p>';
         echo esc_html__(
             'FormFlow Pro: Action Scheduler not found. Async processing will fall back to synchronous mode. ' .
             'Install WooCommerce or the Action Scheduler plugin for better performance.',

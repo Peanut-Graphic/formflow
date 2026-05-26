@@ -141,6 +141,19 @@ $wizard_steps = [
 
             <!-- Main Content Area -->
             <div class="isf-editor-main">
+
+                <!-- In-page section nav (visible only in Quick Edit mode; CSS gated). -->
+                <nav class="isf-quick-nav" aria-label="<?php esc_attr_e('Form sections', 'formflow'); ?>">
+                    <?php foreach ($wizard_steps as $step_id => $step) : ?>
+                        <a href="#isf-panel-<?php echo esc_attr($step_id); ?>"
+                           class="isf-quick-nav-link"
+                           data-target="<?php echo esc_attr($step_id); ?>">
+                            <span class="dashicons dashicons-<?php echo esc_attr($step['icon']); ?>"></span>
+                            <?php echo esc_html($step['title']); ?>
+                        </a>
+                    <?php endforeach; ?>
+                </nav>
+
                 <!-- Wizard Panels -->
                 <div class="isf-wizard-panels">
 
@@ -251,8 +264,8 @@ $wizard_steps = [
                                                     <?php esc_html_e('Support Phone', 'formflow'); ?>
                                                 </label>
                                                 <input type="text" id="support_phone" name="settings[support_phone]" class="isf-field-input"
-                                                       value="<?php echo esc_attr($instance['settings']['support_phone'] ?? '1-866-353-5799'); ?>"
-                                                       placeholder="1-866-353-5799">
+                                                       value="<?php echo esc_attr($instance['settings']['support_phone'] ?? ''); ?>"
+                                                       placeholder="<?php esc_attr_e('e.g. 1-800-555-0100', 'formflow'); ?>">
                                             </div>
                                         </div>
                                     </div>
@@ -352,34 +365,46 @@ $wizard_steps = [
                                 </div>
 
                                 <!-- Mode Settings Pod -->
-                                <div class="isf-pod">
+                                <div class="isf-pod isf-pod-modes">
                                     <div class="isf-pod-header">
                                         <h3><span class="dashicons dashicons-admin-tools"></span><?php esc_html_e('Mode Settings', 'formflow'); ?></h3>
                                     </div>
                                     <div class="isf-pod-body">
+                                        <?php if (($instance['test_mode'] ?? false) || ($instance['settings']['demo_mode'] ?? false)) : ?>
+                                            <div class="notice notice-warning inline" style="margin: 0 0 12px 0;">
+                                                <p>
+                                                    <strong><?php esc_html_e('Heads up:', 'formflow'); ?></strong>
+                                                    <?php esc_html_e('Test or Demo Mode is currently ON. Submissions will not enroll real customers. Turn both off before going live.', 'formflow'); ?>
+                                                </p>
+                                            </div>
+                                        <?php endif; ?>
+
                                         <div class="isf-mode-cards">
                                             <div class="isf-mode-card">
                                                 <label class="isf-mode-card-label">
-                                                    <input type="checkbox" name="test_mode" value="1" <?php checked($instance['test_mode'] ?? false); ?>>
+                                                    <input type="checkbox" name="test_mode" value="1" class="isf-mode-toggle" data-mode="test" <?php checked($instance['test_mode'] ?? false); ?>>
                                                     <span class="isf-mode-card-content">
                                                         <span class="isf-mode-icon"><span class="dashicons dashicons-visibility"></span></span>
                                                         <span class="isf-mode-title"><?php esc_html_e('Test Mode', 'formflow'); ?></span>
-                                                        <span class="isf-mode-desc"><?php esc_html_e('Marked as test. API calls made.', 'formflow'); ?></span>
+                                                        <span class="isf-mode-desc"><?php esc_html_e('Submissions are flagged as test. Real API calls still made.', 'formflow'); ?></span>
                                                     </span>
                                                 </label>
                                             </div>
 
-                                            <div class="isf-mode-card">
+                                            <div class="isf-mode-card isf-mode-card-danger">
                                                 <label class="isf-mode-card-label">
-                                                    <input type="checkbox" name="demo_mode" value="1" <?php checked($instance['settings']['demo_mode'] ?? false); ?>>
+                                                    <input type="checkbox" name="demo_mode" value="1" class="isf-mode-toggle isf-mode-toggle-demo" data-mode="demo" <?php checked($instance['settings']['demo_mode'] ?? false); ?>>
                                                     <span class="isf-mode-card-content">
-                                                        <span class="isf-mode-icon"><span class="dashicons dashicons-admin-generic"></span></span>
+                                                        <span class="isf-mode-icon"><span class="dashicons dashicons-warning"></span></span>
                                                         <span class="isf-mode-title"><?php esc_html_e('Demo Mode', 'formflow'); ?></span>
-                                                        <span class="isf-mode-desc"><?php esc_html_e('Mock data. No API calls.', 'formflow'); ?></span>
+                                                        <span class="isf-mode-desc"><?php esc_html_e('Returns MOCK data — no real enrollment. Do NOT enable on a live form.', 'formflow'); ?></span>
                                                     </span>
                                                 </label>
                                             </div>
                                         </div>
+                                        <p class="description" style="margin-top: 10px;">
+                                            <?php esc_html_e('Both modes default off and require explicit confirmation to turn on. Live forms must have both off.', 'formflow'); ?>
+                                        </p>
                                     </div>
                                 </div>
 
@@ -1032,6 +1057,40 @@ jQuery(document).ready(function($) {
     var wizardSteps = ['basics', 'api', 'fields', 'scheduling', 'content', 'email', 'features'];
     var currentStepIndex = 0;
     var isQuickEditMode = $('#isf-quick-edit-toggle').is(':checked');
+
+    // Stamp each panel with an anchor id so the Quick Edit nav can deep-link.
+    $('.isf-wizard-panel').each(function() {
+        var panel = $(this).data('panel');
+        if (panel && !this.id) {
+            this.id = 'isf-panel-' + panel;
+        }
+    });
+
+    // Quick Edit nav: smooth-scroll + active state.
+    $('.isf-quick-nav').on('click', '.isf-quick-nav-link', function(e) {
+        var target = $(this).attr('href');
+        var $t = $(target);
+        if ($t.length) {
+            e.preventDefault();
+            $('html, body').animate({ scrollTop: $t.offset().top - 80 }, 240);
+            history.replaceState(null, '', target);
+        }
+    });
+
+    // Highlight the nav link for whatever panel is currently in view.
+    function updateQuickNavActive() {
+        if (!$('.isf-wizard-form').hasClass('isf-quick-edit-mode')) return;
+        var scrollY = window.pageYOffset + 120;
+        var current = null;
+        $('.isf-wizard-panel').each(function() {
+            if ($(this).offset().top <= scrollY) current = $(this).data('panel');
+        });
+        if (current) {
+            $('.isf-quick-nav-link').removeClass('is-active');
+            $('.isf-quick-nav-link[data-target="' + current + '"]').addClass('is-active');
+        }
+    }
+    $(window).on('scroll', updateQuickNavActive);
 
     // Initialize wizard
     function initWizard() {

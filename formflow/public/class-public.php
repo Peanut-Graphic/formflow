@@ -1201,7 +1201,7 @@ class Frontend {
         $customer_name = trim(($form_data['first_name'] ?? '') . ' ' . ($form_data['last_name'] ?? ''));
         $content = $instance['settings']['content'] ?? [];
         $program_name = $content['program_name'] ?? __('Energy Wise Rewards', 'formflow');
-        $support_phone = $instance['settings']['support_phone'] ?? '1-866-353-5799';
+        $support_phone = $instance['settings']['support_phone'] ?? '';
 
         // Build address string
         $address = trim(($form_data['street'] ?? '') . ', ' .
@@ -1582,7 +1582,7 @@ class Frontend {
             // Send email
             $content = $instance['settings']['content'] ?? [];
             $program_name = $content['program_name'] ?? __('Energy Wise Rewards', 'formflow');
-            $support_phone = $instance['settings']['support_phone'] ?? '1-866-353-5799';
+            $support_phone = $instance['settings']['support_phone'] ?? '';
 
             $subject = sprintf(__('Continue Your %s Enrollment', 'formflow'), $program_name);
 
@@ -1988,7 +1988,7 @@ function isf_get_content(array $instance, string $key, string $default = ''): st
     }
 
     // Replace {phone} placeholder with support phone number
-    $phone = $instance['settings']['support_phone'] ?? '1-866-353-5799';
+    $phone = $instance['settings']['support_phone'] ?? '';
     $content = str_replace('{phone}', $phone, $content);
 
     return $content;
@@ -2011,5 +2011,5 @@ function isf_get_default_state(array $instance): string {
  * @return string The support phone number
  */
 function isf_get_support_phone(array $instance): string {
-    return $instance['settings']['support_phone'] ?? '1-866-353-5799';
+    return $instance['settings']['support_phone'] ?? '';
 }

@@ -331,6 +331,14 @@ class Plugin {
             return;
         }
 
+        // Suppress on the instance-editor workflow — security/queue warnings
+        // belong on Dashboard / Tools, not interleaved with a form-creation
+        // flow. They stay visible (and dismissible) on every other plugin
+        // screen.
+        if (strpos($screen->id ?? '', 'isf-instance-editor') !== false) {
+            return;
+        }
+
         // Only show to users who can manage options
         if (!current_user_can('manage_options')) {
             return;
