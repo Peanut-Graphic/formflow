@@ -169,6 +169,8 @@ function isf_init() {
     require_once ISF_PLUGIN_DIR . 'includes/destinations/class-base-destination.php';
     require_once ISF_PLUGIN_DIR . 'includes/destinations/class-destination-registry.php';
     require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-log.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-worker.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-dispatcher.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-branding.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-cache-manager.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-queue-manager.php';
@@ -223,6 +225,10 @@ function isf_init() {
     // is already past). Calling init_destinations() here ensures
     // every loaded loader.php has its add_action() callbacks fired.
     ISF\Destinations\DestinationRegistry::instance()->init_destinations();
+
+    // Wire the delivery dispatcher: listens on form_completed,
+    // queues one Action Scheduler job per active destination.
+    (new ISF\Destinations\DeliveryDispatcher())->init();
 
     // Load plugin
     require_once ISF_PLUGIN_DIR . 'includes/class-plugin.php';
