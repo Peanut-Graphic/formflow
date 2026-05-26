@@ -238,9 +238,14 @@ The 2.9.0 release of the template adds:
         "auth_mode": "password",
         "password": "",
         "remote_path": "/",
-        "filename_template": "{date:Ymd}_{slug}_{submission_id}.csv",
+        "filename_template": "dominion_ptr_{date:Ymd}_{date:His}.csv",
         "format": "csv",
+        "csv_delimiter": ",",
+        "csv_quote_mode": "rfc4180",
+        "csv_line_ending": "crlf",
         "csv_include_header": true,
+        "csv_encoding": "utf-8",
+        "boolean_representation": "yes_no",
         "purge_after_export": true
       }
     }
@@ -319,20 +324,39 @@ until admin saves valid config (matches HUB behavior).
 Once Itron's spec arrives, confirm or adjust:
 
 - [x] Auth mode: **either accepted** (Itron undecided; we support both)
-- [ ] Host + port + username + remote path (real, not sandbox)
+- [ ] Host + port + username + remote path — pending from Itron
 - [x] File format: **CSV** (confirmed 2026-05-26)
-- [ ] CSV delimiter: ☐ comma  ☐ tab  ☐ pipe  ☐ other
-- [ ] CSV quoting rules (when to quote, escape character)
-- [ ] Line endings: ☐ LF  ☐ CRLF
-- [ ] Header row required? Exact column order? Exact column names?
-- [ ] Filename pattern Itron expects (date format, prefix, extension)
-- [ ] Required envelope or wrapper (XML root element, JSON top-level key)
-- [ ] Encoding: ☐ UTF-8  ☐ UTF-8 BOM  ☐ ASCII  ☐ other
-- [ ] How does Itron want enrollment status fields (consent_to_call,
-      terms_accepted) represented? Y/N? 1/0? true/false?
-- [ ] Any field they need that's NOT in the current 15-field form?
-- [ ] Any field in the form they want OMITTED from the export?
-- [ ] Test sandbox available? Production cutover signal?
+- [x] CSV delimiter: **comma** (confirmed 2026-05-26)
+- [x] CSV quoting rules: **RFC 4180** (default — double-quote only when
+      value contains comma, double-quote, CR, or LF; escape embedded
+      double-quotes by doubling. Tunable in SFTP destination config if
+      Itron later specifies otherwise.)
+- [x] Line endings: **CRLF** (RFC 4180 default; tunable in config)
+- [x] Header row present? **yes** (confirmed 2026-05-26)
+- [x] Exact column order: **as defined in the 15-field schema** —
+      first_name, last_name, street_address, address_line_2, city,
+      state, zip, email, confirm_email, phone, consent_to_call,
+      terms_accepted, submission_id, submitted_at, instance_slug.
+      (Order matches `ConfigureDominionForm.php` field array + appended
+      metadata.)
+- [x] Exact column names: **as defined** — snake_case header row
+      matching field `name` attributes.
+- [x] Filename pattern: **`dominion_ptr_YYYYMMDD_HHMMSS.csv`**
+      (confirmed 2026-05-26). Template:
+      `dominion_ptr_{date:Ymd}_{date:His}.csv`.
+- [x] Required envelope/wrapper: **none** (confirmed 2026-05-26)
+- [x] Encoding: **UTF-8** (no BOM; confirmed 2026-05-26)
+- [x] Boolean rep (consent_to_call, terms_accepted): **yes / no**
+      (lowercase, confirmed 2026-05-26)
+- [ ] Any field needed that's NOT in the current 15-field form? —
+      pending from Itron
+- [ ] Any field in the form to OMIT from the export? — pending from
+      Itron (default: include all)
+- [ ] Test sandbox available? — **not yet** (2026-05-26). Will need a
+      sandbox endpoint before flipping prod page 792 to the FormFlow
+      shortcode. Until then, smoke-test #10 from the task list runs
+      against a self-hosted SFTP server (`docker run atmoz/sftp`) to
+      validate the formatter and delivery worker end-to-end.
 
 ---
 
