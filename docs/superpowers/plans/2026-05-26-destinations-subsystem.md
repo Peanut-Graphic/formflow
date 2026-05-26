@@ -297,17 +297,41 @@ until admin saves valid config (matches HUB behavior).
 
 ## Open questions
 
-- **Itron's actual SFTP auth mode** — password or key? User said "build
-  both" so the SFTP destination supports both. Sandbox creds needed to
-  validate.
-- **Itron's expected file format** — assumed CSV here based on HUB's
-  current behavior, but worth confirming with Itron's spec doc that
-  the FormFlow output matches column order / quoting / delimiter rules.
+- **Itron's actual SFTP auth mode** — password or key? Nat is getting
+  this from Itron tonight (2026-05-26). Until then build both auth
+  modes (already the plan) and don't block on it. Update this doc when
+  the answer lands.
+- **Itron's expected file format / column spec** — Nat is getting this
+  from Itron tonight (2026-05-26). Assumed CSV based on HUB's current
+  Dominion connector behavior, but column order, delimiter, quoting,
+  line endings, header row presence, filename pattern, and any required
+  envelope all need to match Itron's intake spec exactly. Update this
+  doc + `class-sftp-formatter.php` config defaults when the spec lands.
 - **`ISF_ENCRYPTION_KEY` on dominionenergyptr.com** — must be set in
   wp-config.php before SFTP destination creds are entered, otherwise
   encryption falls back to AUTH_KEY (the 2.8.7 notice flagged this).
   Surface this dependency in the SFTP destination admin UI if the key
   is unset.
+
+## Blocked-on-spec checklist (resolve before smoke-testing prod)
+
+Once Itron's spec arrives, confirm or adjust:
+
+- [ ] Auth mode: ☐ password  ☐ SSH key  ☐ either accepted
+- [ ] Host + port + username + remote path (real, not sandbox)
+- [ ] File format: ☐ CSV  ☐ JSON  ☐ XML  ☐ other (specify)
+- [ ] CSV delimiter: ☐ comma  ☐ tab  ☐ pipe  ☐ other
+- [ ] CSV quoting rules (when to quote, escape character)
+- [ ] Line endings: ☐ LF  ☐ CRLF
+- [ ] Header row required? Exact column order? Exact column names?
+- [ ] Filename pattern Itron expects (date format, prefix, extension)
+- [ ] Required envelope or wrapper (XML root element, JSON top-level key)
+- [ ] Encoding: ☐ UTF-8  ☐ UTF-8 BOM  ☐ ASCII  ☐ other
+- [ ] How does Itron want enrollment status fields (consent_to_call,
+      terms_accepted) represented? Y/N? 1/0? true/false?
+- [ ] Any field they need that's NOT in the current 15-field form?
+- [ ] Any field in the form they want OMITTED from the export?
+- [ ] Test sandbox available? Production cutover signal?
 
 ---
 
