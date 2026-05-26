@@ -3,7 +3,7 @@
  * Plugin Name: FormFlow
  * Plugin URI: https://formflow.dev
  * Description: Secure API-integrated enrollment and scheduling forms for utility demand response programs
- * Version: 2.9.0
+ * Version: 2.9.1
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * Text Domain: formflow
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ISF_VERSION', '2.9.0');
+define('ISF_VERSION', '2.9.1');
 define('ISF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ISF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ISF_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -184,6 +184,14 @@ function isf_init() {
     ISF\Destinations\DestinationRegistry::instance();
     ISF\CacheManager::instance();
     ISF\LicenseManager::instance();
+
+    // Templates (formerly "Marketplace") admin page. Was orphaned in
+    // 2.7.x — the class registered an admin_menu hook in its constructor
+    // but nothing called ::instance(), so the submenu never appeared on
+    // any install. Booting it explicitly here fixes that regression.
+    if (class_exists('\\ISF\\Platform\\Marketplace')) {
+        ISF\Platform\Marketplace::instance();
+    }
 
     // Initialize security hardening
     $security = ISF\SecurityHardening::instance();

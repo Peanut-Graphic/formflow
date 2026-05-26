@@ -1,5 +1,17 @@
 # FormFlow Pro Changelog
 
+## 2.9.1 — 2026-05-26
+
+### Fixed
+
+- **Templates submenu was orphaned since 2.7.x** — the `Marketplace` class
+  registered `admin_menu` priority 25 in its constructor, but nothing in
+  the bootstrap ever called `Marketplace::instance()`, so the constructor
+  never ran and the submenu never rendered. The 2.9.0 rename to "Templates"
+  was a label change on dead code; visible effect was zero. Booting the
+  singleton explicitly in `formflow.php` fixes it. Templates → Import/Export
+  is now reachable for the Dominion PTR template import.
+
 ## 2.9.0 — 2026-05-26
 
 ### New: Destinations subsystem (asynchronous submission delivery)
