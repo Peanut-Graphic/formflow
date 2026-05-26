@@ -1,5 +1,15 @@
 # FormFlow Pro Changelog
 
+## 2.9.2 — 2026-05-26
+
+### Fixed
+
+- **2.9.1 follow-up — the Templates submenu was still missing.** The
+  Marketplace class registers its admin_menu hook inside `init()`, not
+  the constructor. Calling `::instance()` alone (as 2.9.1 did) only ran
+  the table-name setup; the menu never registered. 2.9.2 calls
+  `::instance()->init()` from the bootstrap. Verified locally.
+
 ## 2.9.1 — 2026-05-26
 
 ### Fixed
