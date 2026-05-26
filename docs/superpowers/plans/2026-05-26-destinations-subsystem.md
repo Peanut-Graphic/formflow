@@ -297,10 +297,11 @@ until admin saves valid config (matches HUB behavior).
 
 ## Open questions
 
-- **Itron's actual SFTP auth mode** — password or key? Nat is getting
-  this from Itron tonight (2026-05-26). Until then build both auth
-  modes (already the plan) and don't block on it. Update this doc when
-  the answer lands.
+- ~~**Itron's actual SFTP auth mode**~~ — **resolved 2026-05-26:** Itron
+  themselves are not sure which auth mode they want. Build both
+  password + SSH-key auth in the SFTP destination from day one (not a
+  defensive hedge — the actual answer is "either"). Admin picks at
+  setup time per Itron's eventual direction.
 - **Itron's expected file format / column spec** — Nat is getting this
   from Itron tonight (2026-05-26). Assumed CSV based on HUB's current
   Dominion connector behavior, but column order, delimiter, quoting,
@@ -317,7 +318,7 @@ until admin saves valid config (matches HUB behavior).
 
 Once Itron's spec arrives, confirm or adjust:
 
-- [ ] Auth mode: ☐ password  ☐ SSH key  ☐ either accepted
+- [x] Auth mode: **either accepted** (Itron undecided; we support both)
 - [ ] Host + port + username + remote path (real, not sandbox)
 - [ ] File format: ☐ CSV  ☐ JSON  ☐ XML  ☐ other (specify)
 - [ ] CSV delimiter: ☐ comma  ☐ tab  ☐ pipe  ☐ other
