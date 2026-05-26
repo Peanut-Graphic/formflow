@@ -320,7 +320,7 @@ Once Itron's spec arrives, confirm or adjust:
 
 - [x] Auth mode: **either accepted** (Itron undecided; we support both)
 - [ ] Host + port + username + remote path (real, not sandbox)
-- [ ] File format: ☐ CSV  ☐ JSON  ☐ XML  ☐ other (specify)
+- [x] File format: **CSV** (confirmed 2026-05-26)
 - [ ] CSV delimiter: ☐ comma  ☐ tab  ☐ pipe  ☐ other
 - [ ] CSV quoting rules (when to quote, escape character)
 - [ ] Line endings: ☐ LF  ☐ CRLF
