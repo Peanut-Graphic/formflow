@@ -212,8 +212,17 @@ function isf_init() {
     require_once ISF_PLUGIN_DIR . 'includes/class-tester-bridge.php';
     (new ISF\TesterBridge())->init();
 
-    // Load bundled connectors
+    // Load bundled connectors + destinations (both share the same
+    // glob — any connectors/*/loader.php is required, regardless of
+    // whether it registers a Connector or a Destination).
     isf_load_bundled_connectors();
+
+    // Explicitly fire destination registration. The registry's
+    // plugins_loaded@5 self-hook is unreliable when the singleton
+    // is first instantiated inside plugins_loaded@10 (priority 5
+    // is already past). Calling init_destinations() here ensures
+    // every loaded loader.php has its add_action() callbacks fired.
+    ISF\Destinations\DestinationRegistry::instance()->init_destinations();
 
     // Load plugin
     require_once ISF_PLUGIN_DIR . 'includes/class-plugin.php';
