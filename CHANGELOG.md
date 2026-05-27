@@ -1,5 +1,43 @@
 # FormFlow Pro Changelog
 
+## 2.9.3 — 2026-05-27
+
+### Fixed — F5 / enterprise WAF compatibility
+
+On Itron-hosted sites (e.g., dominionenergyptr.com), an F5 BIG-IP ASM
+policy rejects any POST to `/wp-admin/admin-ajax.php` whose `action`
+parameter starts with the literal substring `isf_`. Every FormFlow
+admin-ajax handler (62 of them) registered under the historical
+`wp_ajax_isf_*` prefix, so the entire admin UI returned `403 "Access
+denied."` from the WAF: importing templates, saving instances, testing
+connections, exporting data — all blocked.
+
+This release aliases every `wp_ajax_isf_*` registration with a parallel
+`wp_ajax_formflow_*` registration pointing at the same callback, and
+rewrites every bundled JS POST to use the new `formflow_*` action names.
+
+- `wp_ajax_isf_*` registrations preserved (backward-compat for any
+  external integration that calls the old action names — on sites
+  without an `isf_*` WAF rule, both names work).
+- `wp_ajax_formflow_*` parallel registrations added (62 total across
+  class-plugin / class-marketplace / class-security-hardening /
+  class-business-intelligence / class-form-builder).
+- All bundled JS now POSTs `action: 'formflow_*'`: 24 files touched
+  including admin.js, form-builder.js, enrollment.js, auto-save.js,
+  analytics-integration.js, plus every admin view that builds its own
+  AJAX calls (marketplace, instance-editor, destinations-pod, etc.).
+- Nonce action name `isf_admin_nonce` unchanged — nonce values never
+  traverse the wire as `action=` parameters, so the WAF rule doesn't
+  match them. No nonce regeneration needed on upgrade.
+- PHP namespaces, class names, option keys, DB table names, file
+  paths, and constants are all unchanged. Only wire-facing action
+  identifiers were renamed.
+
+Verified end-to-end against the live dominionenergyptr.com WAF:
+`action=formflow_template_import` returns 400 "0" (passes WAF, reaches
+WP, "no handler" during pre-install testing). After 2.9.3 install, the
+new handlers fire normally.
+
 ## 2.9.2 — 2026-05-26
 
 ### Fixed

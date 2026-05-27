@@ -58,9 +58,13 @@ class BusinessIntelligence {
     public function __construct() {
         add_action('init', [$this, 'register_endpoints']);
         add_action('wp_ajax_isf_bi_data', [$this, 'ajax_get_data']);
+        add_action('wp_ajax_formflow_bi_data', [$this, 'ajax_get_data']);
         add_action('wp_ajax_isf_bi_export', [$this, 'ajax_export']);
+        add_action('wp_ajax_formflow_bi_export', [$this, 'ajax_export']);
         add_action('wp_ajax_isf_bi_save_report', [$this, 'ajax_save_report']);
+        add_action('wp_ajax_formflow_bi_save_report', [$this, 'ajax_save_report']);
         add_action('wp_ajax_isf_bi_schedule_report', [$this, 'ajax_schedule_report']);
+        add_action('wp_ajax_formflow_bi_schedule_report', [$this, 'ajax_schedule_report']);
         add_action('isf_scheduled_report', [$this, 'run_scheduled_report'], 10, 1);
     }
 

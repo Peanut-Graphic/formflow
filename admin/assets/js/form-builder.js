@@ -2137,7 +2137,7 @@
                 url: isf_builder.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'isf_builder_preview',
+                    action: 'formflow_builder_preview',
                     nonce: isf_builder.nonce,
                     schema: JSON.stringify(this.schema)
                 },
@@ -2175,7 +2175,7 @@
                 url: isf_builder.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'isf_builder_save',
+                    action: 'formflow_builder_save',
                     nonce: isf_builder.nonce,
                     instance_id: this.instanceId,
                     schema: JSON.stringify(this.schema)

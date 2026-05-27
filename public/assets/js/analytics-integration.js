@@ -243,7 +243,7 @@
                     url: isf_frontend.ajax_url,
                     type: 'POST',
                     data: {
-                        action: 'isf_record_touch',
+                        action: 'formflow_record_touch',
                         nonce: isf_frontend.nonce,
                         touch_type: touchType,
                         instance_id: this.config.instanceId,

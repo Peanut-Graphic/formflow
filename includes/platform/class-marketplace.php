@@ -83,11 +83,17 @@ class Marketplace {
 
         // AJAX handlers
         add_action('wp_ajax_isf_marketplace_browse', [$this, 'ajax_browse']);
+        add_action('wp_ajax_formflow_marketplace_browse', [$this, 'ajax_browse']);
         add_action('wp_ajax_isf_marketplace_install', [$this, 'ajax_install']);
+        add_action('wp_ajax_formflow_marketplace_install', [$this, 'ajax_install']);
         add_action('wp_ajax_isf_marketplace_uninstall', [$this, 'ajax_uninstall']);
+        add_action('wp_ajax_formflow_marketplace_uninstall', [$this, 'ajax_uninstall']);
         add_action('wp_ajax_isf_marketplace_activate', [$this, 'ajax_activate']);
+        add_action('wp_ajax_formflow_marketplace_activate', [$this, 'ajax_activate']);
         add_action('wp_ajax_isf_template_export', [$this, 'ajax_export_template']);
+        add_action('wp_ajax_formflow_template_export', [$this, 'ajax_export_template']);
         add_action('wp_ajax_isf_template_import', [$this, 'ajax_import_template']);
+        add_action('wp_ajax_formflow_template_import', [$this, 'ajax_import_template']);
 
         // REST API for marketplace interactions
         add_action('rest_api_init', [$this, 'register_routes']);

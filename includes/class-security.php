@@ -88,7 +88,7 @@ class Security {
     /**
      * Verify AJAX request (nonce and optional capabilities)
      */
-    public static function verify_ajax_request(string $action = 'isf_ajax_nonce', string $capability = ''): bool {
+    public static function verify_ajax_request(string $action = 'formflow_ajax_nonce', string $capability = ''): bool {
         // Check nonce
         $nonce = $_POST['nonce'] ?? $_GET['nonce'] ?? '';
         if (!wp_verify_nonce($nonce, $action)) {
@@ -213,7 +213,7 @@ class Security {
     /**
      * Generate secure nonce for forms
      */
-    public static function create_form_nonce(string $action = 'isf_form'): string {
+    public static function create_form_nonce(string $action = 'formflow_form'): string {
         return wp_create_nonce($action);
     }
 

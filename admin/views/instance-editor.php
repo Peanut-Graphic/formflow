@@ -1306,7 +1306,7 @@ jQuery(document).ready(function($) {
             url: isf_admin.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_duplicate_instance',
+                action: 'formflow_duplicate_instance',
                 nonce: isf_admin.nonce,
                 id: instanceId
             },

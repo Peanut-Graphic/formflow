@@ -251,7 +251,7 @@ jQuery(document).ready(function($) {
             url: isf_admin.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_test_form',
+                action: 'formflow_test_form',
                 nonce: isf_admin.nonce,
                 instance_id: instanceId,
                 test_type: testType,

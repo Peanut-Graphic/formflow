@@ -60,8 +60,11 @@ class FormBuilder {
 
         // AJAX handlers
         add_action('wp_ajax_isf_save_form_schema', [$this, 'ajax_save_form_schema']);
+        add_action('wp_ajax_formflow_save_form_schema', [$this, 'ajax_save_form_schema']);
         add_action('wp_ajax_isf_load_form_schema', [$this, 'ajax_load_form_schema']);
+        add_action('wp_ajax_formflow_load_form_schema', [$this, 'ajax_load_form_schema']);
         add_action('wp_ajax_isf_preview_form', [$this, 'ajax_preview_form']);
+        add_action('wp_ajax_formflow_preview_form', [$this, 'ajax_preview_form']);
     }
 
     /**

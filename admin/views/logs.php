@@ -475,7 +475,7 @@ jQuery(document).ready(function($) {
             url: isf_admin.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_get_submission_details',
+                action: 'formflow_get_submission_details',
                 nonce: isf_admin.nonce,
                 submission_id: submissionId
             },
@@ -631,7 +631,7 @@ jQuery(document).ready(function($) {
             url: isf_admin.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_export_submissions_csv',
+                action: 'formflow_export_submissions_csv',
                 nonce: isf_admin.nonce,
                 instance_id: params.get('instance_id') || '',
                 status: params.get('status') || '',

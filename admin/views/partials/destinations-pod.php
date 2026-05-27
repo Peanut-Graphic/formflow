@@ -319,7 +319,7 @@ $registry = \ISF\Destinations\DestinationRegistry::instance();
         $.post(
             (window.isf_admin && isf_admin.ajax_url) || ajaxurl,
             {
-                action: 'isf_test_destination',
+                action: 'formflow_test_destination',
                 nonce: (window.isf_admin && isf_admin.nonce) || '',
                 destination: JSON.stringify(slot)
             }

@@ -412,7 +412,7 @@ if (!defined('ABSPATH')) {
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_delete_test_data',
+                    action: 'formflow_delete_test_data',
                     nonce: '<?php echo wp_create_nonce('isf_admin_nonce'); ?>',
                     instance_id: instanceId
                 },
@@ -447,7 +447,7 @@ if (!defined('ABSPATH')) {
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_clear_analytics',
+                    action: 'formflow_clear_analytics',
                     nonce: '<?php echo wp_create_nonce('isf_admin_nonce'); ?>',
                     instance_id: instanceId
                 },

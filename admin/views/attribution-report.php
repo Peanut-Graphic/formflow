@@ -881,7 +881,7 @@ jQuery(document).ready(function($) {
 
         // Build export URL
         var params = new URLSearchParams({
-            action: 'isf_export_attribution',
+            action: 'formflow_export_attribution',
             export_type: exportType,
             format: format,
             instance_id: $('#instance_id').val(),

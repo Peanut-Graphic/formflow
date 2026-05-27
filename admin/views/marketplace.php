@@ -630,7 +630,7 @@ jQuery(document).ready(function($) {
         $btn.prop('disabled', true).text('<?php echo esc_js(__('Creating...', 'formflow')); ?>');
 
         $.post(ajaxurl, {
-            action: 'isf_marketplace_install',
+            action: 'formflow_marketplace_install',
             nonce: $(this).find('[name="nonce"]').val(),
             slug: $('#install-template-slug').val(),
             name: $('#install-name').val(),
@@ -657,7 +657,7 @@ jQuery(document).ready(function($) {
         }
 
         $.post(ajaxurl, {
-            action: 'isf_template_export',
+            action: 'formflow_template_export',
             nonce: $(this).find('[name="nonce"]').val(),
             instance_id: instanceId
         }, function(response) {
@@ -742,7 +742,7 @@ jQuery(document).ready(function($) {
         if (!pendingImport) return;
 
         $.post(ajaxurl, {
-            action: 'isf_template_import',
+            action: 'formflow_template_import',
             nonce: $(this).find('[name="nonce"]').val(),
             template: JSON.stringify(pendingImport)
         }, function(response) {

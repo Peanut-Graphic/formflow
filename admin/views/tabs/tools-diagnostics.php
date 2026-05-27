@@ -112,7 +112,7 @@ if (!defined('ABSPATH')) {
 jQuery(document).ready(function($) {
     // Quick health check on page load
     $.post(isf_admin.ajax_url, {
-        action: 'isf_quick_health_check',
+        action: 'formflow_quick_health_check',
         nonce: isf_admin.nonce
     }, function(response) {
         if (response.success) {
@@ -143,7 +143,7 @@ jQuery(document).ready(function($) {
         $btn.prop('disabled', true).find('.dashicons').addClass('isf-spin');
 
         $.post(isf_admin.ajax_url, {
-            action: 'isf_run_diagnostics',
+            action: 'formflow_run_diagnostics',
             nonce: isf_admin.nonce,
             instance_id: instanceId
         }, function(response) {

@@ -164,7 +164,7 @@
             url: isf_admin.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_save_instance_order',
+                action: 'formflow_save_instance_order',
                 nonce: isf_admin.nonce,
                 order: order
             },
@@ -231,7 +231,7 @@
                 url: isf_admin.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'isf_save_instance',
+                    action: 'formflow_save_instance',
                     nonce: isf_admin.nonce,
                     id: $form.find('input[name="id"]').val(),
                     name: $form.find('input[name="name"]').val(),
@@ -293,7 +293,7 @@
                 url: isf_admin.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'isf_delete_instance',
+                    action: 'formflow_delete_instance',
                     nonce: isf_admin.nonce,
                     id: instanceId
                 },
@@ -336,7 +336,7 @@
                 url: isf_admin.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'isf_test_api',
+                    action: 'formflow_test_api',
                     nonce: isf_admin.nonce,
                     api_endpoint: endpoint,
                     api_password: password
@@ -371,7 +371,7 @@
                 url: isf_admin.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'isf_check_api_health',
+                    action: 'formflow_check_api_health',
                     nonce: isf_admin.nonce
                 },
                 success: function(response) {
@@ -488,7 +488,7 @@
                 url: isf_admin.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'isf_get_api_usage',
+                    action: 'formflow_get_api_usage',
                     nonce: isf_admin.nonce,
                     period: $period.val()
                 },
@@ -658,7 +658,7 @@
             url: isf_admin.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_test_sms',
+                action: 'formflow_test_sms',
                 nonce: isf_admin.nonce,
                 test_number: testNumber,
                 account_sid: $('#sms_account_sid').val(),
@@ -700,7 +700,7 @@
             url: isf_admin.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_test_team_webhook',
+                action: 'formflow_test_team_webhook',
                 nonce: isf_admin.nonce,
                 webhook_url: webhookUrl,
                 provider: provider
@@ -740,7 +740,7 @@
             url: isf_admin.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_test_digest',
+                action: 'formflow_test_digest',
                 nonce: isf_admin.nonce,
                 instance_id: instanceId,
                 recipient: testEmail
