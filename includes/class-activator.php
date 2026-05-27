@@ -642,6 +642,17 @@ class Activator {
             dbDelta(\ISF\Destinations\DeliveryLog::get_schema_sql());
         }
 
+        // Marketplace tables (2.9.4+). Marketplace was never instantiated
+        // on installs before 2.9.0 so its tables (wp_isf_templates +
+        // wp_isf_marketplace_installed) were historically created lazily,
+        // if at all. Activator now ensures they exist on every fresh
+        // install / reactivation. Upgrades use the bootstrap flag in
+        // formflow.php to backfill.
+        if (class_exists('\\ISF\\Platform\\Marketplace')) {
+            \ISF\Platform\Marketplace::instance()->create_tables();
+            update_option('isf_marketplace_tables_v1', '1');
+        }
+
         dbDelta($sql_audit_log);
         dbDelta($sql_gdpr_requests);
         dbDelta($sql_visitors);

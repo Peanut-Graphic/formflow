@@ -1,5 +1,26 @@
 # FormFlow Pro Changelog
 
+## 2.9.4 — 2026-05-27
+
+### Fixed — marketplace tables missing on pre-2.9.0 installs
+
+Following the 2.9.2 fix that finally boots the Marketplace singleton on
+admin requests, importing a template returned "Failed to import template."
+because the `wp_isf_templates` and `wp_isf_marketplace_installed` tables
+didn't exist on the site. Marketplace was never instantiated on any
+install before 2.9.0, so `create_tables()` had never run.
+
+Two-pronged fix:
+- **Bootstrap (existing installs):** on first 2.9.4 admin page load, call
+  `Marketplace::create_tables()` once, gated by a new option flag
+  `isf_marketplace_tables_v1`. dbDelta is idempotent (CREATE TABLE IF
+  NOT EXISTS), and `insert_default_templates()` is internally gated on
+  COUNT > 0, so the operation is safe on installs that already have
+  the tables — but the flag avoids touching dbDelta on every load.
+- **Activator (fresh installs):** `create_tables()` now runs on plugin
+  activation alongside the rest of the schema setup. Future fresh
+  installs get the tables immediately.
+
 ## 2.9.3 — 2026-05-27
 
 ### Fixed — F5 / enterprise WAF compatibility
