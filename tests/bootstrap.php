@@ -72,6 +72,12 @@ if (!defined('COOKIE_DOMAIN')) {
     define('COOKIE_DOMAIN', '');
 }
 
+if (!function_exists('wp_json_encode')) {
+    function wp_json_encode($data, int $options = 0, int $depth = 512): string|false {
+        return json_encode($data, $options, $depth);
+    }
+}
+
 // Register the plugin's runtime autoloader so tests can resolve
 // kebab-case `class-*.php` files (the plugin doesn't follow pure PSR-4).
 spl_autoload_register(function ($class) {
