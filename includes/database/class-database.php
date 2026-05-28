@@ -2379,16 +2379,23 @@ class Database {
     /**
      * Get reports due to be sent
      *
-     * @param string $frequency Frequency type (daily, weekly, monthly)
+     * @param string|null $frequency Frequency type (daily, weekly, monthly) or null for all
      * @return array List of due reports
      */
-    public function get_due_reports(string $frequency): array {
+    public function get_due_reports(?string $frequency = null): array {
         $table = $this->wpdb->prefix . 'isf_scheduled_reports';
 
-        $sql = $this->wpdb->prepare(
-            "SELECT * FROM {$table} WHERE is_active = 1 AND frequency = %s",
-            $frequency
-        );
+        if ($frequency) {
+            $sql = $this->wpdb->prepare(
+                "SELECT * FROM {$table} WHERE is_active = 1 AND frequency = %s",
+                $frequency
+            );
+        } else {
+            // Get all due reports when no frequency specified.
+            // class-plugin.php::send_scheduled_reports() calls this with no
+            // arguments — wp-cron previously fatal'd here every hour.
+            $sql = "SELECT * FROM {$table} WHERE is_active = 1";
+        }
 
         $results = $this->wpdb->get_results($sql, ARRAY_A) ?: [];
 

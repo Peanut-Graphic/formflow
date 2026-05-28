@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.2.0 — 2026-05-28
+
+### Fixed
+- **Hourly wp-cron fatal: `get_due_reports()` argument-count error.** `class-plugin.php::send_scheduled_reports()` (triggered by the `isf_send_scheduled_reports` hourly cron) calls `Database::get_due_reports()` with no arguments, but the method's signature was `string $frequency` — required, no default. Result: every hour at HH:55, wp-cron threw `Too few arguments to function ISF\Database\Database::get_due_reports(), 0 passed`, and scheduled reports never ran. Signature is now `?string $frequency = null`; passing null returns all active reports (matches the cron's intent).
+
 ## 3.1.9 — 2026-05-28
 
 ### Changed
