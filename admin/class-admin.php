@@ -391,33 +391,25 @@ class Admin {
     }
 
     /**
-     * Check if current page is a plugin admin page
+     * Check if current page is a plugin admin page.
+     *
+     * Every FormFlow admin page slug starts with `isf-` and every page
+     * hook contains either the slug verbatim or the top-level
+     * `isf-dashboard` token. The previous implementation hard-coded the
+     * full hook strings with `is-forms_` prefix — but the menu label
+     * "FF Forms" actually slugifies to `ff-forms`, so 15 of 16 entries
+     * never matched. That's why bulk actions, deletes, and CSV export
+     * silently failed on every subpage (no JS enqueued).
+     *
+     * Match anything containing `isf-` or via `$_GET['page']`, which is
+     * immune to menu-label changes.
      */
     private function is_plugin_page(string $hook): bool {
-        $plugin_pages = [
-            'toplevel_page_isf-dashboard',
-            'is-forms_page_isf-instance-editor',
-            'is-forms_page_isf-data',
-            'is-forms_page_isf-scheduling',
-            'is-forms_page_isf-test',
-            'is-forms_page_isf-automation',
-            'is-forms_page_isf-tools',
-            'is-forms_page_isf-form-builder',
-            'is-forms_page_isf-attribution',
-            // Legacy pages (redirects)
-            'is-forms_page_isf-logs',
-            'is-forms_page_isf-analytics',
-            'is-forms_page_isf-webhooks',
-            'is-forms_page_isf-reports',
-            'is-forms_page_isf-compliance',
-            'is-forms_page_isf-diagnostics',
-            'is-forms_page_isf-settings',
-            // Form editor (3.0.1+)
-            'ff-forms_page_isf-form',
-            'is-forms_page_isf-form',
-        ];
-
-        return in_array($hook, $plugin_pages);
+        if (strpos($hook, 'isf-') !== false) {
+            return true;
+        }
+        $page = isset($_GET['page']) ? (string) $_GET['page'] : '';
+        return $page !== '' && strpos($page, 'isf-') === 0;
     }
 
     /**
