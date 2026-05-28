@@ -174,6 +174,13 @@ function isf_init() {
     require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-log.php';
     require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-worker.php';
     require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-dispatcher.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-feature-flag.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-capabilities.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-mode-resolver.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-task-registry.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-task-validator.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-router.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-field-gate.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-branding.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-cache-manager.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-queue-manager.php';

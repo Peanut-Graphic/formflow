@@ -114,6 +114,10 @@ class Plugin {
         // Admin menu
         add_action('admin_menu', [$this->admin, 'add_admin_menu']);
 
+        // Form-editor (3.0.0+): new task-overview-based editor, behind ISF_NEW_EDITOR flag
+        add_action('admin_menu', [$this, 'register_form_editor_menu'], 30);
+        add_action('admin_init', [$this, 'redirect_old_editor_when_flag_on'], 1);
+
         // Admin assets
         add_action('admin_enqueue_scripts', [$this->admin, 'enqueue_styles']);
         add_action('admin_enqueue_scripts', [$this->admin, 'enqueue_scripts']);
@@ -662,5 +666,40 @@ class Plugin {
                 $e->getMessage()
             ));
         }
+    }
+
+    public function register_form_editor_menu(): void {
+        if (!\ISF\FormEditor\FeatureFlag::is_enabled()) {
+            return;
+        }
+        add_submenu_page(
+            'isf-dashboard',
+            __('Form Editor', 'formflow'),
+            __('Form Editor', 'formflow') . ' <span class="isf-badge-new">Beta</span>',
+            'manage_options',
+            'isf-form',
+            [$this, 'render_form_editor']
+        );
+    }
+
+    public function render_form_editor(): void {
+        require ISF_PLUGIN_DIR . 'admin/views/form-editor/layout.php';
+    }
+
+    /**
+     * When the new editor is on, redirect any direct hits to the old
+     * isf-instance-editor admin URL → new editor.
+     */
+    public function redirect_old_editor_when_flag_on(): void {
+        if (!\ISF\FormEditor\FeatureFlag::is_enabled()) {
+            return;
+        }
+        if (!isset($_GET['page']) || $_GET['page'] !== 'isf-instance-editor') {
+            return;
+        }
+        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+        $url = admin_url('admin.php?page=isf-form' . ($id ? "&id={$id}" : ''));
+        wp_safe_redirect($url);
+        exit;
     }
 }
