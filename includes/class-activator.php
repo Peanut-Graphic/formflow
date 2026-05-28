@@ -650,7 +650,7 @@ class Activator {
         // formflow.php to backfill.
         if (class_exists('\\ISF\\Platform\\Marketplace')) {
             \ISF\Platform\Marketplace::instance()->create_tables();
-            update_option('isf_marketplace_tables_v1', '1');
+            update_option('isf_marketplace_tables_v2', '1');
         }
 
         dbDelta($sql_audit_log);

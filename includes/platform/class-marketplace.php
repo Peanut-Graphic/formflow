@@ -132,7 +132,7 @@ class Marketplace {
             description TEXT,
             category VARCHAR(50),
             thumbnail_url VARCHAR(500),
-            schema JSON NOT NULL,
+            `schema` JSON NOT NULL,
             settings JSON,
             tags JSON,
             author VARCHAR(100),

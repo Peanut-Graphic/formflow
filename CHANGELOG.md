@@ -1,5 +1,33 @@
 # FormFlow Pro Changelog
 
+## 2.9.5 — 2026-05-27
+
+### Fixed — wp_isf_templates CREATE TABLE silently failed on MariaDB 10.3+
+
+2.9.4 added a bootstrap that runs Marketplace::create_tables() on first
+load, gated by an option flag. The bootstrap path executed and set the
+flag, but the table never appeared — because `schema` is a reserved
+word in MariaDB 10.2+ / MySQL 8+ and the CREATE TABLE declared
+`schema JSON NOT NULL` without backticks. dbDelta swallowed the parse
+error silently, the flag got set anyway, and subsequent admin loads
+short-circuited the create attempt.
+
+Verified live against dominionenergyptr.com (MariaDB 10.3.39):
+post-2.9.4, `wpdb->last_error` on the failing import read
+`Table 'domengptr_db.wp_isf_templates' doesn't exist`.
+
+Fix:
+- Backtick `schema` in the CREATE TABLE in
+  `includes/platform/class-marketplace.php`.
+- Bump the bootstrap option flag `isf_marketplace_tables_v1 →
+  _v2` so existing installs that got the broken v1 flag re-attempt
+  create_tables() once with the corrected SQL.
+- Activator also updated to set the v2 flag.
+
+`wpdb->insert(['schema' => ...])` already worked because wpdb backticks
+column names automatically. Only the dbDelta-parsed CREATE TABLE was
+affected by the reserved-word collision.
+
 ## 2.9.4 — 2026-05-27
 
 ### Fixed — marketplace tables missing on pre-2.9.0 installs

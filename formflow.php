@@ -3,7 +3,7 @@
  * Plugin Name: FormFlow
  * Plugin URI: https://formflow.dev
  * Description: Secure API-integrated enrollment and scheduling forms for utility demand response programs
- * Version: 2.9.4
+ * Version: 2.9.5
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * Text Domain: formflow
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ISF_VERSION', '2.9.4');
+define('ISF_VERSION', '2.9.5');
 define('ISF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ISF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ISF_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -195,14 +195,16 @@ function isf_init() {
 
         // First-run table creation. Marketplace was never instantiated on
         // installs before 2.9.0, so its tables (wp_isf_templates +
-        // wp_isf_marketplace_installed) may be missing on upgraded sites
-        // even though the rest of the plugin is fully set up. dbDelta is
-        // idempotent, and insert_default_templates() is internally gated
+        // wp_isf_marketplace_installed) may be missing on upgraded sites.
+        // dbDelta is idempotent and insert_default_templates() is gated
         // on COUNT > 0, but the option flag avoids touching dbDelta on
-        // every page load.
-        if (get_option('isf_marketplace_tables_v1') !== '1') {
+        // every page load. Flag bumped from v1 → v2 in 2.9.5: v1 ran
+        // against a CREATE TABLE that had the reserved-word `schema`
+        // unquoted, which silently failed on MariaDB 10.3+ — sites that
+        // got the v1 flag with no actual table need a re-run.
+        if (get_option('isf_marketplace_tables_v2') !== '1') {
             $isf_marketplace->create_tables();
-            update_option('isf_marketplace_tables_v1', '1');
+            update_option('isf_marketplace_tables_v2', '1');
         }
     }
 
