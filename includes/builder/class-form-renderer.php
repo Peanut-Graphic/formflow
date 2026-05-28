@@ -173,8 +173,12 @@ class FormRenderer {
         $help_id = $help_text ? $id . '_help' : '';
         $error_id = $id . '_error';
 
-        // Wrapper classes
-        $wrapper_classes = ['isf-field-wrapper', "isf-field-type-{$type}"];
+        // Wrapper classes — width honored via isf-width-{half,third,full}
+        $width = $field['width'] ?? $field['settings']['width'] ?? 'full';
+        if (!in_array($width, ['half', 'third', 'two-thirds', 'full'], true)) {
+            $width = 'full';
+        }
+        $wrapper_classes = ['isf-field-wrapper', "isf-field-type-{$type}", "isf-width-{$width}"];
         if ($required) {
             $wrapper_classes[] = 'isf-required';
         }
@@ -182,11 +186,21 @@ class FormRenderer {
             $wrapper_classes[] = 'isf-conditional-hidden';
         }
 
+        // Conditional show-when rule: settings.show_when = {field, equals}
+        $show_when = $field['settings']['show_when'] ?? $field['show_when'] ?? null;
+        $show_when_attr = is_array($show_when) ? wp_json_encode($show_when) : '';
+
+        // Scroll-to-bottom gate (checkbox-only): settings.scroll_gate = {box: '.selector'}
+        $scroll_gate = $field['settings']['scroll_gate'] ?? $field['scroll_gate'] ?? null;
+        $scroll_gate_attr = is_array($scroll_gate) && !empty($scroll_gate['box']) ? $scroll_gate['box'] : '';
+
         ob_start();
         ?>
         <div class="<?php echo esc_attr(implode(' ', $wrapper_classes)); ?>"
              data-field="<?php echo esc_attr($name); ?>"
              role="group"
+             <?php echo $show_when_attr ? 'data-show-when=\'' . esc_attr($show_when_attr) . '\'' : ''; ?>
+             <?php echo $scroll_gate_attr ? 'data-scroll-gate-selector="' . esc_attr($scroll_gate_attr) . '"' : ''; ?>
              <?php echo $label ? 'aria-labelledby="' . esc_attr($id) . '_label"' : ''; ?>
              <?php echo $is_hidden ? 'style="display: none;" aria-hidden="true"' : ''; ?>>
 

@@ -424,7 +424,11 @@ class Admin {
      * Check if current page is the form builder page
      */
     private function is_form_builder_page(string $hook): bool {
-        return strpos($hook, 'isf-form-builder') !== false;
+        // Matches the legacy standalone form-builder page AND the new
+        // editor's "Form fields" task (page slug isf-form), so the
+        // form-builder JS/CSS load wherever the field-list UI is mounted.
+        return strpos($hook, 'isf-form-builder') !== false
+            || strpos($hook, 'isf-form') !== false;
     }
 
     /**

@@ -1,5 +1,17 @@
 # FormFlow Pro Changelog
 
+## 3.1.0 — 2026-05-28
+
+### Added
+- **Per-field width layout.** `FormRenderer` now honors `field.width` (or `field.settings.width`) with values `half`, `third`, `two-thirds`, `full`. Wrappers get `isf-width-{value}` classes and the step-fields container is flex-wrap, so consecutive half-width fields lay out inline without requiring per-form CSS. Mobile breakpoint stacks them under 600px.
+- **Conditional show/hide.** Fields can declare `settings.show_when = {field, equals}` (or `not_equals`). The wrapper is hidden and its inputs disabled — so hidden required fields don't block HTML5 validity — when the rule doesn't hold. Recomputed on form change. Eliminates per-site JS for conditional logic.
+- **Scroll-to-bottom gate for checkbox groups.** `settings.scroll_gate = {box: '.selector'}` keeps the checkbox `disabled` until the named element is scrolled to the bottom. Used for terms-and-conditions acceptance: include a `.isf-terms-box` paragraph above the checkbox, then gate the accept checkbox on it.
+- **Public behavior JS** (`public/assets/js/builder-form.js`) — single file that handles the three behaviors above plus a `.isf-single-step` class added when there's only one step (so CSS can swap Next for Submit without per-form rules). Registered as `isf-builder-form` and enqueued automatically by `render_custom_form()`.
+- **Default form polish baked into `forms.css`:** `.isf-sr-only` rule for accessibility text (was missing), red `.isf-required-indicator`, `.isf-terms-box` scroll container, `.isf-terms-scroll-note` helper text styling. Means new custom forms look correct out of the box without per-site CSS.
+
+### Fixed
+- **Form Editor Beta "Form fields" task page was empty.** The form-builder JS/CSS bundle only enqueued on pages whose hook contained `isf-form-builder`, but the new editor's hook is `isf-form` (no `-builder`). `Admin::is_form_builder_page()` now matches both, and `tasks/fields.php` localizes the `isf_builder` global (instance ID, current schema, field-type catalog, REST nonce) so the builder bootstraps against `#isf-form-builder`.
+
 ## 3.0.7 — 2026-05-28
 
 ### Fixed

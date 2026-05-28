@@ -107,6 +107,16 @@ class Frontend {
             ISF_VERSION,
             true
         );
+
+        // Behavior layer for builder-rendered (form_type=custom) forms:
+        // conditional show/hide, scroll-to-bottom gate, single-step submit.
+        wp_register_script(
+            'isf-builder-form',
+            ISF_PLUGIN_URL . 'public/assets/js/builder-form.js',
+            [],
+            ISF_VERSION,
+            true
+        );
     }
 
     /**
@@ -423,6 +433,7 @@ class Frontend {
 
         wp_enqueue_style('isf-forms');
         wp_enqueue_script('isf-security');
+        wp_enqueue_script('isf-builder-form');
 
         $security = \ISF\SecurityHardening::instance();
         wp_localize_script('isf-security', 'isfSecurityConfig', $security->get_js_security_config());
