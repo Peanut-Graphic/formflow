@@ -386,12 +386,26 @@ class Marketplace {
         global $wpdb;
         $instances_table = $wpdb->prefix . 'isf_instances';
 
+        // Honor form_type from the template (settings.basics.form_type) so
+        // custom-shape forms (like Dominion PTR — call-center handoff via
+        // SFTP, not an IntelliSOURCE multi-step enrollment) render through
+        // the right code path. Falls back to enrollment for legacy templates
+        // that didn't declare a form_type.
+        $template_basics = $template['settings']['basics'] ?? [];
+        $form_type = sanitize_text_field(
+            $template_basics['form_type'] ?? 'enrollment'
+        );
+
+        // Same idea for utility: prefer the install caller's override, then
+        // the template's basics.utility, then the safe default.
+        $resolved_utility = $utility ?: ($template_basics['utility'] ?? 'general');
+
         // Create new instance from template
         $instance_data = [
             'name' => $instance_name,
             'slug' => sanitize_title($instance_name),
-            'utility' => $utility ?: 'general',
-            'form_type' => 'enrollment',
+            'utility' => sanitize_text_field($resolved_utility),
+            'form_type' => $form_type,
             'settings' => wp_json_encode(array_merge(
                 $template['settings'] ?? [],
                 ['form_schema' => $template['schema']]
