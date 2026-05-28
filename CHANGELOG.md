@@ -1,5 +1,19 @@
 # FormFlow Pro Changelog
 
+## 3.0.4 — 2026-05-27
+
+### Fixed
+
+- **`ajax_save_instance` fatal after 3.0.3 partial-update.** 3.0.3 made
+  `$data` partial (only POSTed columns) but post-construction code
+  (duplicate-slug check + audit log) still dereferenced `$data['slug']`,
+  `$data['name']`, `$data['utility']`, `$data['form_type']`,
+  `$data['is_active']`, `$data['test_mode']` unconditionally. PHP 8
+  fatals on undefined-index. Fix: gate duplicate-slug check on
+  isset($data['slug']) && slug not empty; audit log falls back to the
+  existing row's values for any column $data didn't include via
+  `$logged = $data + $existing`.
+
 ## 3.0.3 — 2026-05-27
 
 ### Fixed

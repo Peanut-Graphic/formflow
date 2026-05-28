@@ -1117,13 +1117,15 @@ class Admin {
             }
         }
 
-        // Check for duplicate slug
-        $existing = $this->db->get_instance_by_slug($data['slug']);
-        if ($existing && $existing['id'] != $id) {
-            wp_send_json_error([
-                'message' => __('A form with this slug already exists.', 'formflow')
-            ]);
-            return;
+        // Check for duplicate slug — only when slug is actually being set/changed
+        if (isset($data['slug']) && $data['slug'] !== '') {
+            $existing_by_slug = $this->db->get_instance_by_slug($data['slug']);
+            if ($existing_by_slug && $existing_by_slug['id'] != $id) {
+                wp_send_json_error([
+                    'message' => __('A form with this slug already exists.', 'formflow')
+                ]);
+                return;
+            }
         }
 
         if ($id) {
@@ -1138,18 +1140,20 @@ class Admin {
         }
 
         if ($success) {
-            // Log the action
+            // Audit log — for partial updates, fall back to the existing row's
+            // values for any column $data didn't include.
+            $logged = $data + ($existing ?: []);
             $this->db->log_audit(
                 $id && isset($_POST['id']) && $_POST['id'] ? 'instance_update' : 'instance_create',
                 'instance',
                 $id,
-                $data['name'],
+                $logged['name'] ?? '',
                 [
-                    'slug' => $data['slug'],
-                    'utility' => $data['utility'],
-                    'form_type' => $data['form_type'],
-                    'is_active' => $data['is_active'],
-                    'test_mode' => $data['test_mode'],
+                    'slug'      => $logged['slug'] ?? '',
+                    'utility'   => $logged['utility'] ?? '',
+                    'form_type' => $logged['form_type'] ?? '',
+                    'is_active' => $logged['is_active'] ?? null,
+                    'test_mode' => $logged['test_mode'] ?? null,
                 ]
             );
 
