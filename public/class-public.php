@@ -912,7 +912,7 @@ class Frontend {
             wp_send_json_error(['message' => __('Invalid form.', 'formflow')], 400);
         }
 
-        $instance = $this->db->get_instance($instance_id, true);
+        $instance = $this->db->get_instance($instance_id);
         if (!$instance || empty($instance['is_active'])) {
             wp_send_json_error(['message' => __('This form is no longer available.', 'formflow')], 404);
         }
