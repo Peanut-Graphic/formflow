@@ -125,6 +125,7 @@ class Plugin {
         // Admin AJAX handlers
         add_action('wp_ajax_isf_save_instance', [$this->admin, 'ajax_save_instance']);
         add_action('wp_ajax_formflow_save_instance', [$this->admin, 'ajax_save_instance']);
+        add_action('wp_ajax_formflow_set_mode_preference', [$this, 'ajax_set_mode_preference']);
         add_action('wp_ajax_isf_delete_instance', [$this->admin, 'ajax_delete_instance']);
         add_action('wp_ajax_formflow_delete_instance', [$this->admin, 'ajax_delete_instance']);
         add_action('wp_ajax_isf_test_api', [$this->admin, 'ajax_test_api']);
@@ -466,6 +467,21 @@ class Plugin {
         }
 
         wp_send_json_success(['dismissed' => $notice]);
+    }
+
+    /**
+     * AJAX: set form-editor mode preference (dev|client) for the current user.
+     */
+    public function ajax_set_mode_preference(): void {
+        if (!\ISF\Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
+            return;
+        }
+        $mode = sanitize_text_field($_POST['mode'] ?? '');
+        $ok = \ISF\FormEditor\ModeResolver::set_preference($mode);
+        if ($ok) {
+            wp_send_json_success(['mode' => $mode]);
+        }
+        wp_send_json_error(['message' => __('Invalid mode.', 'formflow')]);
     }
 
     /**

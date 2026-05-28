@@ -367,6 +367,27 @@ class Admin {
                 true
             );
         }
+
+        // Form Editor (redesigned) scoped JS — save-on-blur + mode switcher
+        $screen = get_current_screen();
+        if (strpos($screen->id ?? '', 'isf-form') !== false) {
+            wp_enqueue_script(
+                'isf-form-editor',
+                ISF_PLUGIN_URL . 'admin/assets/js/form-editor.js',
+                ['jquery'],
+                ISF_VERSION,
+                true
+            );
+            wp_localize_script('isf-form-editor', 'formflowEditor', [
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce'    => wp_create_nonce('isf_admin_nonce'),
+                'strings'  => [
+                    'saving' => __('Saving…', 'formflow'),
+                    'saved'  => __('Saved', 'formflow'),
+                    'error'  => __('Save failed', 'formflow'),
+                ],
+            ]);
+        }
     }
 
     /**
@@ -933,6 +954,12 @@ class Admin {
         if (!Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
             return;
         }
+
+        // Client-mode write gate — strip dev-only fields before processing
+        $_POST = \ISF\FormEditor\FieldGate::strip_blocked_fields(
+            $_POST,
+            \ISF\FormEditor\ModeResolver::effective_mode()
+        );
 
         $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 

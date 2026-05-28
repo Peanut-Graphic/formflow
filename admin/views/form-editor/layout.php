@@ -34,7 +34,7 @@ if ($instance_id > 0) {
 $tasks = TaskRegistry::tasks_for_mode($mode);
 $current_task_def = ($view !== 'overview' && $view !== 'no-task') ? ($tasks[$view] ?? null) : null;
 ?>
-<div class="wrap isf-form-editor" data-mode="<?php echo esc_attr($mode); ?>">
+<div class="wrap isf-form-editor" data-mode="<?php echo esc_attr($mode); ?>" data-instance-id="<?php echo (int) $instance_id; ?>">
 
     <header class="isf-fe-header">
         <nav class="isf-fe-breadcrumb">
