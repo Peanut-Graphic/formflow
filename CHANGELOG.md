@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.1.9 — 2026-05-28
+
+### Changed
+- **CSV export hides plugin-internal tracking fields.** `isf_form_load_time`, `isf_interaction_score`, and other underscore-prefixed system fields are filtered out of the export. Still preserved in `form_data` for forensic / audit purposes, just not surfaced as user data columns.
+
 ## 3.1.8 — 2026-05-28
 
 ### Changed
