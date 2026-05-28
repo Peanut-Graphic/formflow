@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.1.5 — 2026-05-28 (HOTFIX)
+
+### Fixed
+- **`isf_submit_builder_form` fired `FORM_COMPLETED` with the wrong signature.** It was passing `(int $submission_id, array $form_data, array $context)` — three args — but `PeanutIntegration::forward_form_completed()` expects exactly one argument: an associative array of submission data (the canonical shape used by `trait-ajax-handlers.php:563`). PHP fatal'd with a TypeError on every submit. Fixed by building the canonical `$submission_data` array (submission_id, instance_id, instance_slug, visitor_id, form_data, utm_data, form_type, status, session_id) and firing both `ENROLLMENT_COMPLETED` (with the legacy `(id, instance_id, form_data)` signature) and `FORM_COMPLETED` (with the single-array signature). UTM tracker call is try/catch'd since UTM is optional.
+
 ## 3.1.4 — 2026-05-28 (HOTFIX)
 
 ### Fixed

@@ -948,17 +948,33 @@ class Frontend {
             ], 500);
         }
 
-        // Fire the standard completion hook so destinations / webhooks /
+        // Fire the standard completion hooks so destinations / webhooks /
         // notifications / analytics all run on builder-form submissions
-        // the same way they do for the enrollment wizard.
+        // the same way they do for the enrollment wizard. FORM_COMPLETED
+        // expects a single associative-array argument; ENROLLMENT_COMPLETED
+        // takes (submission_id, instance_id, form_data).
         $visitor_id = apply_filters(\ISF\Hooks::GET_VISITOR_ID, null);
-        do_action(\ISF\Hooks::FORM_COMPLETED, (int) $submission_id, $form_data, [
+        $utm_data   = [];
+        if (class_exists('\ISF\UTMTracker')) {
+            try {
+                $utm_data = (new \ISF\UTMTracker())->get_tracking_data();
+            } catch (\Throwable $e) { /* utm is optional */ }
+        }
+
+        $submission_data = [
+            'submission_id' => (int) $submission_id,
             'instance_id'   => $instance_id,
             'instance_slug' => $instance['slug'] ?? '',
-            'form_type'     => $instance['form_type'] ?? 'custom',
             'visitor_id'    => $visitor_id,
+            'form_data'     => $form_data,
+            'utm_data'      => $utm_data,
+            'form_type'     => $instance['form_type'] ?? 'custom',
+            'status'        => 'completed',
             'session_id'    => $session_id,
-        ]);
+        ];
+
+        do_action(\ISF\Hooks::ENROLLMENT_COMPLETED, (int) $submission_id, $instance_id, $form_data);
+        do_action(\ISF\Hooks::FORM_COMPLETED, $submission_data);
 
         $success = $instance['settings']['success_message']
             ?? $instance['settings']['form_schema']['settings']['success_message']
