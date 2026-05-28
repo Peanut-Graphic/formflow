@@ -24,6 +24,10 @@ class Activator {
         self::set_default_options();
         self::schedule_cron_events();
 
+        // Form-editor capabilities (3.0.0+)
+        require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-capabilities.php';
+        \ISF\FormEditor\Capabilities::register_on_activate();
+
         // Store version for future updates
         update_option('isf_version', ISF_VERSION);
 
