@@ -22,12 +22,10 @@ class FeatureFlag {
         if (defined(self::CONSTANT)) {
             return (bool) constant(self::CONSTANT);
         }
-        return self::is_enabled_via_option_for_test(self::OPTION);
+        return self::is_option_enabled();
     }
 
-    // Separate method so unit tests can validate the option path
-    // without colliding with the (one-shot) ISF_NEW_EDITOR define().
-    public static function is_enabled_via_option_for_test(string $option_name): bool {
-        return get_option($option_name, '0') === '1';
+    public static function is_option_enabled(): bool {
+        return get_option(self::OPTION, '0') === '1';
     }
 }

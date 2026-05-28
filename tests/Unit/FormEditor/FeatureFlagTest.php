@@ -16,18 +16,42 @@ class FeatureFlagTest extends TestCase {
         parent::tearDown();
     }
 
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
     public function test_constant_true_enables(): void {
-        if (!defined('ISF_NEW_EDITOR')) define('ISF_NEW_EDITOR', true);
+        define('ISF_NEW_EDITOR', true);
         $this->assertTrue(FeatureFlag::is_enabled());
     }
 
-    public function test_option_fallback_when_constant_undefined(): void {
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function test_constant_false_disables_even_when_option_enabled(): void {
+        define('ISF_NEW_EDITOR', false);
         Functions\when('get_option')->justReturn('1');
-        $this->assertTrue(FeatureFlag::is_enabled_via_option_for_test('isf_new_editor'));
+        $this->assertFalse(FeatureFlag::is_enabled());
     }
 
-    public function test_option_off_returns_false(): void {
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function test_option_path_via_is_enabled(): void {
+        // ISF_NEW_EDITOR is intentionally NOT defined in this process.
+        Functions\when('get_option')->justReturn('1');
+        $this->assertTrue(FeatureFlag::is_enabled());
+    }
+
+    public function test_is_option_enabled_returns_true_when_option_is_one(): void {
+        Functions\when('get_option')->justReturn('1');
+        $this->assertTrue(FeatureFlag::is_option_enabled());
+    }
+
+    public function test_is_option_enabled_returns_false_when_option_is_zero(): void {
         Functions\when('get_option')->justReturn('0');
-        $this->assertFalse(FeatureFlag::is_enabled_via_option_for_test('isf_new_editor'));
+        $this->assertFalse(FeatureFlag::is_option_enabled());
     }
 }
