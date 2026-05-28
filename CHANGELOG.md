@@ -1,5 +1,12 @@
 # FormFlow Pro Changelog
 
+## 3.1.2 — 2026-05-28
+
+### Added
+- **Native single-step polish in `forms.css`.** When `builder-form.js` detects a single-step form it adds `.isf-single-step` to the wrapper; the stylesheet now hides the multi-step progress indicator, hides the Next button, and styles Submit as a full-width primary action. Eliminates the per-site CSS users were writing in WPCode for "this form only has one step, why is there a step indicator + a non-prominent Submit button."
+- **Submit disabled-until-ready.** `.isf-form:has(:invalid)` and `.isf-form:has(input[type="checkbox"]:disabled)` grey out the Submit button until every required field validates AND any scroll-gated checkbox is enabled. Pure CSS — no JS required.
+- **Help-text color override.** Some themes (Enfold in particular) style `<p>` elements inside forms with the link color, which made `.isf-help-text` render red. Plugin now anchors it to a neutral `#555` with `!important` to beat the theme.
+
 ## 3.1.1 — 2026-05-28 (CRITICAL HOTFIX)
 
 ### Fixed
