@@ -471,6 +471,90 @@
     margin-top: 0.3em !important;
 }
 
+/* Radio + checkbox label layout. Themes often apply display:block to
+   <label> inside forms, which separates the input from its text.
+   Force inline-flex so the input and text stay together. */
+.isf-builder-form .isf-radio-group {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 1.5em !important;
+    align-items: center !important;
+}
+.isf-builder-form .isf-checkbox-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.6em !important;
+    align-items: flex-start !important;
+}
+.isf-builder-form .isf-radio-label,
+.isf-builder-form .isf-checkbox-label {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5em !important;
+    cursor: pointer !important;
+    margin: 0 !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
+}
+.isf-builder-form .isf-radio,
+.isf-builder-form .isf-checkbox {
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    width: auto !important;
+}
+.isf-builder-form .isf-radio-text,
+.isf-builder-form .isf-checkbox-text {
+    line-height: 1.4 !important;
+}
+
+/* Scroll-gate tooltip: shown on hover while a checkbox group is still
+   locked (waiting for the user to scroll its associated content box
+   to the bottom). The JS adds data-locked="1" to the wrapper; we only
+   show the bubble when both data-locked AND data-scroll-gate-selector
+   are present (so we never accidentally tooltip a field that's locked
+   for a different reason). */
+.isf-builder-form .isf-field-wrapper[data-scroll-gate-selector] {
+    position: relative;
+}
+.isf-builder-form .isf-field-wrapper[data-scroll-gate-selector][data-locked="1"] .isf-checkbox-label {
+    cursor: not-allowed !important;
+}
+.isf-builder-form .isf-field-wrapper[data-scroll-gate-selector][data-locked="1"]:hover::after {
+    content: "You must scroll through the full terms before accepting.";
+    position: absolute;
+    left: 0;
+    top: -2.4em;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.isf-builder-form .isf-field-wrapper[data-scroll-gate-selector][data-locked="1"]:hover::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: -8px;
+    border: 6px solid transparent;
+    border-top-color: #1a1a1a;
+    pointer-events: none;
+    z-index: 100;
+}
+@media (max-width: 600px) {
+    /* Wrap the tooltip on narrow screens so it doesn't overflow. */
+    .isf-builder-form .isf-field-wrapper[data-scroll-gate-selector][data-locked="1"]:hover::after {
+        white-space: normal;
+        max-width: 260px;
+        top: auto;
+        bottom: calc(100% + 6px);
+    }
+}
+
 /* Confirmation state after a successful builder-form submission. */
 .isf-builder-form .isf-success {
     background: #eef9f1;
