@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.1.8 — 2026-05-28
+
+### Changed
+- **CSV export: First Name + Last Name are now separate columns** instead of a combined Customer Name. They appear first in the column order so the export opens with the most human-identifiable columns, then the rest of the form fields follow in schema order.
+
 ## 3.1.7 — 2026-05-28
 
 ### Changed
