@@ -93,6 +93,23 @@ trait Admin_Submissions {
         // when the form doesn't have those fields) and still works for the
         // legacy IntelliSOURCE enrollment wizard.
 
+        // System fields injected by SecurityHardening / Frontend tracking,
+        // never shown in user-facing exports. Still preserved in form_data
+        // for forensic / audit use.
+        $internal_keys = [
+            'isf_form_load_time',
+            'isf_interaction_score',
+            'isf_session_id',
+            'isf_referrer',
+            'isf_user_agent',
+            'isf_visitor_id',
+            'isf_step',
+            'isf_nonce',
+            'current_step',
+            '_wp_http_referer',
+            '_wpnonce',
+        ];
+
         // First pass: collect the union of form_data keys and figure out
         // which IntelliSOURCE columns are actually populated.
         $field_keys = [];
@@ -103,6 +120,8 @@ trait Admin_Submissions {
         foreach ($submissions as $sub) {
             $fd = is_array($sub['form_data'] ?? null) ? $sub['form_data'] : [];
             foreach ($fd as $k => $v) {
+                if (in_array($k, $internal_keys, true)) { continue; }
+                if (strpos((string) $k, '_') === 0)     { continue; }
                 if (!in_array($k, $field_keys, true)) {
                     $field_keys[] = $k;
                 }
