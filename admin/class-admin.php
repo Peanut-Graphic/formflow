@@ -1048,40 +1048,73 @@ class Admin {
             }
         }
 
-        $data = [
-            'name' => sanitize_text_field($_POST['name'] ?? ''),
-            'slug' => sanitize_title($_POST['slug'] ?? ''),
-            'utility' => sanitize_text_field($_POST['utility'] ?? ''),
-            'form_type' => sanitize_text_field($_POST['form_type'] ?? 'enrollment'),
-            'api_endpoint' => esc_url_raw($_POST['api_endpoint'] ?? ''),
-            'api_password' => $_POST['api_password'] ?? '',
-            'support_email_from' => sanitize_email($_POST['support_email_from'] ?? ''),
-            'support_email_to' => sanitize_textarea_field($_POST['support_email_to'] ?? ''),
-            'is_active' => isset($_POST['is_active']) ? 1 : 0,
-            'test_mode' => isset($_POST['test_mode']) ? 1 : 0,
-            'settings' => $settings
+        // Build $data from $_POST. For partial updates (per-field save-on-blur
+        // from the new form-editor), only include columns the caller actually
+        // sent — missing columns retain their current DB value.
+        $is_update = $id > 0 && !empty($existing);
+
+        $col_resolvers = [
+            'name'               => fn($v) => sanitize_text_field((string) $v),
+            'slug'               => fn($v) => sanitize_title((string) $v),
+            'utility'            => fn($v) => sanitize_text_field((string) $v),
+            'form_type'          => fn($v) => sanitize_text_field((string) $v),
+            'api_endpoint'       => fn($v) => esc_url_raw((string) $v),
+            'api_password'       => fn($v) => (string) $v,
+            'support_email_from' => fn($v) => sanitize_email((string) $v),
+            'support_email_to'   => fn($v) => sanitize_textarea_field((string) $v),
         ];
 
-        // Validate required fields (API endpoint not required in demo mode)
-        $demo_mode = $data['settings']['demo_mode'] ?? false;
-        if (empty($data['name']) || empty($data['slug'])) {
-            wp_send_json_error([
-                'message' => __('Please fill in Name and Slug fields.', 'formflow')
-            ]);
-            return;
+        $data = [];
+        foreach ($col_resolvers as $col => $resolver) {
+            if (array_key_exists($col, $_POST)) {
+                $data[$col] = $resolver($_POST[$col]);
+            } elseif (!$is_update) {
+                // Create path: missing optional fields get sensible defaults
+                $defaults = [
+                    'name' => '', 'slug' => '', 'utility' => '',
+                    'form_type' => 'enrollment', 'api_endpoint' => '',
+                    'api_password' => '', 'support_email_from' => '',
+                    'support_email_to' => '',
+                ];
+                $data[$col] = $defaults[$col];
+            }
+            // Update path: column simply omitted; existing DB value preserved
         }
 
-        // API endpoint required unless demo mode is enabled
-        if (!$demo_mode && empty($data['api_endpoint'])) {
-            wp_send_json_error([
-                'message' => __('API Endpoint is required unless Demo Mode is enabled.', 'formflow')
-            ]);
-            return;
+        // Boolean columns — POST absence on update means "no change", not "off"
+        foreach (['is_active', 'test_mode'] as $bool_col) {
+            if (array_key_exists($bool_col, $_POST)) {
+                $data[$bool_col] = $_POST[$bool_col] ? 1 : 0;
+            } elseif (!$is_update) {
+                // Create path: default both to 0 unless explicitly set
+                $data[$bool_col] = 0;
+            }
+            // Update path: omitted means keep current value
         }
 
-        // Set a placeholder endpoint for demo mode if not provided
-        if ($demo_mode && empty($data['api_endpoint'])) {
-            $data['api_endpoint'] = 'https://demo.example.com/api';
+        // Settings always sent on save (even empty array means "no change"
+        // per the merged shape above)
+        $data['settings'] = $settings;
+
+        // Validate required fields ONLY on the create path. Updates may post
+        // any subset of fields; the existing DB row is the source of truth.
+        if (!$is_update) {
+            $demo_mode = $data['settings']['demo_mode'] ?? false;
+            if (empty($data['name']) || empty($data['slug'])) {
+                wp_send_json_error([
+                    'message' => __('Please fill in Name and Slug fields.', 'formflow')
+                ]);
+                return;
+            }
+            if (!$demo_mode && empty($data['api_endpoint'] ?? '')) {
+                wp_send_json_error([
+                    'message' => __('API Endpoint is required unless Demo Mode is enabled.', 'formflow')
+                ]);
+                return;
+            }
+            if ($demo_mode && empty($data['api_endpoint'] ?? '')) {
+                $data['api_endpoint'] = 'https://demo.example.com/api';
+            }
         }
 
         // Check for duplicate slug

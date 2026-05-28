@@ -1,5 +1,19 @@
 # FormFlow Pro Changelog
 
+## 3.0.3 — 2026-05-27
+
+### Fixed
+
+- **`ajax_save_instance` required-field validation broke partial updates.**
+  The new form-editor's per-field save-on-blur POSTs only the changed
+  field (e.g., `settings[email][from_name]=X`), but the legacy save
+  handler validated name+slug+api_endpoint as REQUIRED on every call.
+  Save-on-blur returned `{"success":false,"data":{"message":"Please fill in Name and Slug fields."}}`.
+  Fix: skip required-field validation when `$id > 0` (update path);
+  omit columns from `$data` when not present in `$_POST` so the DB row
+  retains its current value. Required-field validation still applies
+  on creates (`$id === 0`).
+
 ## 3.0.2 — 2026-05-27
 
 ### Fixed
