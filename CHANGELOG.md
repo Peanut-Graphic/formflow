@@ -1,5 +1,55 @@
 # FormFlow Pro Changelog
 
+## 3.0.0 — 2026-05-27
+
+### New — task-oriented form editor
+
+Replaces the 1,300-line instance editor with a task-overview + two-pane
+editor pattern, behind an `ISF_NEW_EDITOR` feature flag. Same instance
+row, same admin-ajax handlers — only the admin UI is new.
+
+- **Dev mode (9 tasks):** Setup / Form fields / Connector / Delivery /
+  Scheduling / Copy / Notifications / Tracking / Advanced. Connector +
+  Scheduling auto-grey-out on `form_type=custom`.
+- **Client mode (4 tasks):** Delivery / Copy / Notifications / Submissions.
+  Granted by *absence* of the new `isf_dev_mode` capability.
+- **Mode switcher** in the editor header — users with both caps can flip
+  between dev and client views. Persists in user-meta.
+- **Status badges** per task: ✓ complete / ⚠ needs attention / ⊙ defaults
+  / — not applicable. Driven by per-task validators.
+- **Two-pane pattern** with breadcrumb-up navigation, list/detail
+  sub-rail, inline status strips (no global notice strips on editor
+  screens), sticky action bar with auto-save status.
+- **Save-on-blur** per field; debounced 500 ms; sticky Save button
+  flushes immediately.
+- **Server-side field gate** strips dev-only POST keys for client-mode
+  users (defense in depth — UI also hides them).
+
+### Flag + cutover
+
+- `ISF_NEW_EDITOR` constant in wp-config.php or `isf_new_editor` option
+  (Tools → New Editor Beta toggle). Default OFF in 3.0.
+- 3.1 flips default to ON; old editor remains mounted, redirects to new
+  editor when flag is on.
+- 3.2 deletes the old editor (`admin/views/instance-editor.php`, its
+  inline JS, and the `isf-instance-editor` menu slug).
+
+### Capabilities
+
+- Adds `isf_dev_mode` custom capability. Granted to the Administrator
+  role on plugin activation. Revoke per-user via any role-editor plugin
+  to lock a client admin into client mode.
+
+### Deferred to 3.0.x
+
+- Scheduling task is a placeholder that links to the legacy editor — full
+  port lands in 3.0.1.
+- Advanced task is a placeholder for features that aren't yet ported.
+- "Editing as: Client" preview banner inside dev mode (so a dev can
+  see exactly what a client admin sees) deferred to 3.1.
+
+See: `docs/superpowers/specs/2026-05-27-form-editor-redesign-design.md`
+
 ## 2.9.6 — 2026-05-27
 
 ### Fixed
