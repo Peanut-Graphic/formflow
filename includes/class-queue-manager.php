@@ -109,7 +109,8 @@ class QueueManager {
 
         // Don't interrupt the instance-editor flow with a perf warning —
         // it belongs on Dashboard / Tools.
-        if (strpos($screen->id, 'isf-instance-editor') !== false) {
+        if (strpos($screen->id, 'isf-instance-editor') !== false
+            || strpos($screen->id, 'isf-form') !== false) {
             return;
         }
 

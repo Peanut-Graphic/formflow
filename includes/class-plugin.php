@@ -389,7 +389,8 @@ class Plugin {
         // belong on Dashboard / Tools, not interleaved with a form-creation
         // flow. They stay visible (and dismissible) on every other plugin
         // screen.
-        if (strpos($screen->id ?? '', 'isf-instance-editor') !== false) {
+        if (strpos($screen->id ?? '', 'isf-instance-editor') !== false
+            || strpos($screen->id ?? '', 'isf-form') !== false) {
             return;
         }
 
