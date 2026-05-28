@@ -35,6 +35,53 @@
             form.classList.add('isf-single-step');
         }
 
+        // --- AJAX submit + success confirmation ---
+        var formEl = form.querySelector('form.isf-form');
+        var cfg = window.isfBuilderForm || null;
+        if (formEl && cfg && cfg.ajax_url) {
+            formEl.addEventListener('submit', function (ev) {
+                ev.preventDefault();
+                var btn = formEl.querySelector('.isf-btn-submit, button[type="submit"]');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.setAttribute('data-original-text', btn.textContent || '');
+                    btn.textContent = cfg.strings && cfg.strings.submitting || 'Submitting…';
+                }
+
+                var data = new FormData(formEl);
+                data.append('action', cfg.action);
+                data.append('instance_id', String(cfg.instance_id || ''));
+                if (cfg.nonce) { data.append('isf_nonce', cfg.nonce); }
+
+                fetch(cfg.ajax_url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: data
+                }).then(function (r) {
+                    return r.json().catch(function () { return null; });
+                }).then(function (resp) {
+                    if (resp && resp.success) {
+                        renderSuccess(form, resp.data && resp.data.success_message);
+                    } else {
+                        showError(form,
+                            (resp && resp.data && resp.data.message)
+                            || (cfg.strings && cfg.strings.error)
+                            || 'Something went wrong.');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.textContent = btn.getAttribute('data-original-text') || 'Submit';
+                        }
+                    }
+                }).catch(function () {
+                    showError(form, cfg.strings && cfg.strings.network || 'Network error.');
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = btn.getAttribute('data-original-text') || 'Submit';
+                    }
+                });
+            });
+        }
+
         // --- Conditional show/hide ---
         var conditionalWrappers = form.querySelectorAll('[data-show-when]');
         function applyConditionals() {
@@ -101,6 +148,32 @@
             // If the box is short enough no scroll is needed, unlock soon.
             setTimeout(maybeUnlock, 80);
         });
+    }
+
+    function renderSuccess(form, message) {
+        var html = '<div class="isf-success" role="status" aria-live="polite">'
+            + (message || 'Thank you! Your submission has been received.')
+            + '</div>';
+        // Replace the form contents entirely with the success state so
+        // the user can't double-submit and can see the confirmation.
+        form.innerHTML = html;
+        // Scroll the confirmation into view.
+        try { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    }
+
+    function showError(form, message) {
+        var existing = form.querySelector('.isf-form-error');
+        if (existing) { existing.remove(); }
+        var div = document.createElement('div');
+        div.className = 'isf-form-error';
+        div.setAttribute('role', 'alert');
+        div.textContent = message;
+        var actions = form.querySelector('.isf-form-actions');
+        if (actions && actions.parentNode) {
+            actions.parentNode.insertBefore(div, actions);
+        } else {
+            form.appendChild(div);
+        }
     }
 
     ready(function () {

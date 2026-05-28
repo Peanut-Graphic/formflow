@@ -438,6 +438,20 @@ class Frontend {
         $security = \ISF\SecurityHardening::instance();
         wp_localize_script('isf-security', 'isfSecurityConfig', $security->get_js_security_config());
 
+        // Configure the builder-form JS so it can AJAX-submit instead of
+        // letting the browser POST to the page URL (which drops the data).
+        wp_localize_script('isf-builder-form', 'isfBuilderForm', [
+            'ajax_url'    => admin_url('admin-ajax.php'),
+            'action'      => 'formflow_submit_builder_form',
+            'nonce'       => wp_create_nonce('isf_form_submit'),
+            'instance_id' => (int) $instance['id'],
+            'strings'     => [
+                'submitting' => __('Submitting…', 'formflow'),
+                'error'      => __('Something went wrong. Please try again.', 'formflow'),
+                'network'    => __('Network error. Please check your connection and try again.', 'formflow'),
+            ],
+        ]);
+
         $visitor_id = apply_filters(\ISF\Hooks::GET_VISITOR_ID, null);
         if (!$visitor_id) {
             $visitor_tracker = new Analytics\VisitorTracker();
@@ -877,6 +891,83 @@ class Frontend {
         }
 
         return $all_errors;
+    }
+
+    /**
+     * Public AJAX handler for builder-form (form_type='custom') submissions.
+     *
+     * The legacy IntelliSOURCE wizard had isf_submit_enrollment. The new
+     * builder renderer had no submit wiring at all — submissions just
+     * POST'd back to the page URL and were dropped on the floor. This
+     * handler persists the submission, fires the FORM_COMPLETED hook so
+     * destinations / notifications / analytics integrations all run,
+     * and returns a success payload for the JS to render the
+     * confirmation state.
+     */
+    public function isf_submit_builder_form(): void {
+        check_ajax_referer('isf_form_submit', 'isf_nonce');
+
+        $instance_id = isset($_POST['instance_id']) ? (int) $_POST['instance_id'] : 0;
+        if ($instance_id <= 0) {
+            wp_send_json_error(['message' => __('Invalid form.', 'formflow')], 400);
+        }
+
+        $instance = $this->db->get_instance($instance_id, true);
+        if (!$instance || empty($instance['is_active'])) {
+            wp_send_json_error(['message' => __('This form is no longer available.', 'formflow')], 404);
+        }
+
+        // Collect the form payload, dropping plugin control fields.
+        $reserved = ['instance_id', 'isf_nonce', 'current_step', 'action', '_wp_http_referer'];
+        $form_data = [];
+        foreach ($_POST as $key => $value) {
+            if (in_array($key, $reserved, true)) { continue; }
+            if (is_array($value)) {
+                $form_data[$key] = array_map('sanitize_text_field', wp_unslash($value));
+            } else {
+                $form_data[$key] = sanitize_textarea_field(wp_unslash((string) $value));
+            }
+        }
+
+        $session_id = Security::generate_session_id();
+
+        $submission_id = $this->db->create_submission([
+            'instance_id'    => $instance_id,
+            'session_id'     => $session_id,
+            'customer_name'  => trim(($form_data['first_name'] ?? '') . ' ' . ($form_data['last_name'] ?? '')),
+            'form_data'      => $form_data,
+            'status'         => 'completed',
+            'step'           => 1,
+            'ip_address'     => $_SERVER['REMOTE_ADDR'] ?? '',
+            'user_agent'     => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        ]);
+
+        if ($submission_id === false) {
+            wp_send_json_error([
+                'message' => __('We could not save your submission. Please try again.', 'formflow'),
+            ], 500);
+        }
+
+        // Fire the standard completion hook so destinations / webhooks /
+        // notifications / analytics all run on builder-form submissions
+        // the same way they do for the enrollment wizard.
+        $visitor_id = apply_filters(\ISF\Hooks::GET_VISITOR_ID, null);
+        do_action(\ISF\Hooks::FORM_COMPLETED, (int) $submission_id, $form_data, [
+            'instance_id'   => $instance_id,
+            'instance_slug' => $instance['slug'] ?? '',
+            'form_type'     => $instance['form_type'] ?? 'custom',
+            'visitor_id'    => $visitor_id,
+            'session_id'    => $session_id,
+        ]);
+
+        $success = $instance['settings']['success_message']
+            ?? $instance['settings']['form_schema']['settings']['success_message']
+            ?? __('Thank you! Your enrollment has been received. We will email a confirmation shortly.', 'formflow');
+
+        wp_send_json_success([
+            'submission_id'   => (int) $submission_id,
+            'success_message' => wp_kses_post($success),
+        ]);
     }
 }
 

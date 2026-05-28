@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.1.1 — 2026-05-28 (CRITICAL HOTFIX)
+
+### Fixed
+- **Builder-form submissions were not being saved.** The `form_type='custom'` renderer output a `<form method="post">` with no action and no AJAX wiring; submissions POST'd back to the page URL where nothing was listening, so the data was dropped on the floor and no confirmation was shown. New AJAX handler `isf_submit_builder_form` / `formflow_submit_builder_form` persists the submission, fires `FORM_COMPLETED` (so destinations, webhooks, notifications, analytics all run as expected), and returns the success payload. `builder-form.js` intercepts the form submit, POSTs via fetch, replaces the form with a confirmation panel on success, and shows an inline error on failure. Affects every site running 3.0.5+ with at least one `form_type='custom'` instance. Customers reporting "I submitted but didn't see a confirmation" had their submissions lost.
+
 ## 3.1.0 — 2026-05-28
 
 ### Added
