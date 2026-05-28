@@ -36,9 +36,11 @@ class Activator {
     }
 
     /**
-     * Run database migrations for version upgrades
+     * Run database migrations for version upgrades.
+     * Public so the plugins_loaded version-drift path can invoke this on
+     * upgrade-installs that don't fire the activation hook.
      */
-    private static function run_migrations(): void {
+    public static function run_migrations(): void {
         global $wpdb;
 
         $current_version = get_option('isf_version', '1.0.0');
@@ -119,6 +121,30 @@ class Activator {
                 $wpdb->query("ALTER TABLE {$table} MODIFY COLUMN form_type ENUM('enrollment','scheduler','external') DEFAULT 'enrollment'");
             }
         }
+
+        // Migration for v3.0.6: Add 'custom' to form_type ENUM.
+        // Without this, inserting/updating form_type='custom' is silently
+        // coerced to '' by MySQL, which causes the public renderer to fall
+        // through to the IntelliSOURCE enrollment wizard.
+        if (version_compare($current_version, '3.0.6', '<')) {
+            $table = $wpdb->prefix . ISF_TABLE_INSTANCES;
+
+            $column_info = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT COLUMN_TYPE
+                     FROM INFORMATION_SCHEMA.COLUMNS
+                     WHERE TABLE_SCHEMA = %s
+                     AND TABLE_NAME = %s
+                     AND COLUMN_NAME = 'form_type'",
+                    DB_NAME,
+                    $table
+                )
+            );
+
+            if ($column_info && strpos($column_info->COLUMN_TYPE, 'custom') === false) {
+                $wpdb->query("ALTER TABLE {$table} MODIFY COLUMN form_type ENUM('enrollment','scheduler','external','custom') DEFAULT 'enrollment'");
+            }
+        }
     }
 
     /**
@@ -136,7 +162,7 @@ class Activator {
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(100) NOT NULL,
             utility VARCHAR(50) NOT NULL,
-            form_type ENUM('enrollment','scheduler','external') DEFAULT 'enrollment',
+            form_type ENUM('enrollment','scheduler','external','custom') DEFAULT 'enrollment',
             api_endpoint VARCHAR(500) NOT NULL,
             api_password VARCHAR(500),
             support_email_from VARCHAR(255),
