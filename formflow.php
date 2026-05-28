@@ -56,8 +56,6 @@ spl_autoload_register(function ($class) {
         'ISF\\CRMIntegration' => 'class-crm-integration.php',
         'ISF\\SMSHandler' => 'class-sms-handler.php',
         'ISF\\Analytics\\GTMHelper' => 'analytics/class-gtm-helper.php',
-        'ISF\\ML\\FormPrediction' => 'ml/class-form-prediction.php',
-        'ISF\\ML\\FormPredictionApi' => 'ml/class-form-prediction-api.php',
     ];
 
     // Check class map first
