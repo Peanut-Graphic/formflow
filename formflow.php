@@ -3,7 +3,7 @@
  * Plugin Name: FormFlow
  * Plugin URI: https://formflow.dev
  * Description: Secure API-integrated enrollment and scheduling forms for utility demand response programs
- * Version: 3.0.4
+ * Version: 3.0.5
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * Text Domain: formflow
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ISF_VERSION', '3.0.4');
+define('ISF_VERSION', '3.0.5');
 define('ISF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ISF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ISF_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -267,6 +267,16 @@ function isf_init() {
     require_once ISF_PLUGIN_DIR . 'includes/class-plugin.php';
     $plugin = new ISF\Plugin();
     $plugin->run();
+
+    // Version-bump migration: upgrade-installs don't reliably fire the
+    // activation hook, so detect a version drift here and run the same
+    // post-activation routines (currently: grant isf_dev_mode to admins).
+    $stored_version = get_option('isf_version', '0.0.0');
+    if (version_compare($stored_version, ISF_VERSION, '<')) {
+        require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-capabilities.php';
+        \ISF\FormEditor\Capabilities::register_on_activate();
+        update_option('isf_version', ISF_VERSION);
+    }
 }
 add_action('plugins_loaded', 'isf_init');
 

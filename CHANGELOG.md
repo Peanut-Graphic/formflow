@@ -1,5 +1,13 @@
 # FormFlow Pro Changelog
 
+## 3.0.5 — 2026-05-28
+
+### Added
+- Public renderer now branches on `form_type === 'custom'` and renders the form via `FormRenderer` from the saved builder schema. Previously, custom forms fell through to the IntelliSOURCE enrollment wizard, which is why the Dominion PTR form rendered as the wrong UI on `/events/innsbrook-affordability-event/`.
+
+### Fixed
+- `isf_dev_mode` capability is now granted on plugin **upgrade**, not only on fresh activation. WP's upgrade-install does not always fire `register_activation_hook`, so admins upgrading from 2.9.x or 3.0.0–3.0.4 weren't getting the cap. A version-drift check in `isf_init()` calls `Capabilities::register_on_activate()` whenever the stored `isf_version` is older than `ISF_VERSION`.
+
 ## 3.0.4 — 2026-05-27
 
 ### Fixed
