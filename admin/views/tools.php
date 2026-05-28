@@ -50,6 +50,11 @@ $base_url = admin_url('admin.php?page=isf-tools');
             <span class="dashicons dashicons-universal-access-alt"></span>
             <?php esc_html_e('Accessibility', 'formflow'); ?>
         </a>
+        <a href="<?php echo esc_url(add_query_arg('tab', 'new-editor', $base_url)); ?>"
+           class="nav-tab <?php echo ($tab === 'new-editor') ? 'nav-tab-active' : ''; ?>">
+            <span class="dashicons dashicons-edit"></span>
+            <?php esc_html_e('New Editor (Beta)', 'formflow'); ?>
+        </a>
     </nav>
 
     <div class="isf-tab-content">
@@ -72,6 +77,10 @@ $base_url = admin_url('admin.php?page=isf-tools');
         <?php elseif ($tab === 'accessibility') : ?>
             <!-- Accessibility Tab -->
             <?php include ISF_PLUGIN_DIR . 'admin/views/tabs/tools-accessibility.php'; ?>
+
+        <?php elseif ($tab === 'new-editor') : ?>
+            <!-- New Editor (Beta) Tab -->
+            <?php include ISF_PLUGIN_DIR . 'admin/views/tabs/tools-new-editor.php'; ?>
 
         <?php endif; ?>
     </div>

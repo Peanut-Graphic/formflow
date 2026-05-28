@@ -615,7 +615,7 @@ class Admin {
         $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'license';
 
         // Validate tab
-        $valid_tabs = ['license', 'settings', 'diagnostics', 'compliance', 'accessibility'];
+        $valid_tabs = ['license', 'settings', 'diagnostics', 'compliance', 'accessibility', 'new-editor'];
         if (!in_array($tab, $valid_tabs, true)) {
             $tab = 'license';
         }

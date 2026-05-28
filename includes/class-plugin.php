@@ -126,6 +126,7 @@ class Plugin {
         add_action('wp_ajax_isf_save_instance', [$this->admin, 'ajax_save_instance']);
         add_action('wp_ajax_formflow_save_instance', [$this->admin, 'ajax_save_instance']);
         add_action('wp_ajax_formflow_set_mode_preference', [$this, 'ajax_set_mode_preference']);
+        add_action('wp_ajax_formflow_set_new_editor_flag', [$this, 'ajax_set_new_editor_flag']);
         add_action('wp_ajax_isf_delete_instance', [$this->admin, 'ajax_delete_instance']);
         add_action('wp_ajax_formflow_delete_instance', [$this->admin, 'ajax_delete_instance']);
         add_action('wp_ajax_isf_test_api', [$this->admin, 'ajax_test_api']);
@@ -482,6 +483,18 @@ class Plugin {
             wp_send_json_success(['mode' => $mode]);
         }
         wp_send_json_error(['message' => __('Invalid mode.', 'formflow')]);
+    }
+
+    /**
+     * AJAX: toggle the ISF_NEW_EDITOR option (admin-only).
+     */
+    public function ajax_set_new_editor_flag(): void {
+        if (!\ISF\Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
+            return;
+        }
+        $value = (($_POST['value'] ?? '0') === '1') ? '1' : '0';
+        update_option(\ISF\FormEditor\FeatureFlag::OPTION, $value);
+        wp_send_json_success(['value' => $value]);
     }
 
     /**
