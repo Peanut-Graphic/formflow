@@ -137,6 +137,13 @@ class FormRenderer {
      * Render a single field
      */
     public function render_field(array $field, array $form_data = [], array $visibility = []): string {
+        // Normalize legacy / hand-authored template shape where label,
+        // required, helpText, defaultValue, options, etc. live at the
+        // top of the field instead of under `settings`. The type-specific
+        // render_*_field() methods read everything from $field['settings'],
+        // so we mirror top-level keys into settings here.
+        $field = $this->normalize_field_shape($field);
+
         $type = $field['type'] ?? 'text';
         $name = $field['name'] ?? '';
         $label = $field['settings']['label'] ?? $field['label'] ?? '';
@@ -311,6 +318,44 @@ class FormRenderer {
         <?php
 
         return ob_get_clean();
+    }
+
+    /**
+     * Mirror legacy top-level field keys into $field['settings'] so the
+     * type-specific renderers find them. Existing $field['settings']
+     * values always win over top-level fallbacks.
+     */
+    private function normalize_field_shape(array $field): array {
+        $settings = is_array($field['settings'] ?? null) ? $field['settings'] : [];
+
+        $map = [
+            'label'         => 'label',
+            'required'      => 'required',
+            'placeholder'   => 'placeholder',
+            'helpText'      => 'help_text',
+            'help_text'     => 'help_text',
+            'defaultValue'  => 'default_value',
+            'default_value' => 'default_value',
+            'pattern'       => 'pattern',
+            'min'           => 'min',
+            'max'           => 'max',
+            'step'          => 'step',
+            'maxLength'     => 'max_length',
+            'max_length'    => 'max_length',
+            'options'       => 'options',
+            'rows'          => 'rows',
+            'accept'        => 'accept',
+            'description'   => 'description',
+        ];
+
+        foreach ($map as $top_key => $settings_key) {
+            if (array_key_exists($top_key, $field) && !array_key_exists($settings_key, $settings)) {
+                $settings[$settings_key] = $field[$top_key];
+            }
+        }
+
+        $field['settings'] = $settings;
+        return $field;
     }
 
     /**

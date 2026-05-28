@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.0.7 — 2026-05-28
+
+### Fixed
+- `FormRenderer::render_field()` now normalizes legacy / hand-authored template field shape into the canonical `$field['settings']` structure before dispatching to type-specific renderers. Templates that store `label`, `required`, `helpText`, `defaultValue`, `options`, etc. at the top of each field (instead of nested under `settings`) previously produced label-less inputs because the per-type renderers only read from `$field['settings']`. Existing `settings` values always win — this is purely additive, no behavior change for already-canonical schemas.
+
 ## 3.0.6 — 2026-05-28
 
 ### Fixed
