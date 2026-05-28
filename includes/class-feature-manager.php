@@ -110,13 +110,6 @@ class FeatureManager {
             'show_interstitial' => false,
             'interstitial_message' => 'Redirecting you to complete your enrollment...',
         ],
-        'ab_testing' => [
-            'enabled' => false,
-            'variations' => [],
-            'track_by' => 'session',
-            'goal' => 'enrollment_completed',
-        ],
-
         // Integrations
         'document_upload' => [
             'enabled' => false,
@@ -149,30 +142,6 @@ class FeatureManager {
             'event_description_template' => '',
         ],
 
-        // Advanced
-        'chatbot_assistant' => [
-            'enabled' => false,
-            'provider' => 'custom',
-            'api_key' => '',
-            'bot_name' => 'EnergyWise Assistant',
-            'welcome_message' => 'Hi! I can help you with the enrollment process. What questions do you have?',
-            'position' => 'bottom-right',
-            'auto_open_delay' => 0,
-            'available_on_steps' => [1, 2, 3, 4, 5],
-            'knowledge_base' => [],
-        ],
-        'fraud_detection' => [
-            'enabled' => false,
-            'check_duplicate_accounts' => true,
-            'check_ip_velocity' => true,
-            'ip_threshold_per_hour' => 5,
-            'check_device_fingerprint' => true,
-            'check_email_domain' => true,
-            'blocked_email_domains' => [],
-            'risk_score_threshold' => 70,
-            'action_on_high_risk' => 'flag',
-            'notify_on_fraud' => true,
-        ],
     ];
 
     /**
@@ -303,14 +272,6 @@ class FeatureManager {
                 'icon' => 'external',
                 'requires_config' => true,
             ],
-            'ab_testing' => [
-                'name' => __('A/B Testing', 'formflow'),
-                'description' => __('Test different form variations', 'formflow'),
-                'category' => 'analytics',
-                'icon' => 'randomize',
-                'requires_config' => true,
-            ],
-
             // Integrations
             'document_upload' => [
                 'name' => __('Document Upload', 'formflow'),
@@ -334,21 +295,6 @@ class FeatureManager {
                 'requires_config' => true,
             ],
 
-            // Advanced
-            'chatbot_assistant' => [
-                'name' => __('Chatbot Assistant', 'formflow'),
-                'description' => __('AI-powered help during enrollment', 'formflow'),
-                'category' => 'advanced',
-                'icon' => 'format-chat',
-                'requires_config' => true,
-            ],
-            'fraud_detection' => [
-                'name' => __('Fraud Detection', 'formflow'),
-                'description' => __('Detect and prevent fraudulent submissions', 'formflow'),
-                'category' => 'advanced',
-                'icon' => 'shield-alt',
-                'requires_config' => true,
-            ],
         ];
     }
 

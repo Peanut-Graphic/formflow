@@ -50,7 +50,6 @@ spl_autoload_register(function ($class) {
 
     // Class map for special cases (acronyms, unusual naming)
     $class_map = [
-        'ISF\\ABTesting' => 'class-ab-testing.php',
         'ISF\\UTMTracker' => 'class-utm-tracker.php',
         'ISF\\CRMIntegration' => 'class-crm-integration.php',
         'ISF\\SMSHandler' => 'class-sms-handler.php',
