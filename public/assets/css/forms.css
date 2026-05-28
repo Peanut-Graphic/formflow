@@ -344,6 +344,95 @@
     }
 }
 
+/* Per-field width: lets schemas declare width: 'half' | 'third' | 'two-thirds'
+   on individual fields and have consecutive non-full-width fields lay out
+   inline. Implemented with flex on the step-fields container, so any number
+   of halves/thirds in a row wrap naturally and following full-width fields
+   start a new row automatically. */
+.isf-step-fields,
+.isf-builder-form .isf-step-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 16px;
+    align-items: flex-start;
+}
+.isf-step-fields > .isf-field-wrapper,
+.isf-builder-form .isf-step-fields > .isf-field-wrapper {
+    box-sizing: border-box;
+    flex: 0 0 100%;
+    max-width: 100%;
+    margin-bottom: 0;
+}
+.isf-step-fields > .isf-field-wrapper.isf-width-half,
+.isf-builder-form .isf-step-fields > .isf-field-wrapper.isf-width-half {
+    flex: 0 0 calc(50% - 8px);
+    max-width: calc(50% - 8px);
+}
+.isf-step-fields > .isf-field-wrapper.isf-width-third,
+.isf-builder-form .isf-step-fields > .isf-field-wrapper.isf-width-third {
+    flex: 0 0 calc(33.333% - 11px);
+    max-width: calc(33.333% - 11px);
+}
+.isf-step-fields > .isf-field-wrapper.isf-width-two-thirds,
+.isf-builder-form .isf-step-fields > .isf-field-wrapper.isf-width-two-thirds {
+    flex: 0 0 calc(66.666% - 5px);
+    max-width: calc(66.666% - 5px);
+}
+@media (max-width: 600px) {
+    .isf-step-fields > .isf-field-wrapper.isf-width-half,
+    .isf-step-fields > .isf-field-wrapper.isf-width-third,
+    .isf-step-fields > .isf-field-wrapper.isf-width-two-thirds,
+    .isf-builder-form .isf-step-fields > .isf-field-wrapper.isf-width-half,
+    .isf-builder-form .isf-step-fields > .isf-field-wrapper.isf-width-third,
+    .isf-builder-form .isf-step-fields > .isf-field-wrapper.isf-width-two-thirds {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* Screen-reader-only — used by required indicators and other a11y helpers. */
+.isf-sr-only,
+.isf-builder-form .isf-sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0,0,0,0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Red required indicator. */
+.isf-required-indicator {
+    color: #d93025;
+    margin-left: 3px;
+    font-weight: 700;
+}
+
+/* Terms & conditions scroll box for embedded T&C content. */
+.isf-terms-box {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #d0d7e2;
+    background: #fff;
+    padding: 14px 18px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #333;
+    margin: .5em 0;
+}
+.isf-terms-box ul {
+    padding-left: 1.2em;
+    margin: .4em 0;
+}
+.isf-terms-scroll-note {
+    font-size: .85em;
+    color: #555;
+    margin-top: .5em;
+}
+
 /* Checkbox and Radio */
 .isf-checkbox-label {
     display: flex;
