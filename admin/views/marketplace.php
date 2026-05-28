@@ -638,7 +638,7 @@ jQuery(document).ready(function($) {
         }, function(response) {
             if (response.success) {
                 alert(response.data.message);
-                window.location.href = '<?php echo esc_js(admin_url('admin.php?page=isf-instances&action=edit&id=')); ?>' + response.data.instance_id;
+                window.location.href = '<?php echo esc_js(admin_url('admin.php?page=isf-instance-editor&id=')); ?>' + response.data.instance_id;
             } else {
                 alert(response.data.message || '<?php echo esc_js(__('Installation failed.', 'formflow')); ?>');
                 $btn.prop('disabled', false).text('<?php echo esc_js(__('Create Form', 'formflow')); ?>');

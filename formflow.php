@@ -3,7 +3,7 @@
  * Plugin Name: FormFlow
  * Plugin URI: https://formflow.dev
  * Description: Secure API-integrated enrollment and scheduling forms for utility demand response programs
- * Version: 2.9.5
+ * Version: 2.9.6
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * Text Domain: formflow
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ISF_VERSION', '2.9.5');
+define('ISF_VERSION', '2.9.6');
 define('ISF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ISF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ISF_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -198,7 +198,7 @@ function isf_init() {
         // wp_isf_marketplace_installed) may be missing on upgraded sites.
         // dbDelta is idempotent and insert_default_templates() is gated
         // on COUNT > 0, but the option flag avoids touching dbDelta on
-        // every page load. Flag bumped from v1 → v2 in 2.9.5: v1 ran
+        // every page load. Flag bumped from v1 → v2 in 2.9.6: v1 ran
         // against a CREATE TABLE that had the reserved-word `schema`
         // unquoted, which silently failed on MariaDB 10.3+ — sites that
         // got the v1 flag with no actual table need a re-run.

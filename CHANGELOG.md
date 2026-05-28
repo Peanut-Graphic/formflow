@@ -1,5 +1,28 @@
 # FormFlow Pro Changelog
 
+## 2.9.6 — 2026-05-27
+
+### Fixed
+
+- **Post-install redirect landed at "not allowed to access this page".**
+  After installing a template, marketplace.php JS redirected to
+  `admin.php?page=isf-instances&action=edit&id=N`, but the actual
+  registered menu slug is `isf-instance-editor`. The install itself
+  worked (instance row created), but the user saw a WP capability
+  failure page. Redirect URL corrected. Existing instances are
+  reachable normally via FF Forms → Dashboard.
+
+- **Public-side critical error on event pages with form embeds.**
+  `includes/analytics/class-gtm-helper.php::get_js_config()` called
+  `json_decode($instance['settings'] ?? '{}', true)` without first
+  checking whether `$instance['settings']` was already an array.
+  Upstream callers sometimes pass the settings pre-decoded (e.g., when
+  the renderer reads a freshly inserted instance row whose settings
+  were just round-tripped through array handlers). PHP 8 fatals on
+  json_decode(array) with `Uncaught TypeError`. Caught live on
+  /events/innsbrook-affordability-event/ after the Dominion template
+  install. Fix: branch on `is_array()` and only json_decode strings.
+
 ## 2.9.5 — 2026-05-27
 
 ### Fixed — wp_isf_templates CREATE TABLE silently failed on MariaDB 10.3+
