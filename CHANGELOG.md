@@ -1,5 +1,12 @@
 # FormFlow Pro Changelog
 
+## 3.2.1 — 2026-05-28 (Phase 2 audit cleanup)
+
+### Fixed
+- **`wp_isf_deliveries` table missing on upgraded sites.** The destinations subsystem (2.9.0+) writes a row per submission to `wp_isf_deliveries`, but fresh-install `create_tables()` only created the table when `\ISF\Destinations\DeliveryLog` was already autoloaded — and `run_migrations()` had no migration for it at all. Sites that activated before the destinations subsystem existed have no such table; opening Submissions in the Form Editor crashes with "Table doesn't exist," and DeliveryDispatcher silently fails on every submission. New v3.2.1 migration in `run_migrations()` invokes `DeliveryLog::get_schema_sql()` via `dbDelta`, so the migration shares the canonical schema with the runtime accessor and can never drift. Flagged by CAT in the 2026-05-28 audit.
+- **Multisite / HyperDB migration safety.** `run_migrations()` used `DB_NAME` (the WP-config constant) in four `INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s` queries. On multisite with external DB or HyperDB, that constant doesn't match the schema the per-blog tables actually live in, so migration guards silently skip and leave the column un-altered. Replaced with `$wpdb->dbname`, which reflects the current blog's DB connection. Flagged by PHIL.
+- **Removed dead nested `formflow/` directory.** The plugin source tree contained a complete 3.5MB duplicate of itself at `formflow/` (separate `formflow.php` header, separate `uninstall.php` with raw SQL interpolation, full `admin/` `includes/` `public/` trees). Nothing referenced it; WordPress always loaded the outer entry point. Deleted. Flagged by PHIL.
+
 ## 3.2.0 — 2026-05-28
 
 ### Fixed
