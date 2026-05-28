@@ -1,5 +1,20 @@
 # FormFlow Pro Changelog
 
+## 3.0.1 — 2026-05-27
+
+### Fixed
+
+- **Form editor assets not loading.** `admin/class-admin.php::is_plugin_page()`
+  gated `enqueue_styles()` + `enqueue_scripts()` against a hardcoded allowlist
+  of known WP admin page hooks. The new `isf-form` hook
+  (`ff-forms_page_isf-form`) added in 3.0.0 wasn't in the allowlist, so
+  neither the scoped `form-editor.css` nor `form-editor.js` loaded on the
+  new editor screen. Result: editor rendered structurally but unstyled,
+  and save-on-blur was dead. Caught during T22 smoke test on
+  dominionenergyptr.com. Fix: add `ff-forms_page_isf-form` (and the
+  legacy `is-forms_page_isf-form` prefix variant defensively) to the
+  `$plugin_pages` allowlist.
+
 ## 3.0.0 — 2026-05-27
 
 ### New — task-oriented form editor

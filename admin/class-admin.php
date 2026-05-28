@@ -411,7 +411,10 @@ class Admin {
             'is-forms_page_isf-reports',
             'is-forms_page_isf-compliance',
             'is-forms_page_isf-diagnostics',
-            'is-forms_page_isf-settings'
+            'is-forms_page_isf-settings',
+            // Form editor (3.0.1+)
+            'ff-forms_page_isf-form',
+            'is-forms_page_isf-form',
         ];
 
         return in_array($hook, $plugin_pages);
