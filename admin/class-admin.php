@@ -308,6 +308,17 @@ class Admin {
                 ISF_VERSION
             );
         }
+
+        // Form Editor (redesigned) scoped styles
+        $screen = get_current_screen();
+        if (strpos($screen->id ?? '', 'isf-form') !== false) {
+            wp_enqueue_style(
+                'isf-form-editor',
+                ISF_PLUGIN_URL . 'admin/assets/css/form-editor.css',
+                [],
+                ISF_VERSION
+            );
+        }
     }
 
     /**
