@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.2.2 — 2026-05-28 (Phase 1 — Form Builder unblocked)
+
+### Fixed
+- **Form Editor Beta "Form fields" task page rendered the schema but no field cards.** The page was loading `form-builder.js`, the `isf_builder` global was populated correctly (instance_id, schema, field_types), but the `FormBuilder` constructor threw `cannot call methods on sortable prior to initialization; attempted to call method 'refresh'` because `renderStep()` (called from `init()`) invoked `$content.sortable('refresh')` on an element that had never been initialized as a jQuery UI Sortable. The team migrated to HTML5 drag-and-drop (`initFieldSorting` uses native `dragstart`/`dragover`) but left the dead `.sortable('refresh')` call behind. Removed the call. `window.ISFFormBuilder.instance` now constructs cleanly and field cards render. Phase 1 of the post-audit cleanup plan unblocked. Diagnosed via Chrome MCP.
+
 ## 3.2.1 — 2026-05-28 (Phase 2 audit cleanup)
 
 ### Fixed
