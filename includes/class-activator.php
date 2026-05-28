@@ -57,7 +57,7 @@ class Activator {
                      WHERE TABLE_SCHEMA = %s
                      AND TABLE_NAME = %s
                      AND COLUMN_NAME = 'embed_token'",
-                    DB_NAME,
+                    $wpdb->dbname,
                     $table
                 )
             );
@@ -82,7 +82,7 @@ class Activator {
                      WHERE TABLE_SCHEMA = %s
                      AND TABLE_NAME = %s
                      AND COLUMN_NAME = 'display_order'",
-                    DB_NAME,
+                    $wpdb->dbname,
                     $table
                 )
             );
@@ -110,7 +110,7 @@ class Activator {
                      WHERE TABLE_SCHEMA = %s
                      AND TABLE_NAME = %s
                      AND COLUMN_NAME = 'form_type'",
-                    DB_NAME,
+                    $wpdb->dbname,
                     $table
                 )
             );
@@ -136,7 +136,7 @@ class Activator {
                      WHERE TABLE_SCHEMA = %s
                      AND TABLE_NAME = %s
                      AND COLUMN_NAME = 'form_type'",
-                    DB_NAME,
+                    $wpdb->dbname,
                     $table
                 )
             );
@@ -144,6 +144,20 @@ class Activator {
             if ($column_info && strpos($column_info->COLUMN_TYPE, 'custom') === false) {
                 $wpdb->query("ALTER TABLE {$table} MODIFY COLUMN form_type ENUM('enrollment','scheduler','external','custom') DEFAULT 'enrollment'");
             }
+        }
+
+        // Migration for v3.2.1: ensure wp_isf_deliveries exists.
+        // The Destinations subsystem (2.9.0+) writes to this table on every
+        // submission. If the table is missing — e.g. site installed before
+        // the deliveries-table CREATE landed in create_tables() — the
+        // Submissions task view crashes with "Table doesn't exist" and the
+        // DeliveryDispatcher silently fails. Schema is owned by
+        // DeliveryLog::get_schema_sql() so the accessor and the migration
+        // cannot drift.
+        if (version_compare($current_version, '3.2.1', '<')) {
+            require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-log.php';
+            require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+            dbDelta(\ISF\Destinations\DeliveryLog::get_schema_sql());
         }
     }
 
