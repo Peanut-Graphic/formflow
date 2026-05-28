@@ -150,16 +150,6 @@ class FeatureManager {
         ],
 
         // Advanced
-        'pwa_support' => [
-            'enabled' => false,
-            'app_name' => 'EnergyWise Enrollment',
-            'app_short_name' => 'EnergyWise',
-            'theme_color' => '#0073aa',
-            'background_color' => '#ffffff',
-            'enable_offline' => true,
-            'cache_forms' => true,
-            'show_install_prompt' => true,
-        ],
         'chatbot_assistant' => [
             'enabled' => false,
             'provider' => 'custom',
@@ -345,13 +335,6 @@ class FeatureManager {
             ],
 
             // Advanced
-            'pwa_support' => [
-                'name' => __('PWA Support', 'formflow'),
-                'description' => __('Progressive Web App with offline capability', 'formflow'),
-                'category' => 'advanced',
-                'icon' => 'smartphone',
-                'requires_config' => true,
-            ],
             'chatbot_assistant' => [
                 'name' => __('Chatbot Assistant', 'formflow'),
                 'description' => __('AI-powered help during enrollment', 'formflow'),

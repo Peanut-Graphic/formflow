@@ -52,7 +52,6 @@ spl_autoload_register(function ($class) {
     $class_map = [
         'ISF\\ABTesting' => 'class-ab-testing.php',
         'ISF\\UTMTracker' => 'class-utm-tracker.php',
-        'ISF\\PWAHandler' => 'class-pwa-handler.php',
         'ISF\\CRMIntegration' => 'class-crm-integration.php',
         'ISF\\SMSHandler' => 'class-sms-handler.php',
         'ISF\\Analytics\\GTMHelper' => 'analytics/class-gtm-helper.php',
