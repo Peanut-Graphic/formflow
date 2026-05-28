@@ -79,9 +79,12 @@ spl_autoload_register(function ($class) {
     // Convert class name to file name (CamelCase to kebab-case)
     $file_name = 'class-' . strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $class_name)) . '.php';
 
-    // Build the file path
+    // Build the file path (convert CamelCase namespace parts to kebab-case)
     if (!empty($path_parts)) {
-        $sub_dir = strtolower(implode('/', $path_parts)) . '/';
+        $kebab_parts = array_map(function ($part) {
+            return strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $part));
+        }, $path_parts);
+        $sub_dir = implode('/', $kebab_parts) . '/';
         $file = $base_dir . $sub_dir . $file_name;
     } else {
         $file = $base_dir . $file_name;
