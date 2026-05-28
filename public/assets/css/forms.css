@@ -433,6 +433,44 @@
     margin-top: .5em;
 }
 
+/* Single-step builder forms: hide the multi-step progress indicator
+   and make the Submit button the prominent full-width action. */
+.isf-builder-form.isf-single-step .isf-progress-container,
+.isf-builder-form.isf-single-step .isf-progress-bar,
+.isf-builder-form.isf-single-step .isf-progress-steps,
+.isf-builder-form.isf-single-step .isf-step-title {
+    display: none !important;
+}
+.isf-builder-form.isf-single-step .isf-btn-next {
+    display: none !important;
+}
+.isf-builder-form.isf-single-step .isf-btn-submit {
+    display: block !important;
+    width: 100% !important;
+    text-align: center !important;
+    padding: 14px 28px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+/* Submit disabled-until-ready: greys out while any required field is
+   invalid OR any checkbox is still disabled (scroll-gated terms). */
+.isf-builder-form .isf-form:has(:invalid) .isf-btn-submit,
+.isf-builder-form .isf-form:has(input[type="checkbox"]:disabled) .isf-btn-submit {
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    background: #7a8794 !important;
+}
+
+/* Help-text color override — Enfold (and other themes) sometimes set
+   <p> inside a form to inherit link color. Anchor it to a calm gray. */
+.isf-builder-form .isf-help-text {
+    color: #555 !important;
+    font-size: 0.85em !important;
+    margin-top: 0.3em !important;
+}
+
 /* Confirmation state after a successful builder-form submission. */
 .isf-builder-form .isf-success {
     background: #eef9f1;
