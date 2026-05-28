@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.0.6 — 2026-05-28
+
+### Fixed
+- `form_type` column ENUM did not include `'custom'`, so inserting or updating with that value was silently coerced to `''` by MySQL. This is why imported custom-template instances landed with empty `form_type` and the public renderer's `=== 'custom'` branch never fired — the page fell through to the IntelliSOURCE enrollment wizard. Schema migration adds `'custom'` to the ENUM, and the CREATE TABLE definition is updated for fresh installs. The `run_migrations()` routine is invoked on activation; for sites upgrading via the version-drift check added in 3.0.5, the schema migration is now part of the same code path that runs on plugins_loaded.
+
 ## 3.0.5 — 2026-05-28
 
 ### Added
