@@ -707,6 +707,9 @@ class Plugin {
      * isf-instance-editor admin URL → new editor.
      */
     public function redirect_old_editor_when_flag_on(): void {
+        if (isset($_GET['bypass']) && $_GET['bypass'] === '1') {
+            return;
+        }
         if (!\ISF\FormEditor\FeatureFlag::is_enabled()) {
             return;
         }
