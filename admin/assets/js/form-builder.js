@@ -870,8 +870,10 @@
 
             $content.html(html);
 
-            // Reinitialize sortable
-            $content.sortable('refresh');
+            // Note: field reordering uses HTML5 DnD (see initFieldSorting),
+            // not jQuery UI Sortable, so no refresh call is needed here.
+            // The previous `.sortable('refresh')` threw on init because
+            // sortable was never initialized on this element.
 
             // Restore selection if applicable
             if (this.selectedField) {
