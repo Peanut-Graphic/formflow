@@ -1,5 +1,19 @@
 # FormFlow Pro Changelog
 
+## 3.0.2 — 2026-05-27
+
+### Fixed
+
+- **`formflow_save_instance` fatal on form-editor saves.** The new
+  form-editor.js POSTs `settings[a][b]=value` (PHP form-array notation)
+  which PHP parses into `$_POST['settings']` as a nested array. Both
+  `ajax_save_instance` and `FieldGate::strip_blocked_fields` called
+  `json_decode($_POST['settings'])` expecting the legacy JSON-string
+  shape. PHP 8 fatals on `json_decode(array)`. Caught during T22 smoke
+  test on dominionenergyptr.com — save-on-blur returned HTTP 500.
+  Fix: branch on `is_array()` at both sites, preserve original shape
+  in the FieldGate output.
+
 ## 3.0.1 — 2026-05-27
 
 ### Fixed

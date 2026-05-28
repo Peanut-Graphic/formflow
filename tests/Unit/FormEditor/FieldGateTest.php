@@ -56,4 +56,23 @@ class FieldGateTest extends TestCase {
         $this->assertArrayNotHasKey('gtm', $decoded);
         $this->assertArrayNotHasKey('features', $decoded);
     }
+
+    public function test_dev_mode_passes_array_settings_through(): void {
+        $posted = ['settings'=>['content'=>['form_title'=>'Hi']]];
+        $filtered = FieldGate::strip_blocked_fields($posted, ModeResolver::MODE_DEV);
+        $this->assertSame(['content'=>['form_title'=>'Hi']], $filtered['settings']);
+    }
+
+    public function test_client_mode_strips_dev_sections_from_array_settings(): void {
+        $posted = ['settings'=>[
+            'content'=>['form_title'=>'Hi'],
+            'form_schema'=>['steps'=>[]],
+            'gtm'=>['enabled'=>true],
+        ]];
+        $filtered = FieldGate::strip_blocked_fields($posted, ModeResolver::MODE_CLIENT);
+        $this->assertIsArray($filtered['settings']);
+        $this->assertArrayHasKey('content', $filtered['settings']);
+        $this->assertArrayNotHasKey('form_schema', $filtered['settings']);
+        $this->assertArrayNotHasKey('gtm', $filtered['settings']);
+    }
 }

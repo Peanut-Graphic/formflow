@@ -973,12 +973,19 @@ class Admin {
             $existing_settings = $existing['settings'] ?? [];
         }
 
-        // Parse settings from JSON if provided
+        // Parse settings — legacy editor sends JSON string, new form-editor
+        // sends PHP nested array via settings[a][b] form notation. Handle both.
         $new_settings = [];
         if (!empty($_POST['settings'])) {
-            $decoded = json_decode(stripslashes($_POST['settings']), true);
-            if (is_array($decoded)) {
-                $new_settings = $decoded;
+            $raw = $_POST['settings'];
+            if (is_array($raw)) {
+                // Already nested by PHP's form parser (new form-editor.js)
+                $new_settings = $raw;
+            } else {
+                $decoded = json_decode(stripslashes((string) $raw), true);
+                if (is_array($decoded)) {
+                    $new_settings = $decoded;
+                }
             }
         }
 

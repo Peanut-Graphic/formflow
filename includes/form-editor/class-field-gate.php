@@ -39,12 +39,28 @@ class FieldGate {
         }
 
         if (!empty($posted['settings'])) {
-            $settings = json_decode(stripslashes_or_passthrough($posted['settings']), true);
+            $raw_settings = $posted['settings'];
+            $settings = null;
+            if (is_array($raw_settings)) {
+                // New form-editor.js shape (PHP-parsed nested array)
+                $settings = $raw_settings;
+            } else {
+                $decoded = json_decode(stripslashes_or_passthrough((string) $raw_settings), true);
+                if (is_array($decoded)) {
+                    $settings = $decoded;
+                }
+            }
             if (is_array($settings)) {
                 foreach (self::CLIENT_BLOCKED_SETTINGS_SECTIONS as $section) {
                     unset($settings[$section]);
                 }
-                $posted['settings'] = wp_json_encode($settings);
+                // Preserve the original shape: if it came in as an array (new editor),
+                // pass it back as an array so PHP's $_POST consumers see what they expect.
+                if (is_array($raw_settings)) {
+                    $posted['settings'] = $settings;
+                } else {
+                    $posted['settings'] = wp_json_encode($settings);
+                }
             }
         }
         return $posted;
