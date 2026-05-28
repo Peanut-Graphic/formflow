@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.1.7 — 2026-05-28
+
+### Changed
+- **CSV export columns are now derived from the actual form data.** Previously, every export hardcoded IntelliSOURCE-specific columns (Account Number, Device Type, Promo Code, Schedule Date/Time, Confirmation Number) plus IP Address — irrelevant noise for custom builder forms. The exporter now collects the union of `form_data` keys across the export and emits one column per key, with IntelliSOURCE columns appearing only if at least one row has them populated. IP Address removed from the default export. Step column removed from the default export. The header humanizes the underscored field name (e.g. `street_address` → "Street Address").
+
 ## 3.1.6 — 2026-05-28
 
 ### Fixed

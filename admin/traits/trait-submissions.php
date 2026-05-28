@@ -86,58 +86,89 @@ trait Admin_Submissions {
             return;
         }
 
-        // Build CSV content
-        $csv_lines = [];
+        // Build CSV content. Columns are derived from the actual form_data
+        // keys across the export, plus IntelliSOURCE-specific columns only
+        // when at least one row in the export has them populated. This keeps
+        // custom builder-form exports clean (no Device Type / Account Number
+        // when the form doesn't have those fields) and still works for the
+        // legacy IntelliSOURCE enrollment wizard.
 
-        // Header row
-        $csv_lines[] = [
-            'ID',
-            'Form Instance',
-            'Account Number',
-            'Customer Name',
-            'Email',
-            'Phone',
-            'Street',
-            'City',
-            'State',
-            'ZIP',
-            'Device Type',
-            'Promo Code',
-            'Confirmation Number',
-            'Schedule Date',
-            'Schedule Time',
-            'Status',
-            'Step',
-            'IP Address',
-            'Created',
-            'Completed',
-        ];
+        // First pass: collect the union of form_data keys and figure out
+        // which IntelliSOURCE columns are actually populated.
+        $field_keys = [];
+        $has_account_number     = false;
+        $has_device_type        = false;
+        $has_confirmation       = false;
+        $has_schedule           = false;
+        foreach ($submissions as $sub) {
+            $fd = is_array($sub['form_data'] ?? null) ? $sub['form_data'] : [];
+            foreach ($fd as $k => $v) {
+                if (!in_array($k, $field_keys, true)) {
+                    $field_keys[] = $k;
+                }
+            }
+            if (!empty($sub['account_number'])) { $has_account_number = true; }
+            if (!empty($sub['device_type']))    { $has_device_type    = true; }
+            if (!empty($fd['confirmation_number'])) { $has_confirmation = true; }
+            if (!empty($fd['schedule_date']) || !empty($fd['schedule_time']) || !empty($fd['schedule_time_display'])) {
+                $has_schedule = true;
+            }
+        }
+
+        // The schedule and confirmation fields are reported as part of the
+        // dynamic form_data keys; remove them from $field_keys so they're
+        // not duplicated. Same for first_name/last_name (we render those as
+        // a combined Customer Name column).
+        $synthetic_keys = ['first_name', 'last_name'];
+        if ($has_schedule) {
+            $synthetic_keys = array_merge($synthetic_keys, ['schedule_date', 'schedule_time', 'schedule_time_display']);
+        }
+        if ($has_confirmation) {
+            $synthetic_keys[] = 'confirmation_number';
+        }
+        $field_keys = array_values(array_filter($field_keys, fn($k) => !in_array($k, $synthetic_keys, true)));
+
+        // Header row.
+        $header = ['ID', 'Form Instance', 'Customer Name'];
+        if ($has_account_number) { $header[] = 'Account Number'; }
+        if ($has_device_type)    { $header[] = 'Device Type'; }
+        // Dynamic form_data columns — humanize the keys for the header.
+        foreach ($field_keys as $key) {
+            $header[] = ucwords(str_replace(['_', '-'], ' ', $key));
+        }
+        if ($has_confirmation) { $header[] = 'Confirmation Number'; }
+        if ($has_schedule)     { $header[] = 'Schedule Date'; $header[] = 'Schedule Time'; }
+        $header[] = 'Status';
+        $header[] = 'Created';
+        $header[] = 'Completed';
+
+        $csv_lines = [$header];
 
         foreach ($submissions as $sub) {
-            $fd = $sub['form_data'] ?? [];
+            $fd = is_array($sub['form_data'] ?? null) ? $sub['form_data'] : [];
 
-            $csv_lines[] = [
+            $row = [
                 $sub['id'],
                 $sub['instance_name'] ?? '',
-                $sub['account_number'] ?? '',
                 trim(($fd['first_name'] ?? '') . ' ' . ($fd['last_name'] ?? '')),
-                $fd['email'] ?? '',
-                $fd['phone'] ?? '',
-                $fd['street'] ?? '',
-                $fd['city'] ?? '',
-                $fd['state'] ?? '',
-                $fd['zip'] ?? '',
-                $sub['device_type'] ?? '',
-                $fd['promo_code'] ?? '',
-                $fd['confirmation_number'] ?? '',
-                $fd['schedule_date'] ?? '',
-                $fd['schedule_time_display'] ?? ($fd['schedule_time'] ?? ''),
-                $sub['status'],
-                $sub['step'],
-                $sub['ip_address'] ?? '',
-                $sub['created_at'],
-                $sub['completed_at'] ?? '',
             ];
+            if ($has_account_number) { $row[] = $sub['account_number'] ?? ''; }
+            if ($has_device_type)    { $row[] = $sub['device_type'] ?? ''; }
+            foreach ($field_keys as $key) {
+                $value = $fd[$key] ?? '';
+                if (is_array($value)) { $value = implode(', ', $value); }
+                $row[] = (string) $value;
+            }
+            if ($has_confirmation) { $row[] = $fd['confirmation_number'] ?? ''; }
+            if ($has_schedule) {
+                $row[] = $fd['schedule_date'] ?? '';
+                $row[] = $fd['schedule_time_display'] ?? ($fd['schedule_time'] ?? '');
+            }
+            $row[] = $sub['status'] ?? '';
+            $row[] = $sub['created_at'] ?? '';
+            $row[] = $sub['completed_at'] ?? '';
+
+            $csv_lines[] = $row;
         }
 
         // Convert to CSV string
