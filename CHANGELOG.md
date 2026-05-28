@@ -1,5 +1,11 @@
 # FormFlow Pro Changelog
 
+## 3.1.3 — 2026-05-28
+
+### Added
+- **Radio + checkbox label layout** in `forms.css`. Themes (Enfold in particular) apply `display: block` to `<label>` inside forms, which separated the input control from its text. `.isf-radio-label` / `.isf-checkbox-label` now force `inline-flex` with `align-items: center` and a small gap so the control and text always render together. `.isf-radio-group` is row-flex; `.isf-checkbox-group` is column-flex for stacked option lists.
+- **Scroll-gate tooltip** on locked checkbox wrappers. When a wrapper has both `data-scroll-gate-selector` and `data-locked="1"` (set by `builder-form.js` until the linked content box is scrolled to bottom), hover shows a dark tooltip "You must scroll through the full terms before accepting." Mobile breakpoint wraps to multi-line. Cursor on the label flips to `not-allowed` while locked.
+
 ## 3.1.2 — 2026-05-28
 
 ### Added
