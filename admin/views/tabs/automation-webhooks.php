@@ -306,7 +306,7 @@ jQuery(document).ready(function($) {
 
     function loadWebhook(webhookId) {
         $.post(isf_admin.ajax_url, {
-            action: 'isf_get_webhook',
+            action: 'formflow_get_webhook',
             nonce: isf_admin.nonce,
             webhook_id: webhookId
         }, function(response) {
@@ -323,7 +323,7 @@ jQuery(document).ready(function($) {
         $('input[name="events[]"]:checked').each(function() { events.push($(this).val()); });
 
         $.post(isf_admin.ajax_url, {
-            action: 'isf_save_webhook',
+            action: 'formflow_save_webhook',
             nonce: isf_admin.nonce,
             webhook_id: $('#isf-webhook-id').val(),
             name: $('#isf-webhook-name').val(),
@@ -341,7 +341,7 @@ jQuery(document).ready(function($) {
 
     function deleteWebhook(webhookId) {
         $.post(isf_admin.ajax_url, {
-            action: 'isf_delete_webhook',
+            action: 'formflow_delete_webhook',
             nonce: isf_admin.nonce,
             webhook_id: webhookId
         }, function(response) {
@@ -353,7 +353,7 @@ jQuery(document).ready(function($) {
 
     function testWebhook(webhookId, callback) {
         $.post(isf_admin.ajax_url, {
-            action: 'isf_test_webhook',
+            action: 'formflow_test_webhook',
             nonce: isf_admin.nonce,
             webhook_id: webhookId
         }, function(response) {

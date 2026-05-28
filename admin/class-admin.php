@@ -308,6 +308,17 @@ class Admin {
                 ISF_VERSION
             );
         }
+
+        // Form Editor (redesigned) scoped styles
+        $screen = get_current_screen();
+        if (strpos($screen->id ?? '', 'isf-form') !== false) {
+            wp_enqueue_style(
+                'isf-form-editor',
+                ISF_PLUGIN_URL . 'admin/assets/css/form-editor.css',
+                [],
+                ISF_VERSION
+            );
+        }
     }
 
     /**
@@ -356,6 +367,27 @@ class Admin {
                 true
             );
         }
+
+        // Form Editor (redesigned) scoped JS — save-on-blur + mode switcher
+        $screen = get_current_screen();
+        if (strpos($screen->id ?? '', 'isf-form') !== false) {
+            wp_enqueue_script(
+                'isf-form-editor',
+                ISF_PLUGIN_URL . 'admin/assets/js/form-editor.js',
+                ['jquery'],
+                ISF_VERSION,
+                true
+            );
+            wp_localize_script('isf-form-editor', 'formflowEditor', [
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce'    => wp_create_nonce('isf_admin_nonce'),
+                'strings'  => [
+                    'saving' => __('Saving…', 'formflow'),
+                    'saved'  => __('Saved', 'formflow'),
+                    'error'  => __('Save failed', 'formflow'),
+                ],
+            ]);
+        }
     }
 
     /**
@@ -379,7 +411,10 @@ class Admin {
             'is-forms_page_isf-reports',
             'is-forms_page_isf-compliance',
             'is-forms_page_isf-diagnostics',
-            'is-forms_page_isf-settings'
+            'is-forms_page_isf-settings',
+            // Form editor (3.0.1+)
+            'ff-forms_page_isf-form',
+            'is-forms_page_isf-form',
         ];
 
         return in_array($hook, $plugin_pages);
@@ -583,7 +618,7 @@ class Admin {
         $tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'license';
 
         // Validate tab
-        $valid_tabs = ['license', 'settings', 'diagnostics', 'compliance', 'accessibility'];
+        $valid_tabs = ['license', 'settings', 'diagnostics', 'compliance', 'accessibility', 'new-editor'];
         if (!in_array($tab, $valid_tabs, true)) {
             $tab = 'license';
         }
@@ -923,6 +958,12 @@ class Admin {
             return;
         }
 
+        // Client-mode write gate — strip dev-only fields before processing
+        $_POST = \ISF\FormEditor\FieldGate::strip_blocked_fields(
+            $_POST,
+            \ISF\FormEditor\ModeResolver::effective_mode()
+        );
+
         $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 
         // Get existing instance settings if updating
@@ -932,12 +973,19 @@ class Admin {
             $existing_settings = $existing['settings'] ?? [];
         }
 
-        // Parse settings from JSON if provided
+        // Parse settings — legacy editor sends JSON string, new form-editor
+        // sends PHP nested array via settings[a][b] form notation. Handle both.
         $new_settings = [];
         if (!empty($_POST['settings'])) {
-            $decoded = json_decode(stripslashes($_POST['settings']), true);
-            if (is_array($decoded)) {
-                $new_settings = $decoded;
+            $raw = $_POST['settings'];
+            if (is_array($raw)) {
+                // Already nested by PHP's form parser (new form-editor.js)
+                $new_settings = $raw;
+            } else {
+                $decoded = json_decode(stripslashes((string) $raw), true);
+                if (is_array($decoded)) {
+                    $new_settings = $decoded;
+                }
             }
         }
 
@@ -959,49 +1007,125 @@ class Admin {
             'demo_mode' => !empty($_POST['demo_mode']) && $_POST['demo_mode'] !== '0'
         ]);
 
-        $data = [
-            'name' => sanitize_text_field($_POST['name'] ?? ''),
-            'slug' => sanitize_title($_POST['slug'] ?? ''),
-            'utility' => sanitize_text_field($_POST['utility'] ?? ''),
-            'form_type' => sanitize_text_field($_POST['form_type'] ?? 'enrollment'),
-            'api_endpoint' => esc_url_raw($_POST['api_endpoint'] ?? ''),
-            'api_password' => $_POST['api_password'] ?? '',
-            'support_email_from' => sanitize_email($_POST['support_email_from'] ?? ''),
-            'support_email_to' => sanitize_textarea_field($_POST['support_email_to'] ?? ''),
-            'is_active' => isset($_POST['is_active']) ? 1 : 0,
-            'test_mode' => isset($_POST['test_mode']) ? 1 : 0,
-            'settings' => $settings
+        // Destinations (2.9.0+): posted as a separate destinations_json
+        // string by the destinations pod's inline JS. Server-side:
+        //   1. decode the JSON
+        //   2. for each destination, encrypt sensitive config fields
+        //      (preserving stored value when admin left field blank)
+        //   3. replace settings['destinations'] wholesale
+        if (isset($_POST['destinations_json']) && class_exists('\\ISF\\Destinations\\DestinationRegistry')) {
+            $posted = json_decode(stripslashes((string) $_POST['destinations_json']), true);
+            if (is_array($posted)) {
+                $existing_destinations = $existing_settings['destinations'] ?? [];
+                $registry = \ISF\Destinations\DestinationRegistry::instance();
+                $clean = [];
+                foreach ($posted as $idx => $dest) {
+                    if (!is_array($dest) || empty($dest['type'])) {
+                        continue;
+                    }
+                    $type = sanitize_text_field((string) $dest['type']);
+                    $name = sanitize_text_field((string) ($dest['name'] ?? $type));
+                    $is_active = !empty($dest['is_active']);
+                    $new_config = is_array($dest['config'] ?? null) ? $dest['config'] : [];
+                    $existing_config = $existing_destinations[$idx]['config'] ?? [];
+
+                    $destination = $registry->get($type);
+                    if ($destination instanceof \ISF\Destinations\BaseDestination) {
+                        $new_config = $destination->encrypt_sensitive_fields($new_config, $existing_config);
+                    } else {
+                        // Unknown destination type — preserve existing config untouched.
+                        $new_config = $existing_config;
+                    }
+
+                    $clean[] = [
+                        'type'      => $type,
+                        'name'      => $name,
+                        'is_active' => (bool) $is_active,
+                        'config'    => $new_config,
+                    ];
+                }
+                $settings['destinations'] = $clean;
+            }
+        }
+
+        // Build $data from $_POST. For partial updates (per-field save-on-blur
+        // from the new form-editor), only include columns the caller actually
+        // sent — missing columns retain their current DB value.
+        $is_update = $id > 0 && !empty($existing);
+
+        $col_resolvers = [
+            'name'               => fn($v) => sanitize_text_field((string) $v),
+            'slug'               => fn($v) => sanitize_title((string) $v),
+            'utility'            => fn($v) => sanitize_text_field((string) $v),
+            'form_type'          => fn($v) => sanitize_text_field((string) $v),
+            'api_endpoint'       => fn($v) => esc_url_raw((string) $v),
+            'api_password'       => fn($v) => (string) $v,
+            'support_email_from' => fn($v) => sanitize_email((string) $v),
+            'support_email_to'   => fn($v) => sanitize_textarea_field((string) $v),
         ];
 
-        // Validate required fields (API endpoint not required in demo mode)
-        $demo_mode = $data['settings']['demo_mode'] ?? false;
-        if (empty($data['name']) || empty($data['slug'])) {
-            wp_send_json_error([
-                'message' => __('Please fill in Name and Slug fields.', 'formflow')
-            ]);
-            return;
+        $data = [];
+        foreach ($col_resolvers as $col => $resolver) {
+            if (array_key_exists($col, $_POST)) {
+                $data[$col] = $resolver($_POST[$col]);
+            } elseif (!$is_update) {
+                // Create path: missing optional fields get sensible defaults
+                $defaults = [
+                    'name' => '', 'slug' => '', 'utility' => '',
+                    'form_type' => 'enrollment', 'api_endpoint' => '',
+                    'api_password' => '', 'support_email_from' => '',
+                    'support_email_to' => '',
+                ];
+                $data[$col] = $defaults[$col];
+            }
+            // Update path: column simply omitted; existing DB value preserved
         }
 
-        // API endpoint required unless demo mode is enabled
-        if (!$demo_mode && empty($data['api_endpoint'])) {
-            wp_send_json_error([
-                'message' => __('API Endpoint is required unless Demo Mode is enabled.', 'formflow')
-            ]);
-            return;
+        // Boolean columns — POST absence on update means "no change", not "off"
+        foreach (['is_active', 'test_mode'] as $bool_col) {
+            if (array_key_exists($bool_col, $_POST)) {
+                $data[$bool_col] = $_POST[$bool_col] ? 1 : 0;
+            } elseif (!$is_update) {
+                // Create path: default both to 0 unless explicitly set
+                $data[$bool_col] = 0;
+            }
+            // Update path: omitted means keep current value
         }
 
-        // Set a placeholder endpoint for demo mode if not provided
-        if ($demo_mode && empty($data['api_endpoint'])) {
-            $data['api_endpoint'] = 'https://demo.example.com/api';
+        // Settings always sent on save (even empty array means "no change"
+        // per the merged shape above)
+        $data['settings'] = $settings;
+
+        // Validate required fields ONLY on the create path. Updates may post
+        // any subset of fields; the existing DB row is the source of truth.
+        if (!$is_update) {
+            $demo_mode = $data['settings']['demo_mode'] ?? false;
+            if (empty($data['name']) || empty($data['slug'])) {
+                wp_send_json_error([
+                    'message' => __('Please fill in Name and Slug fields.', 'formflow')
+                ]);
+                return;
+            }
+            if (!$demo_mode && empty($data['api_endpoint'] ?? '')) {
+                wp_send_json_error([
+                    'message' => __('API Endpoint is required unless Demo Mode is enabled.', 'formflow')
+                ]);
+                return;
+            }
+            if ($demo_mode && empty($data['api_endpoint'] ?? '')) {
+                $data['api_endpoint'] = 'https://demo.example.com/api';
+            }
         }
 
-        // Check for duplicate slug
-        $existing = $this->db->get_instance_by_slug($data['slug']);
-        if ($existing && $existing['id'] != $id) {
-            wp_send_json_error([
-                'message' => __('A form with this slug already exists.', 'formflow')
-            ]);
-            return;
+        // Check for duplicate slug — only when slug is actually being set/changed
+        if (isset($data['slug']) && $data['slug'] !== '') {
+            $existing_by_slug = $this->db->get_instance_by_slug($data['slug']);
+            if ($existing_by_slug && $existing_by_slug['id'] != $id) {
+                wp_send_json_error([
+                    'message' => __('A form with this slug already exists.', 'formflow')
+                ]);
+                return;
+            }
         }
 
         if ($id) {
@@ -1016,18 +1140,20 @@ class Admin {
         }
 
         if ($success) {
-            // Log the action
+            // Audit log — for partial updates, fall back to the existing row's
+            // values for any column $data didn't include.
+            $logged = $data + ($existing ?: []);
             $this->db->log_audit(
                 $id && isset($_POST['id']) && $_POST['id'] ? 'instance_update' : 'instance_create',
                 'instance',
                 $id,
-                $data['name'],
+                $logged['name'] ?? '',
                 [
-                    'slug' => $data['slug'],
-                    'utility' => $data['utility'],
-                    'form_type' => $data['form_type'],
-                    'is_active' => $data['is_active'],
-                    'test_mode' => $data['test_mode'],
+                    'slug'      => $logged['slug'] ?? '',
+                    'utility'   => $logged['utility'] ?? '',
+                    'form_type' => $logged['form_type'] ?? '',
+                    'is_active' => $logged['is_active'] ?? null,
+                    'test_mode' => $logged['test_mode'] ?? null,
                 ]
             );
 
@@ -1091,6 +1217,95 @@ class Admin {
     /**
      * Test API connection via AJAX
      */
+    /**
+     * Test a destination's connection from the admin "Test Connection" button.
+     *
+     * Accepts a single posted destination slot (type/name/is_active/config)
+     * and calls $destination->test_connection() with the supplied config.
+     * Sensitive fields posted blank are merged with the existing stored
+     * config (preserve-on-empty), then decrypted in-memory for the test
+     * call. Nothing is persisted by this handler.
+     */
+    public function ajax_test_destination(): void {
+        if (!Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
+            return;
+        }
+        if (!class_exists('\\ISF\\Destinations\\DestinationRegistry')) {
+            wp_send_json_error(['message' => __('Destinations subsystem unavailable.', 'formflow')]);
+            return;
+        }
+
+        $raw = isset($_POST['destination']) ? stripslashes((string) $_POST['destination']) : '';
+        $posted = json_decode($raw, true);
+        if (!is_array($posted) || empty($posted['type'])) {
+            wp_send_json_error(['message' => __('Invalid destination payload.', 'formflow')]);
+            return;
+        }
+
+        $type = sanitize_text_field((string) $posted['type']);
+        $destination = \ISF\Destinations\DestinationRegistry::instance()->get($type);
+        if (!$destination) {
+            wp_send_json_error([
+                'message' => sprintf(
+                    /* translators: %s: destination type id */
+                    __('Destination type "%s" is not registered.', 'formflow'),
+                    $type
+                ),
+            ]);
+            return;
+        }
+
+        $posted_config = is_array($posted['config'] ?? null) ? $posted['config'] : [];
+
+        // Preserve-on-empty: merge in the stored destination's encrypted
+        // values for any sensitive field the admin left blank, so Test
+        // Connection works against the existing creds.
+        $instance_id = isset($_POST['instance_id']) ? (int) $_POST['instance_id'] : 0;
+        if ($instance_id > 0 && $destination instanceof \ISF\Destinations\BaseDestination) {
+            $existing_instance = $this->db->get_instance($instance_id);
+            $existing_destinations = $existing_instance['settings']['destinations'] ?? [];
+            $existing_config = [];
+            $name = (string) ($posted['name'] ?? $type);
+            foreach ($existing_destinations as $d) {
+                if (($d['type'] ?? '') === $type && ($d['name'] ?? '') === $name) {
+                    $existing_config = $d['config'] ?? [];
+                    break;
+                }
+            }
+            $posted_config = $destination->encrypt_sensitive_fields($posted_config, $existing_config);
+            $posted_config = $destination->decrypt_sensitive_fields($posted_config);
+        }
+
+        // Validate before testing — surface obvious misconfig faster.
+        $errors = $destination->validate_config($posted_config);
+        if (!empty($errors)) {
+            wp_send_json_error([
+                'message' => implode(' / ', array_slice($errors, 0, 3)),
+            ]);
+            return;
+        }
+
+        try {
+            $result = $destination->test_connection($posted_config);
+        } catch (\Throwable $e) {
+            wp_send_json_error(['message' => $e->getMessage() ?: __('Test failed.', 'formflow')]);
+            return;
+        }
+
+        if (!empty($result['success'])) {
+            wp_send_json_success([
+                'message' => $result['message'] ?? __('Connection OK.', 'formflow'),
+                'code'    => $result['code'] ?? 'ok',
+            ]);
+            return;
+        }
+
+        wp_send_json_error([
+            'message' => $result['message'] ?? __('Test failed.', 'formflow'),
+            'code'    => $result['code'] ?? 'unknown',
+        ]);
+    }
+
     public function ajax_test_api(): void {
         if (!Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
             return;

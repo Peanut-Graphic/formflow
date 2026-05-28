@@ -807,7 +807,7 @@ PROMPT;
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({
-                        action: 'isf_chatbot',
+                        action: 'formflow_chatbot',
                         nonce: isfAjax.nonce,
                         instance_id: '<?php echo esc_js($instance['id']); ?>',
                         message: message,

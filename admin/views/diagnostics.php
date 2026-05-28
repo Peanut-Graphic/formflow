@@ -323,7 +323,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'isf_quick_health_check',
+                action: 'formflow_quick_health_check',
                 nonce: isf_admin.nonce
             },
             success: function(response) {
@@ -393,7 +393,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'isf_run_diagnostics',
+                action: 'formflow_run_diagnostics',
                 nonce: isf_admin.nonce,
                 instance_id: instanceId
             },

@@ -269,7 +269,7 @@ jQuery(document).ready(function($) {
         $btn.find('.dashicons').addClass('isf-spin');
 
         $.post(isf_admin.ajax_url, {
-            action: 'isf_send_report_now',
+            action: 'formflow_send_report_now',
             nonce: isf_admin.nonce,
             report_id: $btn.data('id')
         }, function(response) {
@@ -286,7 +286,7 @@ jQuery(document).ready(function($) {
         if (confirm('<?php echo esc_js(__('Are you sure you want to delete this report?', 'formflow')); ?>')) {
             var reportId = $(this).data('id');
             $.post(isf_admin.ajax_url, {
-                action: 'isf_delete_scheduled_report',
+                action: 'formflow_delete_scheduled_report',
                 nonce: isf_admin.nonce,
                 report_id: reportId
             }, function(response) {

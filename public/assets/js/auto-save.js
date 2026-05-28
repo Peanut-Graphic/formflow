@@ -204,7 +204,7 @@
                 url: isf_frontend.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'isf_save_progress',
+                    action: 'formflow_save_progress',
                     nonce: isf_frontend.nonce,
                     instance: $container.data('instance'),
                     session_id: $container.data('session'),

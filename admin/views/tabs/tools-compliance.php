@@ -220,7 +220,7 @@ jQuery(document).ready(function($) {
         var account = $('#gdpr_account').val();
 
         $.post(isf_admin.ajax_url, {
-            action: 'isf_gdpr_search',
+            action: 'formflow_gdpr_search',
             nonce: isf_admin.nonce,
             email: email,
             account_number: account
@@ -243,7 +243,7 @@ jQuery(document).ready(function($) {
         $btn.prop('disabled', true).find('.dashicons').addClass('isf-spin');
 
         $.post(isf_admin.ajax_url, {
-            action: 'isf_run_retention_cleanup',
+            action: 'formflow_run_retention_cleanup',
             nonce: isf_admin.nonce
         }, function(response) {
             $btn.prop('disabled', false).find('.dashicons').removeClass('isf-spin');
@@ -262,7 +262,7 @@ jQuery(document).ready(function($) {
     function loadAuditLog(offset) {
         offset = offset || 0;
         $.post(isf_admin.ajax_url, {
-            action: 'isf_get_audit_log',
+            action: 'formflow_get_audit_log',
             nonce: isf_admin.nonce,
             offset: offset
         }, function(response) {

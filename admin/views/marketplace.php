@@ -23,9 +23,23 @@ if (!current_user_can('manage_options')) {
 }
 
 $marketplace = \ISF\Platform\Marketplace::instance();
-$active_tab = sanitize_text_field($_GET['tab'] ?? 'templates');
+// Default tab is Import/Export — that's the only surface backed by real
+// (non-fixture) functionality until the marketplace storefront ships.
+$active_tab = sanitize_text_field($_GET['tab'] ?? 'import');
 $templates = $marketplace->get_templates();
 $connectors = $marketplace->get_connectors();
+
+// Storefront templates and connectors are placeholder fixtures until the
+// real marketplace ships. By default we hide premium/marketplace-sourced
+// cards and show only local + imported templates. To restore the full
+// storefront preview: define('ISF_MARKETPLACE_STOREFRONT', true).
+$storefront_enabled = defined('ISF_MARKETPLACE_STOREFRONT') && ISF_MARKETPLACE_STOREFRONT;
+if (!$storefront_enabled) {
+    $templates = array_values(array_filter($templates, function ($t) {
+        $source = $t['source'] ?? 'local';
+        return in_array($source, ['local', 'imported'], true);
+    }));
+}
 
 // Group templates by category
 $categories = [];
@@ -40,13 +54,12 @@ foreach ($templates as $template) {
 
 <div class="wrap isf-admin-wrap">
     <h1>
-        <span class="dashicons dashicons-store" style="font-size: 30px; width: 30px; height: 30px; margin-right: 10px;"></span>
-        <?php esc_html_e('Marketplace', 'formflow'); ?>
-        <span class="isf-badge isf-badge-upcoming"><?php esc_html_e('Upcoming Feature', 'formflow'); ?></span>
+        <span class="dashicons dashicons-media-document" style="font-size: 28px; width: 28px; height: 28px; margin-right: 8px;"></span>
+        <?php esc_html_e('Templates', 'formflow'); ?>
     </h1>
 
     <p class="description" style="font-size: 14px; margin-bottom: 20px;">
-        <?php esc_html_e('Discover templates, connectors, and add-ons to extend FormFlow.', 'formflow'); ?>
+        <?php esc_html_e('Import a form template from a JSON file, or pick a built-in template to start from. (Storefront browsing coming later.)', 'formflow'); ?>
     </p>
 
     <nav class="nav-tab-wrapper">
@@ -617,7 +630,7 @@ jQuery(document).ready(function($) {
         $btn.prop('disabled', true).text('<?php echo esc_js(__('Creating...', 'formflow')); ?>');
 
         $.post(ajaxurl, {
-            action: 'isf_marketplace_install',
+            action: 'formflow_marketplace_install',
             nonce: $(this).find('[name="nonce"]').val(),
             slug: $('#install-template-slug').val(),
             name: $('#install-name').val(),
@@ -625,7 +638,7 @@ jQuery(document).ready(function($) {
         }, function(response) {
             if (response.success) {
                 alert(response.data.message);
-                window.location.href = '<?php echo esc_js(admin_url('admin.php?page=isf-instances&action=edit&id=')); ?>' + response.data.instance_id;
+                window.location.href = '<?php echo esc_js(admin_url('admin.php?page=isf-instance-editor&id=')); ?>' + response.data.instance_id;
             } else {
                 alert(response.data.message || '<?php echo esc_js(__('Installation failed.', 'formflow')); ?>');
                 $btn.prop('disabled', false).text('<?php echo esc_js(__('Create Form', 'formflow')); ?>');
@@ -644,7 +657,7 @@ jQuery(document).ready(function($) {
         }
 
         $.post(ajaxurl, {
-            action: 'isf_template_export',
+            action: 'formflow_template_export',
             nonce: $(this).find('[name="nonce"]').val(),
             instance_id: instanceId
         }, function(response) {
@@ -729,7 +742,7 @@ jQuery(document).ready(function($) {
         if (!pendingImport) return;
 
         $.post(ajaxurl, {
-            action: 'isf_template_import',
+            action: 'formflow_template_import',
             nonce: $(this).find('[name="nonce"]').val(),
             template: JSON.stringify(pendingImport)
         }, function(response) {

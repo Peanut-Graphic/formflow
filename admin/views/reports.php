@@ -491,7 +491,7 @@ $scheduled_reports = $this->db->get_scheduled_reports();
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_delete_scheduled_report',
+                    action: 'formflow_delete_scheduled_report',
                     nonce: isf_admin.nonce,
                     id: id
                 },
@@ -516,7 +516,7 @@ $scheduled_reports = $this->db->get_scheduled_reports();
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_send_report_now',
+                    action: 'formflow_send_report_now',
                     nonce: isf_admin.nonce,
                     id: id
                 },
@@ -549,7 +549,7 @@ $scheduled_reports = $this->db->get_scheduled_reports();
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_save_scheduled_report',
+                    action: 'formflow_save_scheduled_report',
                     nonce: isf_admin.nonce,
                     id: $form.find('input[name="id"]').val(),
                     name: $form.find('input[name="name"]').val(),
@@ -581,7 +581,7 @@ $scheduled_reports = $this->db->get_scheduled_reports();
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_get_scheduled_report',
+                    action: 'formflow_get_scheduled_report',
                     nonce: isf_admin.nonce,
                     id: id
                 },
@@ -633,7 +633,7 @@ $scheduled_reports = $this->db->get_scheduled_reports();
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_generate_custom_report',
+                    action: 'formflow_generate_custom_report',
                     nonce: isf_admin.nonce,
                     date_from: $form.find('input[name="date_from"]').val(),
                     date_to: $form.find('input[name="date_to"]').val(),
@@ -677,7 +677,7 @@ $scheduled_reports = $this->db->get_scheduled_reports();
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_export_submissions_csv',
+                    action: 'formflow_export_submissions_csv',
                     nonce: isf_admin.nonce,
                     instance_id: $form.find('select[name="instance_id"]').val(),
                     status: $form.find('select[name="status"]').val(),
@@ -712,7 +712,7 @@ $scheduled_reports = $this->db->get_scheduled_reports();
                 url: ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'isf_export_analytics_csv',
+                    action: 'formflow_export_analytics_csv',
                     nonce: isf_admin.nonce,
                     instance_id: $form.find('select[name="instance_id"]').val(),
                     date_from: $form.find('input[name="date_from"]').val(),

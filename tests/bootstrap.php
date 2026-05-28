@@ -71,3 +71,41 @@ if (!defined('COOKIEPATH')) {
 if (!defined('COOKIE_DOMAIN')) {
     define('COOKIE_DOMAIN', '');
 }
+
+if (!function_exists('wp_json_encode')) {
+    function wp_json_encode($data, int $options = 0, int $depth = 512): string|false {
+        return json_encode($data, $options, $depth);
+    }
+}
+
+// Register the plugin's runtime autoloader so tests can resolve
+// kebab-case `class-*.php` files (the plugin doesn't follow pure PSR-4).
+spl_autoload_register(function ($class) {
+    $prefix = 'ISF\\';
+    $base_dir = ISF_PLUGIN_DIR . 'includes/';
+
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        return;
+    }
+
+    $relative_class = substr($class, $len);
+    $path_parts = explode('\\', $relative_class);
+    $class_name = array_pop($path_parts);
+
+    $file_name = 'class-' . strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $class_name)) . '.php';
+
+    if (!empty($path_parts)) {
+        $kebab_parts = array_map(function ($part) {
+            return strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $part));
+        }, $path_parts);
+        $sub_dir = implode('/', $kebab_parts) . '/';
+        $file = $base_dir . $sub_dir . $file_name;
+    } else {
+        $file = $base_dir . $file_name;
+    }
+
+    if (file_exists($file)) {
+        require_once $file;
+    }
+});

@@ -281,7 +281,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_validate_account',
+                action: 'formflow_validate_account',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
@@ -492,7 +492,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_submit_enrollment',
+                action: 'formflow_submit_enrollment',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
@@ -575,7 +575,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_load_step',
+                action: 'formflow_load_step',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
@@ -646,7 +646,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_save_progress',
+                action: 'formflow_save_progress',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
@@ -695,7 +695,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_get_schedule_slots',
+                action: 'formflow_get_schedule_slots',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
@@ -1188,7 +1188,7 @@
         var browserInfo = detectBrowser();
 
         var data = {
-            action: 'isf_track_step',
+            action: 'formflow_track_step',
             nonce: isf_frontend.nonce,
             instance: ISFEnrollment.instanceSlug,
             session_id: ISFEnrollment.sessionId,
@@ -1347,7 +1347,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_save_progress',
+                action: 'formflow_save_progress',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
@@ -1518,7 +1518,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_save_and_email',
+                action: 'formflow_save_and_email',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
@@ -1563,7 +1563,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_resume_form',
+                action: 'formflow_resume_form',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 resume_token: ISFEnrollment.resumeToken
@@ -1793,7 +1793,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_validate_account',
+                action: 'formflow_validate_account',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
@@ -1854,7 +1854,7 @@
             url: isf_frontend.ajax_url,
             type: 'POST',
             data: {
-                action: 'isf_book_appointment',
+                action: 'formflow_book_appointment',
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,

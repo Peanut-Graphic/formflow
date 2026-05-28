@@ -109,9 +109,14 @@ class Plugin {
         // Admin notices for security warnings
         add_action('admin_notices', [$this, 'display_admin_notices']);
         add_action('wp_ajax_isf_dismiss_notice', [$this, 'ajax_dismiss_notice']);
+        add_action('wp_ajax_formflow_dismiss_notice', [$this, 'ajax_dismiss_notice']);
 
         // Admin menu
         add_action('admin_menu', [$this->admin, 'add_admin_menu']);
+
+        // Form-editor (3.0.0+): new task-overview-based editor, behind ISF_NEW_EDITOR flag
+        add_action('admin_menu', [$this, 'register_form_editor_menu'], 30);
+        add_action('admin_init', [$this, 'redirect_old_editor_when_flag_on'], 1);
 
         // Admin assets
         add_action('admin_enqueue_scripts', [$this->admin, 'enqueue_styles']);
@@ -119,71 +124,118 @@ class Plugin {
 
         // Admin AJAX handlers
         add_action('wp_ajax_isf_save_instance', [$this->admin, 'ajax_save_instance']);
+        add_action('wp_ajax_formflow_save_instance', [$this->admin, 'ajax_save_instance']);
+        add_action('wp_ajax_formflow_set_mode_preference', [$this, 'ajax_set_mode_preference']);
+        add_action('wp_ajax_formflow_set_new_editor_flag', [$this, 'ajax_set_new_editor_flag']);
         add_action('wp_ajax_isf_delete_instance', [$this->admin, 'ajax_delete_instance']);
+        add_action('wp_ajax_formflow_delete_instance', [$this->admin, 'ajax_delete_instance']);
         add_action('wp_ajax_isf_test_api', [$this->admin, 'ajax_test_api']);
+        add_action('wp_ajax_formflow_test_api', [$this->admin, 'ajax_test_api']);
+        add_action('wp_ajax_isf_test_destination', [$this->admin, 'ajax_test_destination']);
+        add_action('wp_ajax_formflow_test_destination', [$this->admin, 'ajax_test_destination']);
         add_action('wp_ajax_isf_get_logs', [$this->admin, 'ajax_get_logs']);
+        add_action('wp_ajax_formflow_get_logs', [$this->admin, 'ajax_get_logs']);
         add_action('wp_ajax_isf_test_form', [$this->admin, 'ajax_test_form']);
+        add_action('wp_ajax_formflow_test_form', [$this->admin, 'ajax_test_form']);
         add_action('wp_ajax_isf_mark_test_data', [$this->admin, 'ajax_mark_test_data']);
+        add_action('wp_ajax_formflow_mark_test_data', [$this->admin, 'ajax_mark_test_data']);
         add_action('wp_ajax_isf_delete_test_data', [$this->admin, 'ajax_delete_test_data']);
+        add_action('wp_ajax_formflow_delete_test_data', [$this->admin, 'ajax_delete_test_data']);
         add_action('wp_ajax_isf_get_test_counts', [$this->admin, 'ajax_get_test_counts']);
+        add_action('wp_ajax_formflow_get_test_counts', [$this->admin, 'ajax_get_test_counts']);
         add_action('wp_ajax_isf_clear_analytics', [$this->admin, 'ajax_clear_analytics']);
+        add_action('wp_ajax_formflow_clear_analytics', [$this->admin, 'ajax_clear_analytics']);
         add_action('wp_ajax_isf_check_api_health', [$this->admin, 'ajax_check_api_health']);
+        add_action('wp_ajax_formflow_check_api_health', [$this->admin, 'ajax_check_api_health']);
 
         // Webhook AJAX handlers
         add_action('wp_ajax_isf_get_webhook', [$this->admin, 'ajax_get_webhook']);
+        add_action('wp_ajax_formflow_get_webhook', [$this->admin, 'ajax_get_webhook']);
         add_action('wp_ajax_isf_save_webhook', [$this->admin, 'ajax_save_webhook']);
+        add_action('wp_ajax_formflow_save_webhook', [$this->admin, 'ajax_save_webhook']);
         add_action('wp_ajax_isf_delete_webhook', [$this->admin, 'ajax_delete_webhook']);
+        add_action('wp_ajax_formflow_delete_webhook', [$this->admin, 'ajax_delete_webhook']);
         add_action('wp_ajax_isf_test_webhook', [$this->admin, 'ajax_test_webhook']);
+        add_action('wp_ajax_formflow_test_webhook', [$this->admin, 'ajax_test_webhook']);
 
         // API usage AJAX handlers
         add_action('wp_ajax_isf_get_api_usage', [$this->admin, 'ajax_get_api_usage']);
+        add_action('wp_ajax_formflow_get_api_usage', [$this->admin, 'ajax_get_api_usage']);
 
         // Submission details & export AJAX handlers
         add_action('wp_ajax_isf_get_submission_details', [$this->admin, 'ajax_get_submission_details']);
+        add_action('wp_ajax_formflow_get_submission_details', [$this->admin, 'ajax_get_submission_details']);
         add_action('wp_ajax_isf_export_submissions_csv', [$this->admin, 'ajax_export_submissions_csv']);
+        add_action('wp_ajax_formflow_export_submissions_csv', [$this->admin, 'ajax_export_submissions_csv']);
 
         // Instance management AJAX handlers
         add_action('wp_ajax_isf_duplicate_instance', [$this->admin, 'ajax_duplicate_instance']);
+        add_action('wp_ajax_formflow_duplicate_instance', [$this->admin, 'ajax_duplicate_instance']);
         add_action('wp_ajax_isf_save_instance_order', [$this->admin, 'ajax_save_instance_order']);
+        add_action('wp_ajax_formflow_save_instance_order', [$this->admin, 'ajax_save_instance_order']);
 
         // Form Builder AJAX handlers
         add_action('wp_ajax_isf_builder_save', [$this->admin, 'ajax_builder_save']);
+        add_action('wp_ajax_formflow_builder_save', [$this->admin, 'ajax_builder_save']);
         add_action('wp_ajax_isf_builder_preview', [$this->admin, 'ajax_builder_preview']);
+        add_action('wp_ajax_formflow_builder_preview', [$this->admin, 'ajax_builder_preview']);
 
         // Bulk actions AJAX handlers
         add_action('wp_ajax_isf_bulk_submissions_action', [$this->admin, 'ajax_bulk_submissions_action']);
+        add_action('wp_ajax_formflow_bulk_submissions_action', [$this->admin, 'ajax_bulk_submissions_action']);
         add_action('wp_ajax_isf_bulk_logs_action', [$this->admin, 'ajax_bulk_logs_action']);
+        add_action('wp_ajax_formflow_bulk_logs_action', [$this->admin, 'ajax_bulk_logs_action']);
 
         // Reports AJAX handlers
         add_action('wp_ajax_isf_save_scheduled_report', [$this->admin, 'ajax_save_scheduled_report']);
+        add_action('wp_ajax_formflow_save_scheduled_report', [$this->admin, 'ajax_save_scheduled_report']);
         add_action('wp_ajax_isf_get_scheduled_report', [$this->admin, 'ajax_get_scheduled_report']);
+        add_action('wp_ajax_formflow_get_scheduled_report', [$this->admin, 'ajax_get_scheduled_report']);
         add_action('wp_ajax_isf_delete_scheduled_report', [$this->admin, 'ajax_delete_scheduled_report']);
+        add_action('wp_ajax_formflow_delete_scheduled_report', [$this->admin, 'ajax_delete_scheduled_report']);
         add_action('wp_ajax_isf_send_report_now', [$this->admin, 'ajax_send_report_now']);
+        add_action('wp_ajax_formflow_send_report_now', [$this->admin, 'ajax_send_report_now']);
         add_action('wp_ajax_isf_generate_custom_report', [$this->admin, 'ajax_generate_custom_report']);
+        add_action('wp_ajax_formflow_generate_custom_report', [$this->admin, 'ajax_generate_custom_report']);
         add_action('wp_ajax_isf_export_analytics_csv', [$this->admin, 'ajax_export_analytics_csv']);
+        add_action('wp_ajax_formflow_export_analytics_csv', [$this->admin, 'ajax_export_analytics_csv']);
 
         // Attribution export AJAX handler
         Analytics\AttributionExporter::register();
 
         // Compliance (GDPR, Audit Log, Data Retention) AJAX handlers
         add_action('wp_ajax_isf_gdpr_search', [$this->admin, 'ajax_gdpr_search']);
+        add_action('wp_ajax_formflow_gdpr_search', [$this->admin, 'ajax_gdpr_search']);
         add_action('wp_ajax_isf_gdpr_export', [$this->admin, 'ajax_gdpr_export']);
+        add_action('wp_ajax_formflow_gdpr_export', [$this->admin, 'ajax_gdpr_export']);
         add_action('wp_ajax_isf_gdpr_anonymize', [$this->admin, 'ajax_gdpr_anonymize']);
+        add_action('wp_ajax_formflow_gdpr_anonymize', [$this->admin, 'ajax_gdpr_anonymize']);
         add_action('wp_ajax_isf_gdpr_delete', [$this->admin, 'ajax_gdpr_delete']);
+        add_action('wp_ajax_formflow_gdpr_delete', [$this->admin, 'ajax_gdpr_delete']);
         add_action('wp_ajax_isf_get_audit_log', [$this->admin, 'ajax_get_audit_log']);
+        add_action('wp_ajax_formflow_get_audit_log', [$this->admin, 'ajax_get_audit_log']);
         add_action('wp_ajax_isf_get_gdpr_requests', [$this->admin, 'ajax_get_gdpr_requests']);
+        add_action('wp_ajax_formflow_get_gdpr_requests', [$this->admin, 'ajax_get_gdpr_requests']);
         add_action('wp_ajax_isf_preview_retention', [$this->admin, 'ajax_preview_retention']);
+        add_action('wp_ajax_formflow_preview_retention', [$this->admin, 'ajax_preview_retention']);
         add_action('wp_ajax_isf_run_retention', [$this->admin, 'ajax_run_retention']);
+        add_action('wp_ajax_formflow_run_retention', [$this->admin, 'ajax_run_retention']);
         add_action('wp_ajax_isf_save_retention_settings', [$this->admin, 'ajax_save_retention_settings']);
+        add_action('wp_ajax_formflow_save_retention_settings', [$this->admin, 'ajax_save_retention_settings']);
 
         // Diagnostics AJAX handlers
         add_action('wp_ajax_isf_run_diagnostics', [$this->admin, 'ajax_run_diagnostics']);
+        add_action('wp_ajax_formflow_run_diagnostics', [$this->admin, 'ajax_run_diagnostics']);
         add_action('wp_ajax_isf_quick_health_check', [$this->admin, 'ajax_quick_health_check']);
+        add_action('wp_ajax_formflow_quick_health_check', [$this->admin, 'ajax_quick_health_check']);
 
         // Feature testing AJAX handlers
         add_action('wp_ajax_isf_test_sms', [$this->admin, 'ajax_test_sms']);
+        add_action('wp_ajax_formflow_test_sms', [$this->admin, 'ajax_test_sms']);
         add_action('wp_ajax_isf_test_team_webhook', [$this->admin, 'ajax_test_team_webhook']);
+        add_action('wp_ajax_formflow_test_team_webhook', [$this->admin, 'ajax_test_team_webhook']);
         add_action('wp_ajax_isf_test_digest', [$this->admin, 'ajax_test_digest']);
+        add_action('wp_ajax_formflow_test_digest', [$this->admin, 'ajax_test_digest']);
     }
 
     /**
@@ -235,7 +287,9 @@ class Plugin {
 
         // AJAX handlers for touch recording
         add_action('wp_ajax_isf_record_touch', [$this, 'ajax_record_touch']);
+        add_action('wp_ajax_formflow_record_touch', [$this, 'ajax_record_touch']);
         add_action('wp_ajax_nopriv_isf_record_touch', [$this, 'ajax_record_touch']);
+        add_action('wp_ajax_nopriv_formflow_record_touch', [$this, 'ajax_record_touch']);
 
         // Cron handler for expiring old handoffs
         add_action('isf_expire_handoffs', [$this, 'expire_old_handoffs']);
@@ -331,6 +385,15 @@ class Plugin {
             return;
         }
 
+        // Suppress on the instance-editor workflow — security/queue warnings
+        // belong on Dashboard / Tools, not interleaved with a form-creation
+        // flow. They stay visible (and dismissible) on every other plugin
+        // screen.
+        if (strpos($screen->id ?? '', 'isf-instance-editor') !== false
+            || strpos($screen->id ?? '', 'isf-form') !== false) {
+            return;
+        }
+
         // Only show to users who can manage options
         if (!current_user_can('manage_options')) {
             return;
@@ -363,7 +426,7 @@ class Plugin {
                 $('[data-isf-notice]').on('click', '.notice-dismiss', function() {
                     var notice = $(this).closest('[data-isf-notice]').data('isf-notice');
                     $.post(ajaxurl, {
-                        action: 'isf_dismiss_notice',
+                        action: 'formflow_dismiss_notice',
                         notice: notice,
                         nonce: '<?php echo esc_js(wp_create_nonce('isf_dismiss_notice')); ?>'
                     });
@@ -406,6 +469,33 @@ class Plugin {
         }
 
         wp_send_json_success(['dismissed' => $notice]);
+    }
+
+    /**
+     * AJAX: set form-editor mode preference (dev|client) for the current user.
+     */
+    public function ajax_set_mode_preference(): void {
+        if (!\ISF\Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
+            return;
+        }
+        $mode = sanitize_text_field($_POST['mode'] ?? '');
+        $ok = \ISF\FormEditor\ModeResolver::set_preference($mode);
+        if ($ok) {
+            wp_send_json_success(['mode' => $mode]);
+        }
+        wp_send_json_error(['message' => __('Invalid mode.', 'formflow')]);
+    }
+
+    /**
+     * AJAX: toggle the ISF_NEW_EDITOR option (admin-only).
+     */
+    public function ajax_set_new_editor_flag(): void {
+        if (!\ISF\Security::verify_ajax_request('isf_admin_nonce', 'manage_options')) {
+            return;
+        }
+        $value = (($_POST['value'] ?? '0') === '1') ? '1' : '0';
+        update_option(\ISF\FormEditor\FeatureFlag::OPTION, $value);
+        wp_send_json_success(['value' => $value]);
     }
 
     /**
@@ -606,5 +696,43 @@ class Plugin {
                 $e->getMessage()
             ));
         }
+    }
+
+    public function register_form_editor_menu(): void {
+        if (!\ISF\FormEditor\FeatureFlag::is_enabled()) {
+            return;
+        }
+        add_submenu_page(
+            'isf-dashboard',
+            __('Form Editor', 'formflow'),
+            __('Form Editor', 'formflow') . ' <span class="isf-badge-new">Beta</span>',
+            'manage_options',
+            'isf-form',
+            [$this, 'render_form_editor']
+        );
+    }
+
+    public function render_form_editor(): void {
+        require ISF_PLUGIN_DIR . 'admin/views/form-editor/layout.php';
+    }
+
+    /**
+     * When the new editor is on, redirect any direct hits to the old
+     * isf-instance-editor admin URL → new editor.
+     */
+    public function redirect_old_editor_when_flag_on(): void {
+        if (isset($_GET['bypass']) && $_GET['bypass'] === '1') {
+            return;
+        }
+        if (!\ISF\FormEditor\FeatureFlag::is_enabled()) {
+            return;
+        }
+        if (!isset($_GET['page']) || $_GET['page'] !== 'isf-instance-editor') {
+            return;
+        }
+        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+        $url = admin_url('admin.php?page=isf-form' . ($id ? "&id={$id}" : ''));
+        wp_safe_redirect($url);
+        exit;
     }
 }

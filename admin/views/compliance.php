@@ -424,7 +424,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'isf_gdpr_search',
+                action: 'formflow_gdpr_search',
                 nonce: $('input[name="nonce"]').val(),
                 email: email,
                 account_number: account
@@ -482,7 +482,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'isf_gdpr_export',
+                action: 'formflow_gdpr_export',
                 nonce: $('input[name="nonce"]').val(),
                 email: $('#gdpr_email').val(),
                 account_number: $('#gdpr_account').val(),
@@ -528,7 +528,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'isf_gdpr_anonymize',
+                action: 'formflow_gdpr_anonymize',
                 nonce: $('input[name="nonce"]').val(),
                 submission_ids: foundSubmissions.map(function(s) { return s.id; }),
                 email: $('#gdpr_email').val()
@@ -559,7 +559,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'isf_gdpr_delete',
+                action: 'formflow_gdpr_delete',
                 nonce: $('input[name="nonce"]').val(),
                 submission_ids: foundSubmissions.map(function(s) { return s.id; }),
                 email: $('#gdpr_email').val()
@@ -602,7 +602,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'isf_preview_retention',
+                action: 'formflow_preview_retention',
                 nonce: '<?php echo wp_create_nonce('isf_admin_nonce'); ?>',
                 retention_submissions_days: $('#retention_submissions_days').val(),
                 retention_analytics_days: $('#retention_analytics_days').val(),
@@ -639,7 +639,7 @@ jQuery(document).ready(function($) {
             url: ajaxurl,
             type: 'POST',
             data: {
-                action: 'isf_run_retention',
+                action: 'formflow_run_retention',
                 nonce: '<?php echo wp_create_nonce('isf_admin_nonce'); ?>',
                 retention_submissions_days: $('#retention_submissions_days').val(),
                 retention_analytics_days: $('#retention_analytics_days').val(),

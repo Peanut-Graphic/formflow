@@ -251,8 +251,8 @@ $wizard_steps = [
                                                     <?php esc_html_e('Support Phone', 'formflow'); ?>
                                                 </label>
                                                 <input type="text" id="support_phone" name="settings[support_phone]" class="isf-field-input"
-                                                       value="<?php echo esc_attr($instance['settings']['support_phone'] ?? '1-866-353-5799'); ?>"
-                                                       placeholder="1-866-353-5799">
+                                                       value="<?php echo esc_attr($instance['settings']['support_phone'] ?? ''); ?>"
+                                                       placeholder="e.g. 1-800-555-0100">
                                             </div>
                                         </div>
                                     </div>

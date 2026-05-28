@@ -3,7 +3,7 @@
  * Plugin Name: FormFlow
  * Plugin URI: https://formflow.dev
  * Description: Secure API-integrated enrollment and scheduling forms for utility demand response programs
- * Version: 2.8.6
+ * Version: 3.0.5
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * Text Domain: formflow
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ISF_VERSION', '2.8.6');
+define('ISF_VERSION', '3.0.5');
 define('ISF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ISF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ISF_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -79,9 +79,12 @@ spl_autoload_register(function ($class) {
     // Convert class name to file name (CamelCase to kebab-case)
     $file_name = 'class-' . strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $class_name)) . '.php';
 
-    // Build the file path
+    // Build the file path (convert CamelCase namespace parts to kebab-case)
     if (!empty($path_parts)) {
-        $sub_dir = strtolower(implode('/', $path_parts)) . '/';
+        $kebab_parts = array_map(function ($part) {
+            return strtolower(preg_replace('/([a-z])([A-Z])/', '$1-$2', $part));
+        }, $path_parts);
+        $sub_dir = implode('/', $kebab_parts) . '/';
         $file = $base_dir . $sub_dir . $file_name;
     } else {
         $file = $base_dir . $file_name;
@@ -146,9 +149,38 @@ function isf_init() {
         return;
     }
 
+    // Composer autoloader — required for phpseclib3 (SFTP destination) and
+    // any future vendored runtime dependencies. Guarded so a dev clone
+    // without `composer install --no-dev` doesn't fatal; instead surfaces
+    // a clear admin notice.
+    if (file_exists(ISF_PLUGIN_DIR . 'vendor/autoload.php')) {
+        require_once ISF_PLUGIN_DIR . 'vendor/autoload.php';
+    } else {
+        add_action('admin_notices', function() {
+            echo '<div class="notice notice-error"><p><strong>FormFlow:</strong> ';
+            echo esc_html__('vendor/ is missing. Run `composer install --no-dev` in the plugin directory, or reinstall from a packaged release zip.', 'formflow');
+            echo '</p></div>';
+        });
+        return;
+    }
+
     // Load core classes
     require_once ISF_PLUGIN_DIR . 'includes/api/interface-api-connector.php';
     require_once ISF_PLUGIN_DIR . 'includes/api/class-connector-registry.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/interface-destination.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-result.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-base-destination.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-destination-registry.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-log.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-worker.php';
+    require_once ISF_PLUGIN_DIR . 'includes/destinations/class-delivery-dispatcher.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-feature-flag.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-capabilities.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-mode-resolver.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-task-registry.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-task-validator.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-router.php';
+    require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-field-gate.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-branding.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-cache-manager.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-queue-manager.php';
@@ -159,8 +191,32 @@ function isf_init() {
 
     // Initialize singletons
     ISF\Api\ConnectorRegistry::instance();
+    ISF\Destinations\DestinationRegistry::instance();
     ISF\CacheManager::instance();
     ISF\LicenseManager::instance();
+
+    // Templates (formerly "Marketplace") admin page. The class registers
+    // its admin_menu hook in init() (not __construct), and nothing in the
+    // plugin bootstrap was calling either — so the submenu never appeared
+    // on any install. Booting + initializing explicitly here fixes it.
+    if (class_exists('\\ISF\\Platform\\Marketplace')) {
+        $isf_marketplace = ISF\Platform\Marketplace::instance();
+        $isf_marketplace->init();
+
+        // First-run table creation. Marketplace was never instantiated on
+        // installs before 2.9.0, so its tables (wp_isf_templates +
+        // wp_isf_marketplace_installed) may be missing on upgraded sites.
+        // dbDelta is idempotent and insert_default_templates() is gated
+        // on COUNT > 0, but the option flag avoids touching dbDelta on
+        // every page load. Flag bumped from v1 → v2 in 2.9.6: v1 ran
+        // against a CREATE TABLE that had the reserved-word `schema`
+        // unquoted, which silently failed on MariaDB 10.3+ — sites that
+        // got the v1 flag with no actual table need a re-run.
+        if (get_option('isf_marketplace_tables_v2') !== '1') {
+            $isf_marketplace->create_tables();
+            update_option('isf_marketplace_tables_v2', '1');
+        }
+    }
 
     // Initialize security hardening
     $security = ISF\SecurityHardening::instance();
@@ -191,13 +247,36 @@ function isf_init() {
     require_once ISF_PLUGIN_DIR . 'includes/class-tester-bridge.php';
     (new ISF\TesterBridge())->init();
 
-    // Load bundled connectors
+    // Load bundled connectors + destinations (both share the same
+    // glob — any connectors/*/loader.php is required, regardless of
+    // whether it registers a Connector or a Destination).
     isf_load_bundled_connectors();
+
+    // Explicitly fire destination registration. The registry's
+    // plugins_loaded@5 self-hook is unreliable when the singleton
+    // is first instantiated inside plugins_loaded@10 (priority 5
+    // is already past). Calling init_destinations() here ensures
+    // every loaded loader.php has its add_action() callbacks fired.
+    ISF\Destinations\DestinationRegistry::instance()->init_destinations();
+
+    // Wire the delivery dispatcher: listens on form_completed,
+    // queues one Action Scheduler job per active destination.
+    (new ISF\Destinations\DeliveryDispatcher())->init();
 
     // Load plugin
     require_once ISF_PLUGIN_DIR . 'includes/class-plugin.php';
     $plugin = new ISF\Plugin();
     $plugin->run();
+
+    // Version-bump migration: upgrade-installs don't reliably fire the
+    // activation hook, so detect a version drift here and run the same
+    // post-activation routines (currently: grant isf_dev_mode to admins).
+    $stored_version = get_option('isf_version', '0.0.0');
+    if (version_compare($stored_version, ISF_VERSION, '<')) {
+        require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-capabilities.php';
+        \ISF\FormEditor\Capabilities::register_on_activate();
+        update_option('isf_version', ISF_VERSION);
+    }
 }
 add_action('plugins_loaded', 'isf_init');
 

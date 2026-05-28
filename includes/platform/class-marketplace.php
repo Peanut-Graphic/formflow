@@ -83,11 +83,17 @@ class Marketplace {
 
         // AJAX handlers
         add_action('wp_ajax_isf_marketplace_browse', [$this, 'ajax_browse']);
+        add_action('wp_ajax_formflow_marketplace_browse', [$this, 'ajax_browse']);
         add_action('wp_ajax_isf_marketplace_install', [$this, 'ajax_install']);
+        add_action('wp_ajax_formflow_marketplace_install', [$this, 'ajax_install']);
         add_action('wp_ajax_isf_marketplace_uninstall', [$this, 'ajax_uninstall']);
+        add_action('wp_ajax_formflow_marketplace_uninstall', [$this, 'ajax_uninstall']);
         add_action('wp_ajax_isf_marketplace_activate', [$this, 'ajax_activate']);
+        add_action('wp_ajax_formflow_marketplace_activate', [$this, 'ajax_activate']);
         add_action('wp_ajax_isf_template_export', [$this, 'ajax_export_template']);
+        add_action('wp_ajax_formflow_template_export', [$this, 'ajax_export_template']);
         add_action('wp_ajax_isf_template_import', [$this, 'ajax_import_template']);
+        add_action('wp_ajax_formflow_template_import', [$this, 'ajax_import_template']);
 
         // REST API for marketplace interactions
         add_action('rest_api_init', [$this, 'register_routes']);
@@ -126,7 +132,7 @@ class Marketplace {
             description TEXT,
             category VARCHAR(50),
             thumbnail_url VARCHAR(500),
-            schema JSON NOT NULL,
+            `schema` JSON NOT NULL,
             settings JSON,
             tags JSON,
             author VARCHAR(100),
@@ -243,12 +249,18 @@ class Marketplace {
 
     /**
      * Add admin menu
+     *
+     * Menu label drops the "New" badge — the storefront cards on this page
+     * are still placeholders. Real functionality (template Import/Export)
+     * lives inside this page on its own tab. To re-enable the storefront
+     * cards: define('ISF_MARKETPLACE_STOREFRONT', true) in wp-config.php
+     * (consumed by the marketplace view).
      */
     public function add_admin_menu(): void {
         add_submenu_page(
             'isf-dashboard',
-            __('Marketplace', 'formflow'),
-            __('Marketplace', 'formflow') . ' <span class="isf-badge-new">New</span>',
+            __('Templates', 'formflow'),
+            __('Templates', 'formflow'),
             'manage_options',
             'isf-marketplace',
             [$this, 'render_marketplace_page']
@@ -374,12 +386,26 @@ class Marketplace {
         global $wpdb;
         $instances_table = $wpdb->prefix . 'isf_instances';
 
+        // Honor form_type from the template (settings.basics.form_type) so
+        // custom-shape forms (like Dominion PTR — call-center handoff via
+        // SFTP, not an IntelliSOURCE multi-step enrollment) render through
+        // the right code path. Falls back to enrollment for legacy templates
+        // that didn't declare a form_type.
+        $template_basics = $template['settings']['basics'] ?? [];
+        $form_type = sanitize_text_field(
+            $template_basics['form_type'] ?? 'enrollment'
+        );
+
+        // Same idea for utility: prefer the install caller's override, then
+        // the template's basics.utility, then the safe default.
+        $resolved_utility = $utility ?: ($template_basics['utility'] ?? 'general');
+
         // Create new instance from template
         $instance_data = [
             'name' => $instance_name,
             'slug' => sanitize_title($instance_name),
-            'utility' => $utility ?: 'general',
-            'form_type' => 'enrollment',
+            'utility' => sanitize_text_field($resolved_utility),
+            'form_type' => $form_type,
             'settings' => wp_json_encode(array_merge(
                 $template['settings'] ?? [],
                 ['form_schema' => $template['schema']]

@@ -56,7 +56,9 @@ class SecurityHardening {
 
         // Validate requests
         add_action('wp_ajax_isf_form_action', [$this, 'validate_ajax_request'], 1);
+        add_action('wp_ajax_formflow_form_action', [$this, 'validate_ajax_request'], 1);
         add_action('wp_ajax_nopriv_isf_form_action', [$this, 'validate_ajax_request'], 1);
+        add_action('wp_ajax_nopriv_formflow_form_action', [$this, 'validate_ajax_request'], 1);
 
         // Add integrity checks to scripts
         add_filter('script_loader_tag', [$this, 'add_script_integrity'], 10, 3);

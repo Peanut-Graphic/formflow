@@ -34,7 +34,16 @@ class GtmHelper {
      * Get analytics configuration for JavaScript
      */
     public function get_js_config(array $instance): array {
-        $settings = json_decode($instance['settings'] ?? '{}', true) ?: [];
+        // Settings may arrive already-decoded (array) from upstream callers
+        // or as a JSON string from the raw DB row. PHP 8+ fatals if you pass
+        // an array to json_decode, which is what triggered the public-side
+        // critical error on dominionenergyptr.com/events/* (2026-05-27).
+        $raw_settings = $instance['settings'] ?? '{}';
+        if (is_array($raw_settings)) {
+            $settings = $raw_settings;
+        } else {
+            $settings = json_decode((string) $raw_settings, true) ?: [];
+        }
         $analytics_settings = $settings['analytics'] ?? [];
         $gtm_settings = $settings['gtm'] ?? [];
 

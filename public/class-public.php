@@ -146,6 +146,12 @@ class Frontend {
             return $this->render_external_form($instance, $atts);
         }
 
+        // Custom form_type: render from builder schema via FormRenderer instead of
+        // the hardcoded IntelliSOURCE enrollment wizard.
+        if ($instance['form_type'] === 'custom') {
+            return $this->render_custom_form($instance, $atts);
+        }
+
         // Enqueue assets
         wp_enqueue_style('isf-forms');
         wp_enqueue_script('isf-enrollment');
@@ -395,6 +401,47 @@ class Frontend {
             $data_attr_string,
             esc_html($atts['text'])
         );
+    }
+
+    /**
+     * Render a custom builder-driven form from its stored schema.
+     *
+     * Avoids the IntelliSOURCE enrollment wizard for instances where the
+     * fields are user-defined via the form builder.
+     */
+    private function render_custom_form(array $instance, array $atts): string {
+        $schema = $instance['settings']['form_schema'] ?? [];
+
+        if (empty($schema) || empty($schema['steps'] ?? [])) {
+            if (current_user_can('manage_options')) {
+                return '<div class="isf-error">' .
+                    esc_html__('Custom form has no schema. Edit the instance and add fields in the Form fields task.', 'formflow') .
+                    '</div>';
+            }
+            return '';
+        }
+
+        wp_enqueue_style('isf-forms');
+        wp_enqueue_script('isf-security');
+
+        $security = \ISF\SecurityHardening::instance();
+        wp_localize_script('isf-security', 'isfSecurityConfig', $security->get_js_security_config());
+
+        $visitor_id = apply_filters(\ISF\Hooks::GET_VISITOR_ID, null);
+        if (!$visitor_id) {
+            $visitor_tracker = new Analytics\VisitorTracker();
+            $visitor_id = $visitor_tracker->get_or_create_visitor_id();
+        }
+
+        do_action(\ISF\Hooks::FORM_VIEWED, (int) $instance['id'], $visitor_id, [
+            'form_type' => 'custom',
+            'instance_slug' => $instance['slug'],
+            'url' => $_SERVER['REQUEST_URI'] ?? '',
+            'referrer' => $_SERVER['HTTP_REFERER'] ?? '',
+        ]);
+
+        $renderer = new \ISF\Builder\FormRenderer();
+        return $renderer->render($schema, $instance, []);
     }
 
     /**
@@ -840,7 +887,7 @@ function isf_get_content(array $instance, string $key, string $default = ''): st
     }
 
     // Replace {phone} placeholder with support phone number
-    $phone = $instance['settings']['support_phone'] ?? '1-866-353-5799';
+    $phone = $instance['settings']['support_phone'] ?? '';
     $content = str_replace('{phone}', $phone, $content);
 
     return $content;
@@ -863,5 +910,5 @@ function isf_get_default_state(array $instance): string {
  * @return string The support phone number
  */
 function isf_get_support_phone(array $instance): string {
-    return $instance['settings']['support_phone'] ?? '1-866-353-5799';
+    return $instance['settings']['support_phone'] ?? '';
 }
