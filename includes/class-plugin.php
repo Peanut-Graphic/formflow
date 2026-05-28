@@ -264,11 +264,17 @@ class Plugin {
             'isf_save_and_email',
             'isf_resume_form',
             'isf_track_step',
+            'isf_submit_builder_form',
         ];
 
         foreach ($ajax_actions as $action) {
             add_action("wp_ajax_{$action}", [$this->public, $action]);
             add_action("wp_ajax_nopriv_{$action}", [$this->public, $action]);
+            // Mirror under formflow_* prefix for sites behind F5 ASM
+            // that strip POST values starting with isf_.
+            $mirror = 'formflow_' . substr($action, 4);
+            add_action("wp_ajax_{$mirror}", [$this->public, $action]);
+            add_action("wp_ajax_nopriv_{$mirror}", [$this->public, $action]);
         }
     }
 

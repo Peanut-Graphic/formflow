@@ -433,6 +433,28 @@
     margin-top: .5em;
 }
 
+/* Confirmation state after a successful builder-form submission. */
+.isf-builder-form .isf-success {
+    background: #eef9f1;
+    border: 1px solid #b6e2c2;
+    color: #1f5132;
+    padding: 24px 28px;
+    border-radius: 6px;
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+/* Inline submit error (network failure, server-side validation, etc.) */
+.isf-builder-form .isf-form-error {
+    background: #fdecea;
+    border: 1px solid #f5c2bd;
+    color: #8b1a13;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 1em 0;
+    font-size: 14px;
+}
+
 /* Checkbox and Radio */
 .isf-checkbox-label {
     display: flex;
