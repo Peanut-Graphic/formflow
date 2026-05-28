@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.1.6 — 2026-05-28
+
+### Fixed
+- **Admin scripts were not loading on subpages — bulk actions, delete, and Export CSV all silently broken.** `Admin::is_plugin_page()` checked 16 hard-coded hook strings prefixed with `is-forms_`, but the actual menu label "FF Forms" slugifies to `ff-forms`. Only the top-level Dashboard hook matched; every other FormFlow admin page (Data, Logs, Reports, Scheduling, etc.) returned false from `is_plugin_page()` so `isf-admin.js`, the form-builder scripts, and the editor scripts never enqueued. Bulk Apply, delete buttons, and Export CSV all looked clickable but did nothing. Replaced the hard-coded list with `strpos($hook, 'isf-') || $_GET['page']` so the check is immune to menu-label changes. Flagged by MAX in the 2026-05-28 audit.
+
 ## 3.1.5 — 2026-05-28 (HOTFIX)
 
 ### Fixed
