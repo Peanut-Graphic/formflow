@@ -3,7 +3,7 @@
  * Plugin Name: FormFlow
  * Plugin URI: https://formflow.dev
  * Description: Secure API-integrated enrollment and scheduling forms for utility demand response programs
- * Version: 3.2.2
+ * Version: 3.3.0
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * Text Domain: formflow
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ISF_VERSION', '3.2.2');
+define('ISF_VERSION', '3.3.0');
 define('ISF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ISF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ISF_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -50,14 +50,10 @@ spl_autoload_register(function ($class) {
 
     // Class map for special cases (acronyms, unusual naming)
     $class_map = [
-        'ISF\\ABTesting' => 'class-ab-testing.php',
         'ISF\\UTMTracker' => 'class-utm-tracker.php',
-        'ISF\\PWAHandler' => 'class-pwa-handler.php',
         'ISF\\CRMIntegration' => 'class-crm-integration.php',
         'ISF\\SMSHandler' => 'class-sms-handler.php',
         'ISF\\Analytics\\GTMHelper' => 'analytics/class-gtm-helper.php',
-        'ISF\\ML\\FormPrediction' => 'ml/class-form-prediction.php',
-        'ISF\\ML\\FormPredictionApi' => 'ml/class-form-prediction-api.php',
     ];
 
     // Check class map first

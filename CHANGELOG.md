@@ -1,5 +1,22 @@
 # FormFlow Pro Changelog
 
+## 3.3.0 — 2026-05-28 (Phase 3 — Dead-code purge)
+
+### Removed
+Roughly **5,000 lines and 17 files** of unreachable code, flagged by CAT/MAX/PHIL in the 2026-05-28 audit. Each removal verified against the Phase 5 regression suite (25/25 green after every kill).
+
+- **`ISF\ML\FormPrediction` + `ISF\ML\FormPredictionApi`** (≈460 LOC + REST routes + weekly cron) — phantom ML microservice that was never operational. Removed the classes, classmap entries, REST route registration (`register_analytics_rest_routes`), `train_ml_model()` cron callback, the `peanut_ml_formflow_train` `add_action`, and the `wp_schedule_event` registration in both `class-plugin.php::ensure_cron_events_scheduled` and `class-activator.php::schedule_cron_events`.
+- **`ISF\PWAHandler`** (539 LOC + classmap + FeatureManager registration + feature-config-pwa_support.php) — class was never instantiated; users could toggle PWA support in the settings UI and configure phantom defaults that did nothing.
+- **`ISF\ABTesting`** (543 LOC + classmap + FeatureManager registration + feature-config-ab_testing.php) — `get_variation()` was referenced in the settings UI but no application path applied variations.
+- **`ISF\ChatbotAssistant`** (909 LOC + FeatureManager registration + feature-config-chatbot_assistant.php) — settings panel configured a chatbot that never rendered.
+- **`ISF\FraudDetection`** (707 LOC + FeatureManager registration + feature-config-fraud_detection.php) — risk-score logic that was never invoked from any submission handler.
+- **`ISF\Platform\BusinessIntelligence`** (1,464 LOC + `admin/views/business-intelligence.php`) — the 1.4kloc class was instantiated only from its own orphan stub view that had no menu registration pointing to it.
+- **`includes/database/traits/trait-instances.php`** — duplicated methods already in `Database` class verbatim and was never `use`d by anything.
+- **`admin/assets/js/conditional-logic-builder.js`** — orphan file, never appeared in any `wp_enqueue_script` call.
+
+### Why this matters
+Each of these classes had a runtime cost (autoloader hits, settings UI render) and a maintenance cost (every code review touches them, every audit re-asks "is this used?"). Each had a settings UI surface that promised features that never delivered — the "abandonware" pattern CAT called out. With them gone, the plugin's surface area now matches its real behavior.
+
 ## 3.2.2 — 2026-05-28 (Phase 1 — Form Builder unblocked)
 
 ### Fixed
