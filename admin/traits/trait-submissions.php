@@ -115,11 +115,10 @@ trait Admin_Submissions {
             }
         }
 
-        // The schedule and confirmation fields are reported as part of the
-        // dynamic form_data keys; remove them from $field_keys so they're
-        // not duplicated. Same for first_name/last_name (we render those as
-        // a combined Customer Name column).
-        $synthetic_keys = ['first_name', 'last_name'];
+        // Schedule + confirmation are emitted explicitly below (so they
+        // render with friendly column names regardless of internal key
+        // shape). Pull them out of $field_keys so they're not duplicated.
+        $synthetic_keys = [];
         if ($has_schedule) {
             $synthetic_keys = array_merge($synthetic_keys, ['schedule_date', 'schedule_time', 'schedule_time_display']);
         }
@@ -128,11 +127,22 @@ trait Admin_Submissions {
         }
         $field_keys = array_values(array_filter($field_keys, fn($k) => !in_array($k, $synthetic_keys, true)));
 
+        // Order first_name and last_name first if present, so the export
+        // opens with the human-readable identity columns. Everything else
+        // follows in schema order.
+        $primary = [];
+        foreach (['first_name', 'last_name'] as $first) {
+            if (in_array($first, $field_keys, true)) {
+                $primary[] = $first;
+                $field_keys = array_values(array_filter($field_keys, fn($k) => $k !== $first));
+            }
+        }
+        $field_keys = array_merge($primary, $field_keys);
+
         // Header row.
-        $header = ['ID', 'Form Instance', 'Customer Name'];
+        $header = ['ID', 'Form Instance'];
         if ($has_account_number) { $header[] = 'Account Number'; }
         if ($has_device_type)    { $header[] = 'Device Type'; }
-        // Dynamic form_data columns — humanize the keys for the header.
         foreach ($field_keys as $key) {
             $header[] = ucwords(str_replace(['_', '-'], ' ', $key));
         }
@@ -150,7 +160,6 @@ trait Admin_Submissions {
             $row = [
                 $sub['id'],
                 $sub['instance_name'] ?? '',
-                trim(($fd['first_name'] ?? '') . ' ' . ($fd['last_name'] ?? '')),
             ];
             if ($has_account_number) { $row[] = $sub['account_number'] ?? ''; }
             if ($has_device_type)    { $row[] = $sub['device_type'] ?? ''; }
