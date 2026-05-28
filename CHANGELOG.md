@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 3.1.4 — 2026-05-28 (HOTFIX)
+
+### Fixed
+- **`isf_submit_builder_form` was calling `Database::get_instance($id, true)` with an extra argument.** The method's signature is strict `(int $id): ?array`, so PHP fatal'd on submit with a 500 on admin-ajax — meaning every builder-form submission since 3.1.1 was lost. Removed the extra arg; method takes the id only.
+
 ## 3.1.3 — 2026-05-28
 
 ### Added
