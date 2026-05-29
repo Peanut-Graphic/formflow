@@ -1,5 +1,16 @@
 # FormFlow Pro Changelog
 
+## 3.4.0 — 2026-05-28 (Phase 4a — Security + GDPR foundation)
+
+### Added
+- **WP Privacy API integration.** The Database class has had `find_submissions_for_gdpr()`, `anonymize_submission()`, and `permanently_delete_submission()` methods for some time — but they were never registered with WordPress's built-in **Tools → Export Personal Data** / **Tools → Erase Personal Data** screens. Clicking those buttons in wp-admin did nothing for FormFlow submissions. New `ISF\Privacy` class registers the canonical `wp_privacy_personal_data_exporters` and `wp_privacy_personal_data_erasers` filters so a data subject's submissions are actually exported (one item per submission, with form fields as rows) or erased (anonymized by default; hard-deleted if the `anonymize_instead_of_delete` setting is off). Plugin-internal underscore-prefixed fields are hidden from the export the same way they're hidden from CSV. PHIL flagged the gap in the 2026-05-28 audit.
+
+### Fixed
+- **`api_password` was read raw from `$_POST`** in `ajax_test_api` without `sanitize_text_field` or `wp_unslash`. Low blast radius — the value is never echoed or logged — but the lint was correct. Now sanitized + unslash'd before use. MAX flagged in the 2026-05-28 audit.
+
+### Notes
+- This is Phase 4a of the post-audit cleanup plan. Phase 4b — the per-route audit of 29 `__return_true` REST permission callbacks — is held for a follow-up because each route needs an independent decision about whether it should be public, nonce-gated, or capability-gated.
+
 ## 3.3.1 — 2026-05-28 (HOTFIX — 3.3.0 site-fatal)
 
 ### Fixed

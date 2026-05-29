@@ -1308,7 +1308,7 @@ class Admin {
         }
 
         $endpoint = esc_url_raw($_POST['api_endpoint'] ?? '');
-        $password = $_POST['api_password'] ?? '';
+        $password = sanitize_text_field(wp_unslash((string) ($_POST['api_password'] ?? '')));
 
         if (empty($endpoint) || empty($password)) {
             wp_send_json_error([
