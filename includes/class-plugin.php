@@ -71,6 +71,11 @@ class Plugin {
         require_once ISF_PLUGIN_DIR . 'includes/analytics/class-attribution-exporter.php';
         require_once ISF_PLUGIN_DIR . 'includes/api/class-handoff-endpoint.php';
 
+        // WP Privacy API integration — wires the existing GDPR methods on
+        // Database to Tools → Erase / Export Personal Data.
+        require_once ISF_PLUGIN_DIR . 'includes/class-privacy.php';
+        (new \ISF\Privacy())->register();
+
         // Peanut Suite integration (loads after plugins_loaded for proper detection)
         require_once ISF_PLUGIN_DIR . 'includes/class-peanut-integration.php';
         add_action('plugins_loaded', function() {
