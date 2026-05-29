@@ -63,19 +63,19 @@ class CrossSellEngine {
         register_rest_route('isf/v1', '/cross-sell/analyze', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_analyze'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\ISF\Security', 'rate_limit_public'],
         ]);
 
         register_rest_route('isf/v1', '/cross-sell/bundles', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_get_bundles'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\ISF\Security', 'rate_limit_public'],
         ]);
 
         register_rest_route('isf/v1', '/cross-sell/personalized', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_personalized_recommendations'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\ISF\Security', 'rate_limit_public'],
         ]);
     }
 

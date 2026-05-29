@@ -300,14 +300,16 @@ class APIPlatform {
             'permission_callback' => [$this, 'check_read_permission'],
         ]);
 
-        // Health check
+        // Public by design: health probe for uptime monitors and load
+        // balancers. Returns 200 with minimal status payload; no PII.
         register_rest_route($namespace, '/health', [
             'methods' => 'GET',
             'callback' => [$this, 'health_check'],
             'permission_callback' => '__return_true',
         ]);
 
-        // OpenAPI spec
+        // Public by design: OpenAPI / Swagger spec endpoint. Standard
+        // discovery URL for API clients; cannot leak data on its own.
         register_rest_route($namespace, '/openapi.json', [
             'methods' => 'GET',
             'callback' => [$this, 'get_openapi_spec'],

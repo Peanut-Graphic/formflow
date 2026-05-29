@@ -66,46 +66,51 @@ class AppointmentBundler {
      * Register REST API routes
      */
     public function register_rest_routes(): void {
-        // Check if programs can be bundled into single appointment
+        // Public pre-flight: frontend asks whether a bundle is possible.
+        // Rate-limited because the eligibility logic is DB-heavy.
         register_rest_route('isf/v1', '/appointments/bundle-check', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_check_bundle'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\\ISF\\Security', 'rate_limit_public'],
         ]);
 
-        // Get available bundled time slots
+        // Public pre-flight: frontend pulls available slots.
+        // Rate-limited (scheduler API is rate-limited too).
         register_rest_route('isf/v1', '/appointments/bundled-slots', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_get_bundled_slots'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\\ISF\\Security', 'rate_limit_public'],
         ]);
 
-        // Create bundled appointment
+        // Write endpoint: creates a bundled appointment. Needs CSRF
+        // protection — frontend supplies a WP REST nonce.
         register_rest_route('isf/v1', '/appointments/bundle', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_create_bundled_appointment'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\\ISF\\Security', 'nonce_or_logged_in'],
         ]);
 
-        // Get bundled appointment details
+        // Public: bundle ID in the URL is the auth (opaque alphanumeric
+        // token). Anyone with the link can view; same shape as
+        // /handoff/{token} elsewhere in the plugin.
         register_rest_route('isf/v1', '/appointments/bundle/(?P<id>[a-zA-Z0-9_-]+)', [
             'methods' => 'GET',
             'callback' => [$this, 'rest_get_bundled_appointment'],
             'permission_callback' => '__return_true',
         ]);
 
-        // Reschedule bundled appointment
+        // Write endpoint: reschedule. Needs CSRF protection.
         register_rest_route('isf/v1', '/appointments/bundle/(?P<id>[a-zA-Z0-9_-]+)/reschedule', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_reschedule_bundled_appointment'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\\ISF\\Security', 'nonce_or_logged_in'],
         ]);
 
-        // Cancel bundled appointment
+        // Write endpoint: cancel. Needs CSRF protection.
         register_rest_route('isf/v1', '/appointments/bundle/(?P<id>[a-zA-Z0-9_-]+)/cancel', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_cancel_bundled_appointment'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\\ISF\\Security', 'nonce_or_logged_in'],
         ]);
     }
 

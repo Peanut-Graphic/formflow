@@ -100,7 +100,7 @@ class AddressValidator {
         register_rest_route('isf/v1', '/address/autocomplete', [
             'methods' => 'GET',
             'callback' => [$this, 'rest_autocomplete'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\ISF\Security', 'rate_limit_public'],
             'args' => [
                 'input' => [
                     'required' => true,
@@ -118,7 +118,7 @@ class AddressValidator {
         register_rest_route('isf/v1', '/address/validate', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_validate'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\ISF\Security', 'rate_limit_public'],
             'args' => [
                 'street' => [
                     'required' => true,
@@ -146,7 +146,7 @@ class AddressValidator {
         register_rest_route('isf/v1', '/address/place-details', [
             'methods' => 'GET',
             'callback' => [$this, 'rest_place_details'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\ISF\Security', 'rate_limit_public'],
             'args' => [
                 'place_id' => [
                     'required' => true,
