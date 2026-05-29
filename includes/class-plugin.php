@@ -71,10 +71,6 @@ class Plugin {
         require_once ISF_PLUGIN_DIR . 'includes/analytics/class-attribution-exporter.php';
         require_once ISF_PLUGIN_DIR . 'includes/api/class-handoff-endpoint.php';
 
-        // ML/Prediction classes
-        require_once ISF_PLUGIN_DIR . 'includes/ml/class-form-prediction.php';
-        require_once ISF_PLUGIN_DIR . 'includes/ml/class-form-prediction-api.php';
-
         // Peanut Suite integration (loads after plugins_loaded for proper detection)
         require_once ISF_PLUGIN_DIR . 'includes/class-peanut-integration.php';
         add_action('plugins_loaded', function() {
