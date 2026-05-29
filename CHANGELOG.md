@@ -1,5 +1,11 @@
 # FormFlow Pro Changelog
 
+## 3.3.1 — 2026-05-28 (HOTFIX — 3.3.0 site-fatal)
+
+### Fixed
+- **3.3.0 fatal'd on every page load.** When I deleted the ML phantom classes in 3.3.0, I grepped for class-name references (`PWAHandler`, `FormPrediction`, etc.) but not for path-based `require_once` calls. Two `require_once ISF_PLUGIN_DIR . 'includes/ml/class-form-prediction.php'` lines remained in `class-plugin.php::load_dependencies()`, both pointing at the deleted files. `require_once: failed to open stream` fatal on every page load. Removed both lines.
+- **New regression test:** `RequireOnceTargetsExistTest` scans every active PHP file in `formflow.php` + `includes/` + `admin/` + `public/` for `require_once ISF_PLUGIN_DIR . '...'` patterns and asserts every target file exists. Catches future deletions that leave dead require_once'es behind, at CI time rather than at site-fatal time. Phase 5 suite now 26 tests / 55 assertions.
+
 ## 3.3.0 — 2026-05-28 (Phase 3 — Dead-code purge)
 
 ### Removed
