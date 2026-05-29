@@ -76,7 +76,7 @@ class GeocodingService {
         register_rest_route('isf/v1', '/geocode', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_geocode'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\ISF\Security', 'rate_limit_public'],
             'args' => [
                 'street' => [
                     'required' => true,
@@ -104,7 +104,7 @@ class GeocodingService {
         register_rest_route('isf/v1', '/territory/check', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_check_territory'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\ISF\Security', 'rate_limit_public'],
             'args' => [
                 'latitude' => [
                     'required' => false,

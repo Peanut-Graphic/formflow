@@ -55,7 +55,10 @@ class CompletionReceiver {
             'permission_callback' => [$this, 'verify_webhook_signature'],
         ]);
 
-        // Redirect callback endpoint (for redirect-back completion flow)
+        // Public: third-party hosted form redirects users BACK to this
+        // URL on completion. The token in the URL identifies which
+        // FormFlow handoff completed; must accept any caller because
+        // the redirect originates from external systems (Itron, etc.).
         register_rest_route(self::NAMESPACE, '/completions/redirect', [
             'methods' => 'GET',
             'callback' => [$this, 'receive_redirect'],

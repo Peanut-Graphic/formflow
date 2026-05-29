@@ -158,6 +158,51 @@ class Security {
     }
 
     /**
+     * REST permission callback for endpoints that should remain public
+     * but need per-IP throttling to prevent abuse of expensive backend
+     * resources (Google Maps API, DB-heavy queries, external services).
+     *
+     * Use this in place of `__return_true` for public-by-design routes
+     * where the cost of an abusive caller is real. Returns a WP_Error
+     * (translated to HTTP 429) when the limit is exceeded.
+     */
+    public static function rate_limit_public(): bool|\WP_Error {
+        if (self::check_rate_limit()) {
+            return true;
+        }
+        return new \WP_Error(
+            'rate_limit_exceeded',
+            __('Too many requests. Please try again in a moment.', 'formflow'),
+            ['status' => 429]
+        );
+    }
+
+    /**
+     * REST permission callback for write endpoints that should accept
+     * either an authenticated user OR a valid WP REST nonce. This keeps
+     * public-by-design form-submission flows working (frontend JS POST
+     * with nonce) while rejecting CSRF/random POSTs that have neither.
+     *
+     * Use for state-changing routes (creates, updates, cancels) that
+     * are reachable from frontend JS but should not be openly POST-able
+     * by any caller.
+     */
+    public static function nonce_or_logged_in(): bool|\WP_Error {
+        if (is_user_logged_in()) {
+            return true;
+        }
+        $nonce = $_REQUEST['_wpnonce'] ?? ($_SERVER['HTTP_X_WP_NONCE'] ?? '');
+        if (is_string($nonce) && $nonce !== '' && wp_verify_nonce($nonce, 'wp_rest')) {
+            return true;
+        }
+        return new \WP_Error(
+            'rest_forbidden',
+            __('Sorry, you are not allowed to do that.', 'formflow'),
+            ['status' => 403]
+        );
+    }
+
+    /**
      * Clear rate limit for an IP address
      */
     public static function clear_rate_limit(?string $ip = null): void {

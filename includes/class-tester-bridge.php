@@ -42,6 +42,10 @@ class TesterBridge
 
     public function register_routes(): void
     {
+        // Public: the route's auth happens inside handle_health() —
+        // it runs $this->ip_check($request) + HMAC verification on the
+        // request body. WP's permission_callback can't see the request
+        // body, so we accept-all here and gate at the callback layer.
         register_rest_route(self::REST_NAMESPACE, self::REST_ROUTE, [
             'methods' => 'GET, POST',
             'permission_callback' => '__return_true',

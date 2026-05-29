@@ -1,5 +1,22 @@
 # FormFlow Pro Changelog
 
+## 3.4.1 — 2026-05-29 (Phase 4b — REST permission audit)
+
+### Added
+- **`\ISF\Security::rate_limit_public()`** — REST permission callback that combines `__return_true` with the existing per-IP rate limiter. Returns a `WP_Error` (HTTP 429) when the limit is exceeded. Used in place of `__return_true` for legitimately-public routes that touch expensive backends (Google Maps API, DB-heavy queries).
+- **`\ISF\Security::nonce_or_logged_in()`** — REST permission callback that accepts either an authenticated user OR a valid `wp_rest` nonce. Keeps frontend form-submission flows working while rejecting CSRF/random POSTs. Used for state-changing endpoints.
+- **`PublicRestRoutesDocumentedTest`** — new Phase 5 test that asserts every REST route using `__return_true` for its permission callback has a documenting comment ("Public:" or "Public by design") within 15 lines above explaining why public is the right call. Catches future routes added without articulating the auth model. Phase 5 suite now 27 tests / 56 assertions.
+
+### Changed
+Per-route audit of the 29 `__return_true` REST permission callbacks PHIL flagged. Verdicts:
+
+- **`address-validator`, `geocoding`, `cross-sell-engine`** (8 routes) — kept public, swapped to `rate_limit_public` (Google Maps + DB-heavy backends).
+- **`program-manager`** — `/programs/eligibility`, `/programs/recommendations` → `rate_limit_public`; `/programs/enroll` → `nonce_or_logged_in` (write endpoint).
+- **`appointment-bundler`** — `/bundle-check`, `/bundled-slots` → `rate_limit_public`; `/bundle`, `/bundle/{id}/reschedule`, `/bundle/{id}/cancel` → `nonce_or_logged_in` (write endpoints).
+- **`completion-receiver`, `handoff-endpoint`, `embed-handler`, `api-platform` (health + openapi), `program-manager` (catalog), `appointment-bundler` (bundle GET), `tester-bridge`** — kept `__return_true` because they're legitimately public by design (token-gated in URL, public catalogs, health probes, form-submission endpoints whose auth lives inside the callback). Each now has a `// Public:` comment explaining why.
+
+PHIL flagged 29 `__return_true` instances. Verdict: 16 stay public with documentation, 8 add rate-limiting, 5 add nonce-or-auth. Zero routes "converted to admin-only" because doing so would break legitimate frontend integrations. The audit's real finding wasn't "lock everything down" — it was "every accept-all decision should be conscious + documented." That's now enforced at CI time.
+
 ## 3.4.0 — 2026-05-28 (Phase 4a — Security + GDPR foundation)
 
 ### Added

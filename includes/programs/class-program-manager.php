@@ -62,7 +62,9 @@ class ProgramManager {
      * Register REST API routes
      */
     public function register_rest_routes(): void {
-        // Get available programs for an instance
+        // Public by design: catalog of available programs for an
+        // instance. Read-only; non-PII metadata. Frontend pulls this
+        // to render the program-picker list before a user is signed in.
         register_rest_route('isf/v1', '/programs', [
             'methods' => 'GET',
             'callback' => [$this, 'rest_get_programs'],
@@ -79,25 +81,27 @@ class ProgramManager {
             ],
         ]);
 
-        // Check program eligibility
+        // Public, but rate-limited (DB-heavy).
         register_rest_route('isf/v1', '/programs/eligibility', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_check_eligibility'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\\ISF\\Security', 'rate_limit_public'],
         ]);
 
-        // Get cross-sell recommendations
+        // Public, but rate-limited (DB-heavy).
         register_rest_route('isf/v1', '/programs/recommendations', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_get_recommendations'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\\ISF\\Security', 'rate_limit_public'],
         ]);
 
-        // Create multi-program enrollment
+        // Write endpoint: requires either an authenticated user or a
+        // valid WP REST nonce. Form-submission flows from frontend JS
+        // supply the nonce; random POSTs are rejected.
         register_rest_route('isf/v1', '/programs/enroll', [
             'methods' => 'POST',
             'callback' => [$this, 'rest_create_enrollment'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => ['\\ISF\\Security', 'nonce_or_logged_in'],
         ]);
 
         // Admin routes

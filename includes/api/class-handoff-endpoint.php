@@ -49,7 +49,10 @@ class HandoffEndpoint {
      * Register REST API routes
      */
     public function register_routes(): void {
-        // Create a tracked handoff
+        // Public: handoff-creation endpoint. The server response is a
+        // cryptographic token that gates all downstream operations.
+        // The endpoint itself is intentionally public so external
+        // referrers can initiate a tracked handoff without a WP session.
         register_rest_route(self::NAMESPACE, '/handoff', [
             'methods' => 'POST',
             'callback' => [$this, 'create_handoff'],
@@ -73,7 +76,9 @@ class HandoffEndpoint {
             ],
         ]);
 
-        // Process a handoff redirect (GET for browser redirects)
+        // Public: handoff-redirect endpoint. The 32-hex token in the
+        // URL pattern IS the auth. validate_callback enforces the exact
+        // shape so non-token URLs 404 before reaching the callback.
         register_rest_route(self::NAMESPACE, '/handoff/(?P<token>[a-f0-9]{32})', [
             'methods' => 'GET',
             'callback' => [$this, 'process_redirect'],
@@ -87,7 +92,8 @@ class HandoffEndpoint {
             ],
         ]);
 
-        // Get handoff status
+        // Public: handoff-status endpoint. Same token auth as the
+        // redirect endpoint above; read-only.
         register_rest_route(self::NAMESPACE, '/handoff/(?P<token>[a-f0-9]{32})/status', [
             'methods' => 'GET',
             'callback' => [$this, 'get_status'],

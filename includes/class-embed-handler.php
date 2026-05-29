@@ -55,6 +55,9 @@ class EmbedHandler {
      * Register REST API routes for embed
      */
     public function register_rest_routes(): void {
+        // Public: 16–64 char alphanumeric token in the URL gates access.
+        // Embeds are designed to be served on third-party origins where
+        // no WP session is available.
         register_rest_route('isf/v1', '/embed/config/(?P<token>[a-zA-Z0-9]+)', [
             'methods' => 'GET',
             'callback' => [$this, 'get_embed_config'],
@@ -69,18 +72,25 @@ class EmbedHandler {
             ],
         ]);
 
+        // Public: embed form-submission endpoint. Same trust model as
+        // /wp-admin/admin-ajax.php?action=isf_submit_enrollment — the
+        // form lives on a third-party site, the auth is the embed token
+        // in the request body.
         register_rest_route('isf/v1', '/embed/submit', [
             'methods' => 'POST',
             'callback' => [$this, 'handle_embed_submission'],
             'permission_callback' => '__return_true',
         ]);
 
+        // Public: embed validation pre-flight (called from frontend JS
+        // before the submit). No state mutation, no PII written.
         register_rest_route('isf/v1', '/embed/validate', [
             'methods' => 'POST',
             'callback' => [$this, 'handle_embed_validation'],
             'permission_callback' => '__return_true',
         ]);
 
+        // Public: embed schedule-slot pre-flight. Token in payload.
         register_rest_route('isf/v1', '/embed/schedule', [
             'methods' => 'POST',
             'callback' => [$this, 'handle_embed_schedule'],
