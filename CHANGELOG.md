@@ -1,5 +1,43 @@
 # FormFlow Pro Changelog
 
+## 4.0.0 — 2026-05-30 (4.0 release line — beta)
+
+The 4.0 release line establishes a structural split between the IntelliSOURCE Wizard subsystem (Pepco / Delmarva utility enrollment) and the generic FormFlow Builder (Dominion PTR, Gravity Forms migrations, every future non-utility client). Backed by the Phase 5 regression suite (59 tests / 125 assertions). **Shipped as a beta channel: install on the pilot site first, smoke the import + a real submission, then roll to the remaining 7 GF sites.**
+
+### Why the major bump
+- CAT flagged the IntelliSOURCE/Builder seam as the root cause of every regression class shipped on 2026-05-28 (3.0.5 / 3.0.7 / 3.1.1 / 3.1.4 / 3.1.5). The 4.0 spec (`docs/superpowers/specs/2026-05-29-4.0-two-products-split.md`) is the durable fix.
+- The 8-site Gravity Forms migration needs the structural split + the new GF importer to land together.
+
+### Added
+- **IntelliSOURCE subsystem directory** (`includes/intellisource/`) with the wizard templates relocated under it. Architectural README documents the boundary and the form_type → subsystem dispatch table. Builder subsystem (`includes/builder/`) gets a mirror README. (PR #26)
+- **`Frontend::classify($form_type)`** — every form_type value routes through one classifier: `'external'`, `'intellisource'`, `'builder'`. Unknown values default to `'builder'` (the safe default — replaces the pre-4.0 silent fallthrough to the IntelliSOURCE wizard that caused the 3.0.5 / 3.1.1 regressions). (PR #27)
+- **`Frontend::canonicalize_form_type($form_type)`** — normalizes legacy aliases (`enrollment` → `intellisource_wizard`, `scheduler` → `intellisource_scheduler`, `custom` → `builder`). Used for intra-subsystem sub-shape checks. (PR #27)
+- **v4.0.0 ENUM migration** in `class-activator.php::run_migrations` adds `intellisource_wizard`, `intellisource_scheduler`, `builder` to the form_type ENUM. Old values keep working forever via the classifier — no existing row gets rewritten. `create_tables` updated for fresh installs. (PR #27)
+- **Gravity Forms importer** at `includes/builder/importers/`. WP-CLI command: `wp formflow import-gf <file.json> [--dry-run] [--activate]`. Reads a GF JSON export (Forms → Import/Export → Export Forms) and creates equivalent FormFlow instances on the canonical `form_type='builder'` track. Each imported form lands inactive by default so you can review before activating. Full field-type mapping (text/email/phone/textarea/number/date/time/select/multiselect/radio/checkbox/consent/name→first+last/address→5 fields/section→heading/html→paragraph/hidden/fileupload/signature/website). Conditional logic → `settings.show_when`. Unsupported fields (post-creation, commerce, calculation, captcha, page-break, unknown types) drop with per-field warnings on the import report. (PR #28)
+
+### Changed
+- `render_form_shortcode` dispatches via `classify()` — two top-level branches (`external`, `builder`); IntelliSOURCE wizard stays inline until a future PR extracts it. (PR #27)
+- `trait-ajax-handlers` normalizes `$form_type` once via `canonicalize_form_type`; downstream comparisons use canonical values. (PR #27)
+
+### Phase 5 regression suite (run on every PR)
+- After 3.4.1: 27 tests / 56 assertions
+- After PR #26 (file reorg): 27 / 56
+- After PR #27 (classifier): 46 / 84 (new `FormTypeClassifierTest` with 18-case data provider)
+- After PR #28 (GF importer): **59 / 125 — all green**
+
+### Safety properties
+- No existing `wp_isf_instances` row needs to be rewritten. Dominion's `form_type='custom'` keeps routing to the builder. Pepco/Delmarva's `form_type='enrollment'` keeps routing to the wizard.
+- Schema migration is additive only.
+- Imported GF forms land inactive (`is_active=0`); admin reviews before activating.
+- Importer is pure: never touches Gravity Forms's own tables; GF can be uninstalled before or after.
+
+### Known gaps (held for follow-up, none blocking)
+- Admin UI for the GF importer (file-upload + preview) — CLI is enough for the migration; UI is convenience.
+- Admin "create new form" subsystem-aware picker (IntelliSOURCE Wizard vs Custom Form Builder cards) — the new editor's existing dropdown still works.
+- Legacy `admin/views/instance-editor.php` (1,300 LOC) — will be deleted after the new editor has soaked another release.
+- Multi-step builder — GF page-break fields collapse with a warning on import. Multi-step support is a 4.1 target.
+- Pending task #10: SFTP destination smoke against real Itron credentials.
+
 ## 3.4.1 — 2026-05-29 (Phase 4b — REST permission audit)
 
 ### Added
