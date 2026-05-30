@@ -177,6 +177,11 @@ function isf_init() {
     require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-task-validator.php';
     require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-router.php';
     require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-field-gate.php';
+    require_once ISF_PLUGIN_DIR . 'includes/builder/importers/class-gravity-forms-importer.php';
+    require_once ISF_PLUGIN_DIR . 'includes/builder/importers/class-gf-import-cli.php';
+    if (class_exists('\\ISF\\Builder\\Importers\\GfImportCli')) {
+        \ISF\Builder\Importers\GfImportCli::register();
+    }
     require_once ISF_PLUGIN_DIR . 'includes/class-branding.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-cache-manager.php';
     require_once ISF_PLUGIN_DIR . 'includes/class-queue-manager.php';
