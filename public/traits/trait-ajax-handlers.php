@@ -78,22 +78,25 @@ trait Frontend_Ajax_Handlers {
             // Render step template based on form type
             ob_start();
 
-            $form_type = $instance['form_type'] ?? 'enrollment';
+            // Normalize the form_type so legacy values ('enrollment',
+            // 'scheduler') and canonical 4.0 values ('intellisource_wizard',
+            // 'intellisource_scheduler') both compare equal here.
+            $form_type = \ISF\Frontend\Frontend::canonicalize_form_type((string) ($instance['form_type'] ?? 'enrollment'));
 
-            // Fetch promo codes for step 3
+            // Fetch promo codes for step 3 (wizard only, not scheduler).
             $promo_codes = [];
-            if ($step === 3 && $form_type === 'enrollment') {
+            if ($step === 3 && $form_type === 'intellisource_wizard') {
                 $promo_codes = $this->fetch_promo_codes($instance);
             }
 
-            // Handle success template separately
+            // Handle success template separately.
             if ($is_success_step) {
-                if ($form_type === 'scheduler') {
+                if ($form_type === 'intellisource_scheduler') {
                     $template_file = ISF_PLUGIN_DIR . 'includes/intellisource/templates/scheduler/success.php';
                 } else {
                     $template_file = ISF_PLUGIN_DIR . 'includes/intellisource/templates/enrollment/success.php';
                 }
-            } elseif ($form_type === 'scheduler') {
+            } elseif ($form_type === 'intellisource_scheduler') {
                 $template_file = ISF_PLUGIN_DIR . "includes/intellisource/templates/scheduler/step-{$step}-" . $this->get_scheduler_step_name($step) . '.php';
             } else {
                 $template_file = ISF_PLUGIN_DIR . "includes/intellisource/templates/enrollment/step-{$step}-" . $this->get_step_name($step) . '.php';

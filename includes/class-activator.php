@@ -146,6 +146,32 @@ class Activator {
             }
         }
 
+        // Migration for v4.0.0: Add canonical names for the IntelliSOURCE /
+        // Builder split — `intellisource_wizard`, `intellisource_scheduler`,
+        // and `builder` — alongside the legacy values. The legacy values
+        // are aliased by Frontend::classify() and never get rewritten, so
+        // existing rows keep working forever. New form_type writes from
+        // the 4.0 admin UI use the canonical names.
+        if (version_compare($current_version, '4.0.0', '<')) {
+            $table = $wpdb->prefix . ISF_TABLE_INSTANCES;
+
+            $column_info = $wpdb->get_row(
+                $wpdb->prepare(
+                    "SELECT COLUMN_TYPE
+                     FROM INFORMATION_SCHEMA.COLUMNS
+                     WHERE TABLE_SCHEMA = %s
+                     AND TABLE_NAME = %s
+                     AND COLUMN_NAME = 'form_type'",
+                    $wpdb->dbname,
+                    $table
+                )
+            );
+
+            if ($column_info && strpos($column_info->COLUMN_TYPE, 'builder') === false) {
+                $wpdb->query("ALTER TABLE {$table} MODIFY COLUMN form_type ENUM('enrollment','scheduler','external','custom','intellisource_wizard','intellisource_scheduler','builder') DEFAULT 'builder'");
+            }
+        }
+
         // Migration for v3.2.1: ensure wp_isf_deliveries exists.
         // The Destinations subsystem (2.9.0+) writes to this table on every
         // submission. If the table is missing — e.g. site installed before
@@ -176,7 +202,7 @@ class Activator {
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(100) NOT NULL,
             utility VARCHAR(50) NOT NULL,
-            form_type ENUM('enrollment','scheduler','external','custom') DEFAULT 'enrollment',
+            form_type ENUM('enrollment','scheduler','external','custom','intellisource_wizard','intellisource_scheduler','builder') DEFAULT 'builder',
             api_endpoint VARCHAR(500) NOT NULL,
             api_password VARCHAR(500),
             support_email_from VARCHAR(255),

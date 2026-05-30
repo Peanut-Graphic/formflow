@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 
 final class FormTypeEnumRoundTripTest extends TestCase
 {
-    private const REQUIRED_FORM_TYPES = ['enrollment', 'scheduler', 'external', 'custom'];
+    private const REQUIRED_FORM_TYPES = ['enrollment', 'scheduler', 'external', 'custom', 'intellisource_wizard', 'intellisource_scheduler', 'builder'];
 
     private string $activator_source;
 
@@ -91,18 +91,23 @@ final class FormTypeEnumRoundTripTest extends TestCase
     {
         $public_source = file_get_contents(ISF_PLUGIN_DIR . 'public/class-public.php');
 
+        // 4.0 dispatch shape: render_form_shortcode calls classify()
+        // and dispatches on the resulting subsystem. The two relevant
+        // subsystems must each have an explicit branch.
         $dispatches_present = [
-            'external' => (bool) preg_match("/form_type'\]\s*===\s*'external'/", $public_source),
-            'custom'   => (bool) preg_match("/form_type'\]\s*===\s*'custom'/", $public_source),
-            // enrollment + scheduler fall through to the legacy wizard
-            // path and are matched by $is_scheduler = ... === 'scheduler'.
-            'scheduler' => (bool) preg_match("/form_type'\]\s*===\s*'scheduler'/", $public_source),
+            'classify call exists' => (bool) preg_match("/\\\$subsystem\s*=\s*self::classify/", $public_source),
+            'external subsystem branch' => (bool) preg_match("/\\\$subsystem\s*===\s*'external'/", $public_source),
+            'builder subsystem branch'  => (bool) preg_match("/\\\$subsystem\s*===\s*'builder'/", $public_source),
+            // Scheduler sub-shape detection inside the wizard subsystem
+            // goes through canonicalize_form_type so both legacy and
+            // canonical values match.
+            'scheduler sub-shape detection' => (bool) preg_match("/canonicalize_form_type[^;]+intellisource_scheduler/", $public_source),
         ];
 
         foreach ($dispatches_present as $type => $present) {
             $this->assertTrue(
                 $present,
-                "Public renderer has no explicit dispatch for form_type='{$type}'."
+                "Public renderer dispatch contract missing: {$type}."
             );
         }
     }
