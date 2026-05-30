@@ -89,14 +89,14 @@ trait Frontend_Ajax_Handlers {
             // Handle success template separately
             if ($is_success_step) {
                 if ($form_type === 'scheduler') {
-                    $template_file = ISF_PLUGIN_DIR . 'public/templates/scheduler/success.php';
+                    $template_file = ISF_PLUGIN_DIR . 'includes/intellisource/templates/scheduler/success.php';
                 } else {
-                    $template_file = ISF_PLUGIN_DIR . 'public/templates/enrollment/success.php';
+                    $template_file = ISF_PLUGIN_DIR . 'includes/intellisource/templates/enrollment/success.php';
                 }
             } elseif ($form_type === 'scheduler') {
-                $template_file = ISF_PLUGIN_DIR . "public/templates/scheduler/step-{$step}-" . $this->get_scheduler_step_name($step) . '.php';
+                $template_file = ISF_PLUGIN_DIR . "includes/intellisource/templates/scheduler/step-{$step}-" . $this->get_scheduler_step_name($step) . '.php';
             } else {
-                $template_file = ISF_PLUGIN_DIR . "public/templates/enrollment/step-{$step}-" . $this->get_step_name($step) . '.php';
+                $template_file = ISF_PLUGIN_DIR . "includes/intellisource/templates/enrollment/step-{$step}-" . $this->get_step_name($step) . '.php';
             }
 
             if (file_exists($template_file)) {
