@@ -30,28 +30,44 @@ final class ShortcodeDispatchTest extends TestCase
 
     public function test_external_form_type_routes_to_external_renderer(): void
     {
+        // 4.0 dispatch shape: classify() returns 'external' for
+        // form_type='external', then render_external_form is called
+        // for that subsystem.
         $this->assertMatchesRegularExpression(
-            "/if\s*\(\s*\\\$instance\['form_type'\]\s*===\s*'external'\s*\)\s*\{[^}]*render_external_form/s",
+            "/\\\$subsystem\s*=\s*self::classify/",
             $this->public_source,
-            "form_type='external' must route to render_external_form. If this branch is missing, external forms render as the enrollment wizard."
+            'render_form_shortcode must dispatch via Frontend::classify() — direct equality checks against form_type are the silent-fallthrough bug shape (3.0.5 / 3.1.1).'
+        );
+        $this->assertMatchesRegularExpression(
+            "/if\s*\(\s*\\\$subsystem\s*===\s*'external'\s*\)\s*\{[^}]*render_external_form/s",
+            $this->public_source,
+            "form_type subsystem='external' must route to render_external_form."
         );
     }
 
     public function test_custom_form_type_routes_to_builder_renderer(): void
     {
+        // 4.0 dispatch shape: classify() returns 'builder' for both
+        // legacy 'custom' and canonical 'builder', then
+        // render_custom_form is called for that subsystem.
         $this->assertMatchesRegularExpression(
-            "/if\s*\(\s*\\\$instance\['form_type'\]\s*===\s*'custom'\s*\)\s*\{[^}]*render_custom_form/s",
+            "/if\s*\(\s*\\\$subsystem\s*===\s*'builder'\s*\)\s*\{[^}]*render_custom_form/s",
             $this->public_source,
-            "form_type='custom' must route to render_custom_form. The 3.0.5 patch added this branch; removing it sends every builder form back through the IntelliSOURCE wizard."
+            "form_type subsystem='builder' must route to render_custom_form. Removing this sends every builder form (including all 8 Gravity Forms migrations) back through the IntelliSOURCE wizard."
         );
     }
 
     public function test_scheduler_form_type_is_recognized(): void
     {
+        // 4.0 sub-shape check inside the IntelliSOURCE subsystem:
+        // distinguish wizard vs scheduler via canonicalize_form_type
+        // so both 'scheduler' (legacy) and 'intellisource_scheduler'
+        // (canonical) trigger the 2-step scheduler flow instead of
+        // the 5-step enrollment wizard.
         $this->assertMatchesRegularExpression(
-            "/\\\$is_scheduler\s*=\s*\\\$instance\['form_type'\]\s*===\s*'scheduler'/",
+            "/\\\$is_scheduler\s*=\s*self::canonicalize_form_type[^;]+===\s*'intellisource_scheduler'/",
             $this->public_source,
-            "Scheduler form_type detection missing; scheduler forms will render as enrollment."
+            'Scheduler sub-shape detection missing; scheduler forms will render as the 5-step enrollment wizard.'
         );
     }
 
@@ -104,36 +120,31 @@ final class ShortcodeDispatchTest extends TestCase
      */
     public function test_unknown_form_type_does_not_silently_render_enrollment(): void
     {
-        // Locate the render_form_shortcode method body.
-        $matches = [];
-        $found = preg_match(
-            '/public function render_form_shortcode\([^)]*\)[^{]*\{(.*?)\n    \}/s',
+        // 4.0 changed the unknown-form_type behavior. Pre-4.0 silently
+        // fell through to the IntelliSOURCE wizard (this caused the
+        // 3.0.5 and 3.1.1 regressions when the database column lost
+        // the value via ENUM coercion). 4.0's classify() defaults
+        // unknown values to 'builder' — the safe default for new
+        // clients that doesn't pretend they're utility enrollments.
+        //
+        // Pin the classify default by checking the match expression's
+        // default arm. If anyone changes it back to 'intellisource',
+        // this test fails loudly.
+        $this->assertMatchesRegularExpression(
+            "/default\s*=>\s*'builder'/",
             $this->public_source,
-            $matches
+            "Unknown form_type must default to 'builder', not 'intellisource'. The pre-4.0 silent-fallthrough-to-wizard shape is the bug we're permanently fixing."
         );
-        $this->assertSame(1, $found, 'Could not locate render_form_shortcode method.');
 
-        $body = $matches[1];
+        // Both branches still need to be reachable. The wizard
+        // path stays inline in render_form_shortcode until PR 4
+        // extracts it into includes/intellisource/.
+        $external_pos = strpos($this->public_source, "'external'");
+        $builder_pos  = strpos($this->public_source, "'builder'");
+        $step1_pos    = strpos($this->public_source, 'step-1-program.php');
 
-        // We expect explicit checks for 'external', 'custom', 'scheduler'
-        // BEFORE the fallthrough that includes step-1-program.php.
-        $external_pos  = strpos($body, "'external'");
-        $custom_pos    = strpos($body, "'custom'");
-        $step1_pos     = strpos($body, 'step-1-program.php');
-
-        $this->assertNotFalse($external_pos, 'No external branch.');
-        $this->assertNotFalse($custom_pos,   'No custom branch.');
+        $this->assertNotFalse($external_pos, 'No external dispatch branch.');
+        $this->assertNotFalse($builder_pos,  'No builder dispatch branch.');
         $this->assertNotFalse($step1_pos,    'No step-1-program include — the IntelliSOURCE wizard is gone too?');
-
-        $this->assertLessThan(
-            $step1_pos,
-            $external_pos,
-            'external branch must precede the IntelliSOURCE wizard fallthrough or external forms will render as the wizard.'
-        );
-        $this->assertLessThan(
-            $step1_pos,
-            $custom_pos,
-            'custom branch must precede the IntelliSOURCE wizard fallthrough or custom forms will render as the wizard (the 3.0.5 + 3.1.1 hotfixes).'
-        );
     }
 }

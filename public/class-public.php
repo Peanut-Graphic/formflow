@@ -120,6 +120,50 @@ class Frontend {
     }
 
     /**
+     * Classify a form_type value into one of the three top-level
+     * rendering subsystems. 4.0's dispatch table.
+     *
+     * Subsystems:
+     *   - 'external'      → tracked-redirect button (render_external_form)
+     *   - 'builder'       → generic FormFlow Builder (render_custom_form)
+     *   - 'intellisource' → hardcoded IntelliSOURCE wizard (the wizard
+     *                        path in render_form_shortcode)
+     *
+     * Unknown / empty form_type is classified as 'builder' (the safe
+     * default for new clients; replaces the silent fallthrough to the
+     * IntelliSOURCE wizard that caused today's 3.0.5 / 3.1.1 regressions).
+     *
+     * Both legacy aliases ('enrollment', 'scheduler', 'custom') and the
+     * canonical 4.0 names ('intellisource_wizard', 'intellisource_scheduler',
+     * 'builder') route to the right subsystem. Old sites never have to
+     * migrate their form_type values.
+     */
+    public static function classify(string $form_type): string {
+        return match ($form_type) {
+            'external'                                                                  => 'external',
+            'enrollment', 'scheduler', 'intellisource_wizard', 'intellisource_scheduler' => 'intellisource',
+            'custom', 'builder'                                                         => 'builder',
+            default                                                                     => 'builder',
+        };
+    }
+
+    /**
+     * Normalize a form_type value to its 4.0 canonical name. Used by
+     * intra-subsystem sub-shape checks (e.g. "is this an enrollment
+     * wizard or a scheduler wizard?") that need to distinguish between
+     * the two IntelliSOURCE wizard variants while accepting both legacy
+     * and canonical aliases.
+     */
+    public static function canonicalize_form_type(string $form_type): string {
+        return match ($form_type) {
+            'enrollment'  => 'intellisource_wizard',
+            'scheduler'   => 'intellisource_scheduler',
+            'custom'      => 'builder',
+            default       => $form_type,
+        };
+    }
+
+    /**
      * Render the form shortcode
      *
      * @param array $atts Shortcode attributes
@@ -151,16 +195,18 @@ class Frontend {
             return '';
         }
 
-        // Handle external form type differently
-        if ($instance['form_type'] === 'external') {
+        // 4.0 dispatch: classify the form_type into one of three
+        // subsystems and route. The wizard path stays inline below
+        // (this method's body IS the IntelliSOURCE wizard renderer
+        // until PR 4 extracts it into includes/intellisource/).
+        $subsystem = self::classify((string) $instance['form_type']);
+        if ($subsystem === 'external') {
             return $this->render_external_form($instance, $atts);
         }
-
-        // Custom form_type: render from builder schema via FormRenderer instead of
-        // the hardcoded IntelliSOURCE enrollment wizard.
-        if ($instance['form_type'] === 'custom') {
+        if ($subsystem === 'builder') {
             return $this->render_custom_form($instance, $atts);
         }
+        // subsystem === 'intellisource' → fall through to the wizard.
 
         // Enqueue assets
         wp_enqueue_style('isf-forms');
@@ -270,7 +316,7 @@ class Frontend {
             <?php endif; ?>
 
             <?php
-            $is_scheduler = $instance['form_type'] === 'scheduler';
+            $is_scheduler = self::canonicalize_form_type((string) $instance['form_type']) === 'intellisource_scheduler';
             $total_steps = $is_scheduler ? 2 : 5;
             ?>
 
