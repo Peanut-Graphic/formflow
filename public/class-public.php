@@ -276,7 +276,7 @@ class Frontend {
 
             <!-- Progress Bar (enrollment only) -->
             <?php if (!$is_scheduler) : ?>
-                <?php include ISF_PLUGIN_DIR . 'public/templates/partials/progress-bar.php'; ?>
+                <?php include ISF_PLUGIN_DIR . 'includes/intellisource/templates/partials/progress-bar.php'; ?>
             <?php endif; ?>
 
             <!-- Form Content Area -->
@@ -293,9 +293,9 @@ class Frontend {
                     $form_data = [];
 
                     if ($is_scheduler) {
-                        include ISF_PLUGIN_DIR . 'public/templates/scheduler/step-1-account.php';
+                        include ISF_PLUGIN_DIR . 'includes/intellisource/templates/scheduler/step-1-account.php';
                     } else {
-                        include ISF_PLUGIN_DIR . 'public/templates/enrollment/step-1-program.php';
+                        include ISF_PLUGIN_DIR . 'includes/intellisource/templates/enrollment/step-1-program.php';
                     }
                     ?>
                 </div>
