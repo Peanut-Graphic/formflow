@@ -486,15 +486,30 @@ class Frontend {
 
         // Configure the builder-form JS so it can AJAX-submit instead of
         // letting the browser POST to the page URL (which drops the data).
+        // Event mode: for iPad / tablet kiosks doing back-to-back
+        // enrollments at an event. When enabled, the success panel
+        // gets a "Start another enrollment" button + an optional
+        // countdown that auto-reloads the page so the next person
+        // can submit without a manual browser refresh.
+        $event_mode      = !empty($instance['settings']['event_mode']);
+        $event_mode_secs = (int) ($instance['settings']['event_mode_auto_reset_seconds'] ?? 5);
+        if ($event_mode_secs < 0)  { $event_mode_secs = 0; }
+        if ($event_mode_secs > 60) { $event_mode_secs = 60; }
+
         wp_localize_script('isf-builder-form', 'isfBuilderForm', [
             'ajax_url'    => admin_url('admin-ajax.php'),
             'action'      => 'formflow_submit_builder_form',
             'nonce'       => wp_create_nonce('isf_form_submit'),
             'instance_id' => (int) $instance['id'],
+            'event_mode'  => $event_mode,
+            'event_mode_auto_reset_seconds' => $event_mode_secs,
             'strings'     => [
-                'submitting' => __('Submitting…', 'formflow'),
-                'error'      => __('Something went wrong. Please try again.', 'formflow'),
-                'network'    => __('Network error. Please check your connection and try again.', 'formflow'),
+                'submitting'           => __('Submitting…', 'formflow'),
+                'error'                => __('Something went wrong. Please try again.', 'formflow'),
+                'network'              => __('Network error. Please check your connection and try again.', 'formflow'),
+                'event_button_label'   => __('Start another enrollment', 'formflow'),
+                'event_countdown_prefix'   => __('Starting next enrollment in', 'formflow'),
+                'event_countdown_suffix'   => __('Tap anywhere to cancel.', 'formflow'),
             ],
         ]);
 

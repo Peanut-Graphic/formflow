@@ -566,6 +566,53 @@
     line-height: 1.55;
 }
 
+/* Event mode: kiosk reset button + countdown.
+   Used at outreach events where multiple people enroll on the same
+   iPad — no manual browser refresh between submissions. */
+.isf-builder-form .isf-event-reset {
+    display: inline-block;
+    margin-top: 18px;
+    padding: 14px 28px;
+    font-size: 16px;
+    line-height: 1.2;
+    border: 0;
+    border-radius: 6px;
+    background: #1f5132;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    /* Big tap target — these are iPad finger-touches at an event. */
+    min-height: 48px;
+}
+.isf-builder-form .isf-event-reset:hover,
+.isf-builder-form .isf-event-reset:focus {
+    background: #16412a;
+    outline: none;
+}
+
+.isf-builder-form .isf-event-countdown {
+    margin-top: 14px;
+    font-size: 14px;
+    color: #1f5132;
+    opacity: 0.85;
+}
+.isf-builder-form .isf-event-countdown-num {
+    display: inline-block;
+    min-width: 2ch;
+    text-align: center;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.isf-builder-form .isf-event-countdown-hint {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 12px;
+    opacity: 0.7;
+}
+.isf-builder-form .isf-event-countdown.isf-event-countdown-cancelled {
+    opacity: 0.6;
+}
+
 /* Inline submit error (network failure, server-side validation, etc.) */
 .isf-builder-form .isf-form-error {
     background: #fdecea;
