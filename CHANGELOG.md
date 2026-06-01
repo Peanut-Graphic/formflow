@@ -1,5 +1,22 @@
 # FormFlow Pro Changelog
 
+## 4.0.1 — 2026-06-01
+
+### Added
+- **Event Mode** for builder forms — designed for iPad/kiosk use at outreach events where multiple people enroll back-to-back on the same device. Configurable per form in the editor (Copy task):
+  - **Reset button**: appends a large "Start another enrollment" button to the confirmation panel, full hard-refresh on tap.
+  - **Auto-reset countdown** (default 5s, configurable 0–60s): counts down on the confirmation panel and reloads the form when it hits zero.
+  - **Tap-to-cancel**: tapping anywhere on the confirmation panel pauses the auto-reset (in case the next person isn't ready) — the manual button still works.
+  - Reload uses `window.location.reload()` so the visitor cookie, server-side state, and any half-saved progress all reset cleanly between submissions.
+- Phase 5 sentinel test (`EventModeContractTest`) pins the contract: editor UI exposure, localized config keys, clamped seconds (0–60), JS branching, reload mechanism, cancel hook. Suite is now 65 tests / ~135 assertions.
+
+### Why
+- The Dominion PTR form ships on iPads at a tabling event. Without event mode the staff has to hard-refresh Safari between every enrollment, which is clunky and slow. With event mode enabled the form auto-resets a few seconds after the confirmation appears (or the staff taps the button) — the next person can step up immediately.
+
+### Notes
+- Disabled by default. Enable per-form via the **Copy** task → **Event Mode** section.
+- Builder-form only. The IntelliSOURCE Wizard subsystem is unaffected (already has its own kiosk flow).
+
 ## 4.0.0 — 2026-05-30 (4.0 release line — beta)
 
 The 4.0 release line establishes a structural split between the IntelliSOURCE Wizard subsystem (Pepco / Delmarva utility enrollment) and the generic FormFlow Builder (Dominion PTR, Gravity Forms migrations, every future non-utility client). Backed by the Phase 5 regression suite (59 tests / 125 assertions). **Shipped as a beta channel: install on the pilot site first, smoke the import + a real submission, then roll to the remaining 7 GF sites.**

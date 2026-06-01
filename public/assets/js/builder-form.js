@@ -151,14 +151,97 @@
     }
 
     function renderSuccess(form, message) {
+        var cfg = window.isfBuilderForm || {};
+        var msg = message || 'Thank you! Your submission has been received.';
+
         var html = '<div class="isf-success" role="status" aria-live="polite">'
-            + (message || 'Thank you! Your submission has been received.')
-            + '</div>';
-        // Replace the form contents entirely with the success state so
-        // the user can't double-submit and can see the confirmation.
+            + msg + '</div>';
+
+        // Event mode (iPad / kiosk at an event): show a manual reset
+        // button and optionally an auto-reset countdown so the next
+        // person can submit without a hard browser refresh.
+        if (cfg.event_mode) {
+            var btnLabel = (cfg.strings && cfg.strings.event_button_label) || 'Start another enrollment';
+            html += '<button type="button" class="isf-btn-submit isf-event-reset" '
+                  + 'data-action="event-reset">' + escapeHtml(btnLabel) + '</button>';
+
+            var secs = parseInt(cfg.event_mode_auto_reset_seconds, 10);
+            if (secs > 0) {
+                var prefix = (cfg.strings && cfg.strings.event_countdown_prefix) || 'Starting next enrollment in';
+                var suffix = (cfg.strings && cfg.strings.event_countdown_suffix) || 'Tap anywhere to cancel.';
+                html += '<div class="isf-event-countdown" aria-live="polite">'
+                      + '<span class="isf-event-countdown-text">'
+                      + escapeHtml(prefix) + ' <span class="isf-event-countdown-num" data-seconds-left="' + secs + '">' + secs + '</span>…'
+                      + '</span><br><span class="isf-event-countdown-hint">' + escapeHtml(suffix) + '</span>'
+                      + '</div>';
+            }
+        }
+
         form.innerHTML = html;
+
+        if (cfg.event_mode) {
+            wireEventResetControls(form, cfg);
+        }
+
         // Scroll the confirmation into view.
         try { form.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    }
+
+    function wireEventResetControls(form, cfg) {
+        var resetBtn = form.querySelector('.isf-event-reset');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+                window.location.reload();
+            });
+        }
+
+        var num = form.querySelector('.isf-event-countdown-num');
+        if (!num) { return; }
+
+        var secs = parseInt(num.getAttribute('data-seconds-left'), 10) || 0;
+        var countdownEl = form.querySelector('.isf-event-countdown');
+        var cancelled = false;
+
+        // Tap anywhere inside the form / success panel cancels the
+        // auto-reset (in case the user wants to read the message
+        // longer). The manual reset button still works after cancel.
+        function cancel() {
+            if (cancelled) { return; }
+            cancelled = true;
+            if (countdownEl) {
+                countdownEl.classList.add('isf-event-countdown-cancelled');
+                countdownEl.setAttribute('aria-live', 'off');
+                var text = countdownEl.querySelector('.isf-event-countdown-text');
+                if (text) { text.textContent = 'Auto-reset cancelled. Tap the button when ready.'; }
+                var hint = countdownEl.querySelector('.isf-event-countdown-hint');
+                if (hint) { hint.remove(); }
+            }
+        }
+        form.addEventListener('click', function (e) {
+            // Don't treat the reset button as a cancel — let its own
+            // click handler fire the reload.
+            if (e.target.closest('.isf-event-reset')) { return; }
+            cancel();
+        }, true);
+
+        var tick = function () {
+            if (cancelled) { return; }
+            secs -= 1;
+            if (secs <= 0) {
+                window.location.reload();
+                return;
+            }
+            num.setAttribute('data-seconds-left', String(secs));
+            num.textContent = String(secs);
+            setTimeout(tick, 1000);
+        };
+        setTimeout(tick, 1000);
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
     }
 
     function showError(form, message) {
