@@ -381,7 +381,7 @@ class CapacityManager {
         $charset = $wpdb->get_charset_collate();
 
         $sql = "CREATE TABLE {$table} (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id INT NOT NULL AUTO_INCREMENT,
             instance_id INT NOT NULL,
             email VARCHAR(255),
             phone VARCHAR(50),
@@ -393,8 +393,9 @@ class CapacityManager {
             status ENUM('waiting', 'notified', 'booked', 'expired') DEFAULT 'waiting',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             notified_at TIMESTAMP NULL,
-            INDEX idx_instance_date (instance_id, preferred_date),
-            INDEX idx_status (status)
+            PRIMARY KEY  (id),
+            KEY idx_instance_date (instance_id, preferred_date),
+            KEY idx_status (status)
         ) {$charset};";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';

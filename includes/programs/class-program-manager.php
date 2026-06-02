@@ -140,7 +140,7 @@ class ProgramManager {
 
         // Programs table
         $sql_programs = "CREATE TABLE IF NOT EXISTS {$this->table_programs} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             instance_id INT UNSIGNED,
             utility VARCHAR(50) NOT NULL,
             program_code VARCHAR(50) NOT NULL,
@@ -160,6 +160,7 @@ class ProgramManager {
             settings JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY utility_program (utility, program_code),
             KEY instance_id (instance_id),
             KEY category (category),
@@ -168,7 +169,7 @@ class ProgramManager {
 
         // Program enrollments table
         $sql_enrollments = "CREATE TABLE IF NOT EXISTS {$this->table_enrollments} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             submission_id INT UNSIGNED NOT NULL,
             program_id INT UNSIGNED NOT NULL,
             account_number VARCHAR(50),
@@ -178,6 +179,7 @@ class ProgramManager {
             notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY submission_id (submission_id),
             KEY program_id (program_id),
             KEY status (status)
@@ -185,7 +187,7 @@ class ProgramManager {
 
         // Bundled enrollments table (tracks multi-program submissions)
         $sql_bundled = "CREATE TABLE IF NOT EXISTS {$this->table_bundled} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             bundle_id VARCHAR(64) NOT NULL,
             submission_id INT UNSIGNED NOT NULL,
             programs JSON NOT NULL,
@@ -193,6 +195,7 @@ class ProgramManager {
             appointment_id INT UNSIGNED,
             status ENUM('pending', 'partial', 'complete', 'failed') DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY bundle_id (bundle_id),
             KEY submission_id (submission_id)
         ) {$charset_collate};";

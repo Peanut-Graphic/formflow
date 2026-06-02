@@ -102,7 +102,7 @@ class WhiteLabel {
 
         // Tenants (Resellers/Agencies)
         $sql_tenants = "CREATE TABLE IF NOT EXISTS {$this->table_tenants} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             tenant_code VARCHAR(50) NOT NULL,
             company_name VARCHAR(255) NOT NULL,
             contact_name VARCHAR(100),
@@ -118,6 +118,7 @@ class WhiteLabel {
             is_active TINYINT(1) DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY tenant_code (tenant_code),
             KEY subscription_status (subscription_status),
             KEY is_active (is_active)
@@ -125,7 +126,7 @@ class WhiteLabel {
 
         // Tenant Clients (End customers of resellers)
         $sql_clients = "CREATE TABLE IF NOT EXISTS {$this->table_clients} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             tenant_id INT UNSIGNED NOT NULL,
             client_code VARCHAR(50) NOT NULL,
             company_name VARCHAR(255) NOT NULL,
@@ -138,6 +139,7 @@ class WhiteLabel {
             is_active TINYINT(1) DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY client_code (tenant_id, client_code),
             KEY tenant_id (tenant_id),
             KEY custom_domain (custom_domain),
@@ -146,12 +148,13 @@ class WhiteLabel {
 
         // Usage tracking per tenant
         $sql_usage = "CREATE TABLE IF NOT EXISTS {$this->table_usage} (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             tenant_id INT UNSIGNED NOT NULL,
             client_id INT UNSIGNED,
             metric_type ENUM('submissions', 'api_calls', 'storage_mb', 'emails', 'sms') NOT NULL,
             month_bucket DATE NOT NULL,
             count INT UNSIGNED DEFAULT 0,
+            PRIMARY KEY  (id),
             UNIQUE KEY usage_bucket (tenant_id, client_id, metric_type, month_bucket),
             KEY tenant_id (tenant_id),
             KEY month_bucket (month_bucket)
@@ -159,7 +162,7 @@ class WhiteLabel {
 
         // Branding profiles
         $sql_branding = "CREATE TABLE IF NOT EXISTS {$this->table_branding} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             tenant_id INT UNSIGNED,
             name VARCHAR(100) NOT NULL,
             is_default TINYINT(1) DEFAULT 0,
@@ -182,6 +185,7 @@ class WhiteLabel {
             custom_docs_url VARCHAR(500),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY tenant_id (tenant_id)
         ) {$charset_collate};";
 

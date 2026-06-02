@@ -54,7 +54,7 @@ class DeliveryLog {
             delivered_at DATETIME NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
+            PRIMARY KEY  (id),
             KEY instance_status (instance_id, status),
             KEY submission_id (submission_id),
             KEY destination_id (destination_id),
