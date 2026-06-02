@@ -3,7 +3,7 @@
  * Plugin Name: FormFlow
  * Plugin URI: https://formflow.dev
  * Description: Secure API-integrated enrollment and scheduling forms for utility demand response programs
- * Version: 4.0.1
+ * Version: 4.0.2
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * Text Domain: formflow
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ISF_VERSION', '4.0.1');
+define('ISF_VERSION', '4.0.2');
 define('ISF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ISF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ISF_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -178,8 +178,17 @@ function isf_init() {
     require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-router.php';
     require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-field-gate.php';
     require_once ISF_PLUGIN_DIR . 'includes/builder/importers/class-gravity-forms-importer.php';
-    require_once ISF_PLUGIN_DIR . 'includes/builder/importers/class-gf-import-cli.php';
-    if (class_exists('\\ISF\\Builder\\Importers\\GfImportCli')) {
+    // CLI command registration MUST be gated on WP_CLI here. The early
+    // `return` inside class-gf-import-cli.php is not enough — top-level
+    // `class` declarations are processed at file compile time, before
+    // the `return` runs. So merely requiring the file declares the class
+    // in web context too, and the `class_exists()` check that used to
+    // live here would silently pass and call register() — which then
+    // fatals on `\WP_CLI::add_command()` because the WP_CLI class is
+    // only loaded under the WP-CLI binary, not in web requests.
+    // Gating the require + register together is the only safe pattern.
+    if (defined('WP_CLI') && WP_CLI) {
+        require_once ISF_PLUGIN_DIR . 'includes/builder/importers/class-gf-import-cli.php';
         \ISF\Builder\Importers\GfImportCli::register();
     }
     require_once ISF_PLUGIN_DIR . 'includes/class-branding.php';

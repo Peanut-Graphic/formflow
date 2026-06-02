@@ -1,5 +1,15 @@
 # FormFlow Pro Changelog
 
+## 4.0.2 — 2026-06-02 (critical hotfix)
+
+### Fixed
+- **Critical: web requests fataled with `Class "WP_CLI" not found`** whenever the plugin was loaded outside the WP-CLI binary (i.e., every normal page load and admin request). The Gravity Forms importer's CLI registration in `formflow.php` relied on an early `return` inside `class-gf-import-cli.php` to skip class declaration in web context. That guard does not work: PHP processes top-level `class` declarations at file compile time, before the `return` runs. So the class was declared in every context; `class_exists()` returned true; `GfImportCli::register()` ran; and `\WP_CLI::add_command()` fataled because the WP_CLI *class* is only loaded under the `wp` binary.
+- The fix gates the `require_once` **and** the `register()` call together on `defined('WP_CLI') && WP_CLI` in `formflow.php`. The CLI file is no longer required in web context at all.
+- Added Phase 5 sentinel test (`test_cli_registration_is_gated_on_wp_cli_constant`) so any future refactor that drops the gate fails CI before ship.
+
+### Impact
+- Took down `dominionenergyptr.com` during the 4.0.0/4.0.1 install. The bug shipped in 4.0.0 (PR #28, GF importer) and was latent in the 4.0.0-beta1 desktop zip, hidden because the pilot smoke ran via `wp formflow import-gf` on a dev environment where `WP_CLI` *was* defined.
+
 ## 4.0.1 — 2026-06-01
 
 ### Added

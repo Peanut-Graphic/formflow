@@ -63,6 +63,25 @@ final class GfImporterRegistrationTest extends TestCase
         );
     }
 
+    /**
+     * 4.0.2 hotfix: the CLI registration must be gated on the WP_CLI
+     * constant in formflow.php itself — NOT relied on via a `return`
+     * at the top of the CLI file. PHP processes top-level `class`
+     * declarations at compile time, so a file with `return` followed
+     * by `class X {}` still declares X in web context. Without this
+     * gate, GfImportCli::register() runs on every web request and
+     * fatals on \WP_CLI::add_command() (the WP_CLI *class* is only
+     * loaded under the WP-CLI binary). This took down Dominion.
+     */
+    public function test_cli_registration_is_gated_on_wp_cli_constant(): void
+    {
+        $this->assertMatchesRegularExpression(
+            "/defined\\(\\s*['\"]WP_CLI['\"]\\s*\\)\\s*&&\\s*WP_CLI/",
+            $this->bootstrap_src,
+            'formflow.php must gate the GF importer CLI registration on `defined(\'WP_CLI\') && WP_CLI` — otherwise web requests fatal on missing WP_CLI class.'
+        );
+    }
+
     public function test_cli_command_is_named_formflow_import_gf(): void
     {
         $this->assertMatchesRegularExpression(
