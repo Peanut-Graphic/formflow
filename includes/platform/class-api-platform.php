@@ -97,11 +97,12 @@ class APIPlatform {
 
         // API Keys table
         $sql_keys = "CREATE TABLE IF NOT EXISTS {$this->table_keys} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             user_id BIGINT UNSIGNED,
             name VARCHAR(100) NOT NULL,
             description TEXT,
-            api_key VARCHAR(64) NOT NULL,
+            api_PRIMARY KEY  (id),
+            key VARCHAR(64) NOT NULL,
             api_secret_hash VARCHAR(255) NOT NULL,
             permissions JSON NOT NULL,
             rate_limit INT UNSIGNED DEFAULT " . self::DEFAULT_RATE_LIMIT . ",
@@ -122,7 +123,7 @@ class APIPlatform {
 
         // API Usage tracking (per-hour aggregates)
         $sql_usage = "CREATE TABLE IF NOT EXISTS {$this->table_usage} (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             api_key_id INT UNSIGNED NOT NULL,
             endpoint VARCHAR(255) NOT NULL,
             method VARCHAR(10) NOT NULL,
@@ -133,13 +134,14 @@ class APIPlatform {
             total_response_time_ms BIGINT UNSIGNED DEFAULT 0,
             bytes_sent BIGINT UNSIGNED DEFAULT 0,
             bytes_received BIGINT UNSIGNED DEFAULT 0,
+            PRIMARY KEY  (id),
             UNIQUE KEY usage_bucket (api_key_id, endpoint, method, hour_bucket),
             KEY hour_bucket (hour_bucket)
         ) {$charset_collate};";
 
         // Detailed API logs (for debugging, rotated frequently)
         $sql_logs = "CREATE TABLE IF NOT EXISTS {$this->table_logs} (
-            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             api_key_id INT UNSIGNED,
             request_id VARCHAR(36) NOT NULL,
             endpoint VARCHAR(255) NOT NULL,
@@ -153,6 +155,7 @@ class APIPlatform {
             user_agent VARCHAR(500),
             error_message TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY api_key_id (api_key_id),
             KEY request_id (request_id),
             KEY created_at (created_at),

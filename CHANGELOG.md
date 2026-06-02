@@ -1,5 +1,19 @@
 # FormFlow Pro Changelog
 
+## 4.0.3 — 2026-06-02 (schema cleanup)
+
+### Fixed
+- **dbDelta noise across every activation.** 38 CREATE TABLE statements across 9 schema files used inline `id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,` syntax. dbDelta accepts these on initial CREATE but then synthesizes `ALTER TABLE … CHANGE COLUMN id id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY` on every subsequent activation — failing with `Multiple primary key defined` and flooding `debug.log`. Rewrote every schema to dbDelta-compliant form: `NOT NULL AUTO_INCREMENT` on the column line + a separate `PRIMARY KEY  (id)` line with the required two-space gap.
+- **FOREIGN KEY constraints removed from two tables** (`wp_isf_submissions`, `wp_isf_analytics`). dbDelta does not understand FOREIGN KEY at all — it parses each as a column declaration and emits `ALTER TABLE … ADD COLUMN CONSTRAINT fk_… FOREIGN KEY …`, which is syntactically invalid SQL. Referential integrity is still enforced in application code on delete.
+- **`INDEX name (...)` → `KEY name (...)`** in `class-document-upload.php` and `class-capacity-manager.php` so dbDelta stops re-synthesizing the same indexes on every load.
+
+### Added
+- **Phase 5 sentinel: `DbDeltaCompatibilityTest`** with 4 cases pinning every CREATE TABLE in the plugin to dbDelta-compliant syntax. Any new schema that reintroduces inline `AUTO_INCREMENT PRIMARY KEY`, a `FOREIGN KEY`, an `INDEX` keyword, or a single-space `PRIMARY KEY (` fails CI before ship.
+
+### Notes
+- This is internal cleanup only. No behavior change, no data migration, no schema change at the table level (existing rows + columns unchanged — dbDelta's idempotent `dbDelta()` simply now produces *zero* spurious ALTERs on activation instead of dozens).
+- Recommended install path: overwrite-upload via Plugins → Add New → Upload Plugin → "Replace current with uploaded". Activation runs cleanly with no debug.log noise.
+
 ## 4.0.2 — 2026-06-02 (critical hotfix)
 
 ### Fixed

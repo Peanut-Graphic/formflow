@@ -108,7 +108,7 @@ class Marketplace {
 
         // Installed marketplace items
         $sql_installed = "CREATE TABLE IF NOT EXISTS {$this->table_installed} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             item_id VARCHAR(64) NOT NULL,
             item_type ENUM('template', 'connector', 'theme', 'addon') NOT NULL,
             name VARCHAR(255) NOT NULL,
@@ -119,6 +119,7 @@ class Marketplace {
             is_active TINYINT(1) DEFAULT 1,
             installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY item_id (item_id),
             KEY item_type (item_type),
             KEY is_active (is_active)
@@ -126,7 +127,7 @@ class Marketplace {
 
         // Local templates library
         $sql_templates = "CREATE TABLE IF NOT EXISTS {$this->table_templates} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             slug VARCHAR(100) NOT NULL,
             name VARCHAR(255) NOT NULL,
             description TEXT,
@@ -144,6 +145,7 @@ class Marketplace {
             source ENUM('local', 'marketplace', 'imported') DEFAULT 'local',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY slug (slug),
             KEY category (category),
             KEY is_active (is_active),

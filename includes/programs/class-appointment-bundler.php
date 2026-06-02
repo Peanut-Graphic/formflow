@@ -123,7 +123,7 @@ class AppointmentBundler {
         $charset_collate = $wpdb->get_charset_collate();
 
         $sql = "CREATE TABLE IF NOT EXISTS {$this->table_bundled_appointments} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             bundle_id VARCHAR(64) NOT NULL,
             submission_id INT UNSIGNED,
             account_number VARCHAR(50),
@@ -144,6 +144,7 @@ class AppointmentBundler {
             notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY bundle_id (bundle_id),
             KEY submission_id (submission_id),
             KEY account_number (account_number),

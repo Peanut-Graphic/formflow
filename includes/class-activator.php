@@ -198,7 +198,7 @@ class Activator {
         // Instances table
         $table_instances = $wpdb->prefix . ISF_TABLE_INSTANCES;
         $sql_instances = "CREATE TABLE {$table_instances} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(100) NOT NULL,
             utility VARCHAR(50) NOT NULL,
@@ -214,6 +214,7 @@ class Activator {
             display_order INT UNSIGNED DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY slug (slug),
             UNIQUE KEY embed_token (embed_token),
             KEY utility (utility),
@@ -224,7 +225,7 @@ class Activator {
         // Submissions table
         $table_submissions = $wpdb->prefix . ISF_TABLE_SUBMISSIONS;
         $sql_submissions = "CREATE TABLE {$table_submissions} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             instance_id INT UNSIGNED NOT NULL,
             session_id VARCHAR(64) NOT NULL,
             account_number VARCHAR(50),
@@ -239,24 +240,23 @@ class Activator {
             is_test TINYINT(1) DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             completed_at TIMESTAMP NULL,
+            PRIMARY KEY  (id),
             KEY session_id (session_id),
             KEY status_date (status, created_at),
             KEY instance_status (instance_id, status),
-            KEY is_test (is_test),
-            CONSTRAINT fk_submission_instance FOREIGN KEY (instance_id)
-                REFERENCES {$table_instances}(id) ON DELETE CASCADE
-        ) {$charset_collate};";
+            KEY is_test (is_test)) {$charset_collate};";
 
         // Logs table
         $table_logs = $wpdb->prefix . ISF_TABLE_LOGS;
         $sql_logs = "CREATE TABLE {$table_logs} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             instance_id INT UNSIGNED,
             submission_id INT UNSIGNED,
             log_type ENUM('info','warning','error','api_call','security') NOT NULL,
             message TEXT NOT NULL,
             details JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY type_date (log_type, created_at),
             KEY instance_id (instance_id),
             KEY submission_id (submission_id)
@@ -265,7 +265,7 @@ class Activator {
         // Step analytics table - tracks user progression through form steps
         $table_analytics = $wpdb->prefix . ISF_TABLE_ANALYTICS;
         $sql_analytics = "CREATE TABLE {$table_analytics} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             instance_id INT UNSIGNED NOT NULL,
             submission_id INT UNSIGNED,
             session_id VARCHAR(64) NOT NULL,
@@ -279,19 +279,17 @@ class Activator {
             is_test TINYINT(1) DEFAULT 0,
             referrer VARCHAR(500),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY instance_step (instance_id, step),
             KEY session_step (session_id, step),
             KEY action_date (action, created_at),
             KEY instance_date (instance_id, created_at),
-            KEY is_test (is_test),
-            CONSTRAINT fk_analytics_instance FOREIGN KEY (instance_id)
-                REFERENCES {$table_instances}(id) ON DELETE CASCADE
-        ) {$charset_collate};";
+            KEY is_test (is_test)) {$charset_collate};";
 
         // Failed submissions retry queue
         $table_retry_queue = $wpdb->prefix . 'isf_retry_queue';
         $sql_retry_queue = "CREATE TABLE {$table_retry_queue} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             submission_id INT UNSIGNED NOT NULL,
             instance_id INT UNSIGNED NOT NULL,
             retry_count TINYINT UNSIGNED DEFAULT 0,
@@ -301,6 +299,7 @@ class Activator {
             status ENUM('pending','processing','completed','failed') DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY status_retry (status, next_retry_at),
             KEY submission_id (submission_id),
             KEY instance_id (instance_id)
@@ -309,7 +308,7 @@ class Activator {
         // Webhook notifications table
         $table_webhooks = $wpdb->prefix . 'isf_webhooks';
         $sql_webhooks = "CREATE TABLE {$table_webhooks} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             instance_id INT UNSIGNED,
             name VARCHAR(255) NOT NULL,
             url VARCHAR(500) NOT NULL,
@@ -321,13 +320,14 @@ class Activator {
             failure_count TINYINT UNSIGNED DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY instance_active (instance_id, is_active)
         ) {$charset_collate};";
 
         // API usage tracking table for rate limit monitoring
         $table_api_usage = $wpdb->prefix . 'isf_api_usage';
         $sql_api_usage = "CREATE TABLE {$table_api_usage} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             instance_id INT UNSIGNED NOT NULL,
             endpoint VARCHAR(100) NOT NULL,
             method VARCHAR(50) NOT NULL,
@@ -336,6 +336,7 @@ class Activator {
             success TINYINT(1) DEFAULT 1,
             error_message TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY instance_endpoint (instance_id, endpoint),
             KEY created_at (created_at),
             KEY instance_date (instance_id, created_at),
@@ -345,7 +346,7 @@ class Activator {
         // Resume tokens table for "save and continue later" feature
         $table_resume_tokens = $wpdb->prefix . 'isf_resume_tokens';
         $sql_resume_tokens = "CREATE TABLE {$table_resume_tokens} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             session_id VARCHAR(64) NOT NULL,
             instance_id INT UNSIGNED NOT NULL,
             token VARCHAR(64) NOT NULL,
@@ -353,6 +354,7 @@ class Activator {
             expires_at TIMESTAMP NOT NULL,
             used_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY token (token),
             KEY session_instance (session_id, instance_id),
             KEY expires_at (expires_at),
@@ -362,7 +364,7 @@ class Activator {
         // Scheduled reports table
         $table_scheduled_reports = $wpdb->prefix . 'isf_scheduled_reports';
         $sql_scheduled_reports = "CREATE TABLE {$table_scheduled_reports} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             frequency ENUM('daily','weekly','monthly') NOT NULL DEFAULT 'weekly',
             recipients TEXT NOT NULL,
@@ -373,6 +375,7 @@ class Activator {
             next_send_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY frequency_active (frequency, is_active),
             KEY next_send (next_send_at, is_active),
             KEY instance_id (instance_id)
@@ -381,7 +384,7 @@ class Activator {
         // Audit log table for admin actions
         $table_audit_log = $wpdb->prefix . 'isf_audit_log';
         $sql_audit_log = "CREATE TABLE {$table_audit_log} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             user_id BIGINT UNSIGNED NOT NULL,
             user_login VARCHAR(60) NOT NULL,
             user_email VARCHAR(100),
@@ -393,6 +396,7 @@ class Activator {
             ip_address VARCHAR(45),
             user_agent VARCHAR(500),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY user_action (user_id, action),
             KEY action_date (action, created_at),
             KEY object_type_id (object_type, object_id),
@@ -402,7 +406,7 @@ class Activator {
         // GDPR data requests table
         $table_gdpr_requests = $wpdb->prefix . 'isf_gdpr_requests';
         $sql_gdpr_requests = "CREATE TABLE {$table_gdpr_requests} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             request_type ENUM('export','erasure') NOT NULL,
             email VARCHAR(255) NOT NULL,
             account_number VARCHAR(50),
@@ -414,6 +418,7 @@ class Activator {
             notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             processed_at TIMESTAMP NULL,
+            PRIMARY KEY  (id),
             KEY email_type (email, request_type),
             KEY status (status),
             KEY created_at (created_at)
@@ -422,7 +427,7 @@ class Activator {
         // Visitors table - Anonymous visitor tracking for attribution
         $table_visitors = $wpdb->prefix . ISF_TABLE_VISITORS;
         $sql_visitors = "CREATE TABLE {$table_visitors} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             visitor_id VARCHAR(64) NOT NULL,
             fingerprint_hash VARCHAR(64),
             first_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -431,6 +436,7 @@ class Activator {
             first_touch JSON,
             device_info JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY visitor_id (visitor_id),
             KEY fingerprint_hash (fingerprint_hash),
             KEY first_seen_at (first_seen_at)
@@ -439,7 +445,7 @@ class Activator {
         // Touches table - All marketing touchpoints for attribution
         $table_touches = $wpdb->prefix . ISF_TABLE_TOUCHES;
         $sql_touches = "CREATE TABLE {$table_touches} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             visitor_id VARCHAR(64) NOT NULL,
             instance_id INT UNSIGNED,
             touch_type ENUM('page_view','form_view','form_start','form_complete','handoff','return_visit') NOT NULL,
@@ -458,6 +464,7 @@ class Activator {
             promo_code VARCHAR(50),
             touch_data JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY visitor_id (visitor_id),
             KEY instance_id (instance_id),
             KEY touch_type (touch_type),
@@ -469,7 +476,7 @@ class Activator {
         // Handoffs table - External enrollment redirect tracking
         $table_handoffs = $wpdb->prefix . ISF_TABLE_HANDOFFS;
         $sql_handoffs = "CREATE TABLE {$table_handoffs} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             instance_id INT UNSIGNED NOT NULL,
             visitor_id VARCHAR(64),
             handoff_token VARCHAR(64) NOT NULL,
@@ -481,6 +488,7 @@ class Activator {
             completion_data JSON,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             completed_at TIMESTAMP NULL,
+            PRIMARY KEY  (id),
             UNIQUE KEY handoff_token (handoff_token),
             KEY instance_id (instance_id),
             KEY visitor_id (visitor_id),
@@ -491,7 +499,7 @@ class Activator {
         // External completions table - Inbound completion data from external systems
         $table_external_completions = $wpdb->prefix . ISF_TABLE_EXTERNAL_COMPLETIONS;
         $sql_external_completions = "CREATE TABLE {$table_external_completions} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             instance_id INT UNSIGNED NOT NULL,
             source ENUM('webhook','redirect','import') NOT NULL,
             handoff_id INT UNSIGNED,
@@ -502,6 +510,7 @@ class Activator {
             raw_data JSON NOT NULL,
             processed TINYINT(1) DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY instance_id (instance_id),
             KEY handoff_id (handoff_id),
             KEY account_number (account_number),
@@ -515,10 +524,11 @@ class Activator {
         // API Keys table - Developer Portal API key management
         $table_api_keys = $wpdb->prefix . 'isf_api_keys';
         $sql_api_keys = "CREATE TABLE {$table_api_keys} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             description TEXT,
-            api_key VARCHAR(64) NOT NULL,
+            api_PRIMARY KEY  (id),
+            key VARCHAR(64) NOT NULL,
             api_secret_hash VARCHAR(255) NOT NULL,
             permissions JSON NOT NULL,
             rate_limit INT UNSIGNED DEFAULT 1000,
@@ -541,17 +551,18 @@ class Activator {
         // API Rate Limits table - Track rate limiting per key
         $table_api_rate_limits = $wpdb->prefix . 'isf_api_rate_limits';
         $sql_api_rate_limits = "CREATE TABLE {$table_api_rate_limits} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             api_key_id INT UNSIGNED NOT NULL,
             window_start TIMESTAMP NOT NULL,
             request_count INT UNSIGNED DEFAULT 0,
+            PRIMARY KEY  (id),
             KEY api_key_window (api_key_id, window_start)
         ) {$charset_collate};";
 
         // Marketplace Items table - Templates, connectors, themes
         $table_marketplace_items = $wpdb->prefix . 'isf_marketplace_items';
         $sql_marketplace_items = "CREATE TABLE {$table_marketplace_items} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             item_type ENUM('template','connector','theme','addon') NOT NULL,
             slug VARCHAR(100) NOT NULL,
             name VARCHAR(255) NOT NULL,
@@ -570,6 +581,7 @@ class Activator {
             rating_count INT UNSIGNED DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY type_slug (item_type, slug),
             KEY category (category),
             KEY is_featured (is_featured),
@@ -579,7 +591,7 @@ class Activator {
         // Marketplace Installations table - Track what's installed
         $table_marketplace_installs = $wpdb->prefix . 'isf_marketplace_installs';
         $sql_marketplace_installs = "CREATE TABLE {$table_marketplace_installs} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             item_id INT UNSIGNED NOT NULL,
             instance_id INT UNSIGNED,
             installed_version VARCHAR(20),
@@ -588,6 +600,7 @@ class Activator {
             is_active TINYINT(1) DEFAULT 1,
             installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY item_id (item_id),
             KEY instance_id (instance_id)
         ) {$charset_collate};";
@@ -595,7 +608,7 @@ class Activator {
         // Tenants table - White-label SaaS multi-tenancy
         $table_tenants = $wpdb->prefix . 'isf_tenants';
         $sql_tenants = "CREATE TABLE {$table_tenants} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(100) NOT NULL,
             domain VARCHAR(255),
@@ -603,7 +616,8 @@ class Activator {
             contact_phone VARCHAR(50),
             tier ENUM('starter','professional','enterprise','custom') DEFAULT 'starter',
             status ENUM('active','suspended','inactive') DEFAULT 'active',
-            api_key VARCHAR(64) NOT NULL,
+            api_PRIMARY KEY  (id),
+            key VARCHAR(64) NOT NULL,
             settings JSON,
             custom_limits JSON,
             billing_info JSON,
@@ -618,7 +632,7 @@ class Activator {
         // Tenant Clients table - Clients under each tenant
         $table_tenant_clients = $wpdb->prefix . 'isf_tenant_clients';
         $sql_tenant_clients = "CREATE TABLE {$table_tenant_clients} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             tenant_id INT UNSIGNED NOT NULL,
             name VARCHAR(255) NOT NULL,
             slug VARCHAR(100) NOT NULL,
@@ -627,6 +641,7 @@ class Activator {
             is_active TINYINT(1) DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY tenant_id (tenant_id),
             UNIQUE KEY tenant_slug (tenant_id, slug)
         ) {$charset_collate};";
@@ -634,13 +649,14 @@ class Activator {
         // Branding Profiles table - White-label theming
         $table_branding = $wpdb->prefix . 'isf_branding_profiles';
         $sql_branding = "CREATE TABLE {$table_branding} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             tenant_id INT UNSIGNED,
             name VARCHAR(255) NOT NULL,
             settings JSON NOT NULL,
             is_default TINYINT(1) DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY tenant_id (tenant_id),
             KEY is_default (is_default)
         ) {$charset_collate};";
@@ -648,7 +664,7 @@ class Activator {
         // Tenant Usage table - Track usage for billing
         $table_tenant_usage = $wpdb->prefix . 'isf_tenant_usage';
         $sql_tenant_usage = "CREATE TABLE {$table_tenant_usage} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             tenant_id INT UNSIGNED NOT NULL,
             period_start DATE NOT NULL,
             period_end DATE NOT NULL,
@@ -659,6 +675,7 @@ class Activator {
             sms_sent INT UNSIGNED DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY tenant_period (tenant_id, period_start),
             KEY period_start (period_start)
         ) {$charset_collate};";
@@ -666,7 +683,7 @@ class Activator {
         // BI Reports table - Saved custom reports
         $table_bi_reports = $wpdb->prefix . 'isf_reports';
         $sql_bi_reports = "CREATE TABLE {$table_bi_reports} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             description TEXT,
             type VARCHAR(50) NOT NULL,
@@ -675,6 +692,7 @@ class Activator {
             created_by BIGINT UNSIGNED NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY created_by (created_by),
             KEY type (type)
         ) {$charset_collate};";
@@ -682,7 +700,7 @@ class Activator {
         // BI Dashboards table - Custom dashboard layouts
         $table_bi_dashboards = $wpdb->prefix . 'isf_dashboards';
         $sql_bi_dashboards = "CREATE TABLE {$table_bi_dashboards} (
-            id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             description TEXT,
             layout JSON,
@@ -691,6 +709,7 @@ class Activator {
             created_by BIGINT UNSIGNED NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY created_by (created_by),
             KEY is_default (is_default)
         ) {$charset_collate};";

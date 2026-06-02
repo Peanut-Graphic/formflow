@@ -429,7 +429,7 @@ class DocumentUpload {
         $charset = $wpdb->get_charset_collate();
 
         $sql = "CREATE TABLE {$table} (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id INT NOT NULL AUTO_INCREMENT,
             instance_id INT NOT NULL,
             session_id VARCHAR(64) NOT NULL,
             submission_id INT NULL,
@@ -440,9 +440,10 @@ class DocumentUpload {
             file_type VARCHAR(100),
             file_size INT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_session (session_id),
-            INDEX idx_submission (submission_id),
-            INDEX idx_instance (instance_id)
+            PRIMARY KEY  (id),
+            KEY idx_session (session_id),
+            KEY idx_submission (submission_id),
+            KEY idx_instance (instance_id)
         ) {$charset};";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
