@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 4.0.5 — 2026-06-02
+
+### Fixed
+- **Guarded a latent fatal in the appointment self-service renderer.** `Appointment_Self_Service::render_page()` unconditionally `include`d `public/templates/appointment-self-service.php`, a template that was never shipped (the feature is scaffolded but unfinished and not yet wired to a public route). The renderer now checks `file_exists()` first and returns a graceful error page instead of fatalling if the template is absent. Flagged by the fatal-references pre-ship sweep, which is now clean for FormFlow Pro. (The self-service feature remains unfinished — its config UI is present but the template + routing are still to be built.)
+
 ## 4.0.4 — 2026-06-02
 
 ### Fixed

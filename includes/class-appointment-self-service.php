@@ -420,8 +420,14 @@ class AppointmentSelfService {
             return $this->render_error_page(__('Invalid or expired link. Please contact support for assistance.', 'formflow'));
         }
 
+        $template = ISF_PLUGIN_DIR . 'public/templates/appointment-self-service.php';
+        if (!file_exists($template)) {
+            // Self-service template is not yet shipped; fail gracefully instead of fatalling.
+            return $this->render_error_page(__('This feature is not yet available. Please contact support for assistance.', 'formflow'));
+        }
+
         ob_start();
-        include ISF_PLUGIN_DIR . 'public/templates/appointment-self-service.php';
+        include $template;
         return ob_get_clean();
     }
 
