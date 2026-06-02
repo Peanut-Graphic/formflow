@@ -104,10 +104,19 @@ class FormRenderer {
     }
 
     /**
-     * Render progress bar
+     * Render progress bar.
+     *
+     * Single-step forms (the common case for Dominion PTR, contact
+     * forms, every imported Gravity Form) get NO progress UI — a "1"
+     * circle with a horizontal bar above it is meaningless when
+     * there's only one step to be on. Only render for genuine
+     * multi-step wizards (2+ steps).
      */
     private function render_progress_bar(array $steps, int $current_step): void {
         $total_steps = count($steps);
+        if ($total_steps <= 1) {
+            return;
+        }
         $progress_percent = (($current_step - 1) / max($total_steps - 1, 1)) * 100;
         ?>
         <div class="isf-progress-container">

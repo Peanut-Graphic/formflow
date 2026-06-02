@@ -1,5 +1,10 @@
 # FormFlow Pro Changelog
 
+## 4.0.4 — 2026-06-02
+
+### Fixed
+- **Stray "1" step indicator on single-step forms.** The builder renderer was unconditionally calling `render_progress_bar()` even on forms with one step (Dominion PTR, every imported Gravity Form, every contact form). Result: a lonely "1" circle with a horizontal progress bar floating above an otherwise clean form. Now skipped when `count($steps) <= 1`; multi-step wizards still get the full progress UI.
+
 ## 4.0.3 — 2026-06-02 (schema cleanup)
 
 ### Fixed
