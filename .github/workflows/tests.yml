@@ -1,0 +1,45 @@
+# PHP backend tests + coverage gate.
+# Added in Wave 2 of the ecosystem testing scrub. FormFlow Pro had coverage
+# fully configured in phpunit.xml (Clover output) but NO backend CI to run or
+# enforce it — only frontend accessibility. The unit suite uses Brain Monkey
+# (mock WordPress) so it runs standalone with no DB.
+# Follows DOCUMENTATION/testing-standard/ci-templates/php-plugin-tests.yml.
+name: tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  php-tests:
+    runs-on: ubuntu-latest
+    env:
+      MIN_COVERAGE: "30"   # ratchet up after first green run
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP (pcov for coverage)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          coverage: pcov
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Unit + regression tests with coverage (Brain Monkey, no DB)
+        run: |
+          vendor/bin/phpunit --testsuite=unit,regression \
+            --coverage-clover=coverage/clover.xml
+
+      - name: Coverage gate
+        run: php "${{ github.workspace }}/coverage-gate.php" coverage/clover.xml "$MIN_COVERAGE"
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-coverage
+          path: coverage/
