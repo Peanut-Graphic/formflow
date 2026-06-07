@@ -5,6 +5,15 @@ use PHPUnit\Framework\TestCase;
 use ISF\FormEditor\FieldGate;
 use ISF\FormEditor\ModeResolver;
 
+// This is a plain PHPUnit test (no Brain Monkey), so wp_json_encode() is not
+// stubbed. Define a namespace-local polyfill so the fixtures below resolve
+// regardless of whether a global wp_json_encode() exists in the run.
+if (!function_exists(__NAMESPACE__ . '\\wp_json_encode')) {
+    function wp_json_encode($data, int $options = 0, int $depth = 512) {
+        return json_encode($data, $options, $depth);
+    }
+}
+
 class FieldGateTest extends TestCase {
 
     public function test_dev_mode_passes_all_fields_through(): void {

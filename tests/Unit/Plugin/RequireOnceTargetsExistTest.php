@@ -79,7 +79,7 @@ final class RequireOnceTargetsExistTest extends TestCase
                 new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
                 function ($current) {
                     $name = $current->getFilename();
-                    if (in_array($name, ['vendor', 'node_modules', '.git', 'tests'], true)) {
+                    if (in_array($name, ['vendor', 'node_modules', '.git', '.claude', 'tests'], true)) {
                         return false;
                     }
                     return true;
