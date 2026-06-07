@@ -137,7 +137,7 @@ class SecurityHardening {
         }
 
         // Check honeypot
-        if (!empty($_POST['isf_website_url'])) {
+        if (isset($_POST['isf_website_url']) && $_POST['isf_website_url'] !== '') {
             // Honeypot field was filled - likely a bot
             $this->log_security_event('honeypot_triggered', [
                 'ip' => $this->get_client_ip(),
