@@ -86,7 +86,14 @@ class ConditionalLogic {
                 return strpos((string) $field_value, (string) $value) === 0;
 
             case 'ends_with':
-                return substr((string) $field_value, -strlen($value)) === $value;
+                $needle_len = strlen((string) $value);
+                // Every string ends with the empty string; guard against substr($s, -0)
+                // returning the whole string and producing a false negative.
+                if ($needle_len === 0) {
+                    return true;
+                }
+                // nosemgrep: peanut-negative-length-substr -- $needle_len guaranteed > 0 by the guard above
+                return substr((string) $field_value, -$needle_len) === (string) $value;
 
             case 'greater_than':
                 return floatval($field_value) > floatval($value);
