@@ -222,7 +222,7 @@ class HandoffEndpoint {
      * Called from template_redirect hook for isf_handoff parameter
      */
     public static function handle_redirect_param(): void {
-        if (empty($_GET['isf_handoff'])) {
+        if (!isset($_GET['isf_handoff']) || $_GET['isf_handoff'] === '') {
             return;
         }
 

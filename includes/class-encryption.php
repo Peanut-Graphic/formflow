@@ -149,7 +149,10 @@ class Encryption {
         }
 
         $start = substr($data, 0, $visible_start);
-        $end = substr($data, -$visible_end);
+        // Guard: substr($data, -0) returns the whole string, which would leak
+        // the entire value when no trailing characters should be visible.
+        // nosemgrep: peanut-negative-length-substr -- substr only evaluated when $visible_end > 0
+        $end = $visible_end > 0 ? substr($data, -$visible_end) : '';
         $middle = str_repeat('*', $length - $visible_start - $visible_end);
 
         return $start . $middle . $end;

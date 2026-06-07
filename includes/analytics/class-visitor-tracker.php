@@ -66,7 +66,7 @@ class VisitorTracker {
         }
 
         // Check for existing cookie
-        if (!empty($_COOKIE[self::COOKIE_NAME])) {
+        if (isset($_COOKIE[self::COOKIE_NAME]) && $_COOKIE[self::COOKIE_NAME] !== '') {
             $visitor_id = sanitize_text_field($_COOKIE[self::COOKIE_NAME]);
 
             // Validate format (should be 32 hex chars)
@@ -130,7 +130,7 @@ class VisitorTracker {
             return $this->visitor_id;
         }
 
-        if (!empty($_COOKIE[self::COOKIE_NAME])) {
+        if (isset($_COOKIE[self::COOKIE_NAME]) && $_COOKIE[self::COOKIE_NAME] !== '') {
             $visitor_id = sanitize_text_field($_COOKIE[self::COOKIE_NAME]);
             if (preg_match('/^[a-f0-9]{32}$/', $visitor_id)) {
                 return $visitor_id;
@@ -242,7 +242,7 @@ class VisitorTracker {
         // UTM parameters
         $utm_params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
         foreach ($utm_params as $param) {
-            if (!empty($_GET[$param])) {
+            if (isset($_GET[$param]) && $_GET[$param] !== '') {
                 $attribution[$param] = sanitize_text_field($_GET[$param]);
             }
         }
@@ -250,13 +250,13 @@ class VisitorTracker {
         // Ad platform click IDs
         $click_ids = ['gclid', 'fbclid', 'msclkid', 'dclid'];
         foreach ($click_ids as $param) {
-            if (!empty($_GET[$param])) {
+            if (isset($_GET[$param]) && $_GET[$param] !== '') {
                 $attribution[$param] = sanitize_text_field($_GET[$param]);
             }
         }
 
         // Promo code
-        if (!empty($_GET['promo'])) {
+        if (isset($_GET['promo']) && $_GET['promo'] !== '') {
             $attribution['promo_code'] = sanitize_text_field($_GET['promo']);
         }
 
