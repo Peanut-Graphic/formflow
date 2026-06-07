@@ -344,7 +344,7 @@ class Plugin {
         $instance_id = isset($_POST['instance_id']) ? absint($_POST['instance_id']) : null;
         $extra_data = [];
 
-        if (!empty($_POST['extra_data'])) {
+        if (isset($_POST['extra_data']) && $_POST['extra_data'] !== '') {
             $extra_data = json_decode(stripslashes($_POST['extra_data']), true) ?: [];
         }
 
