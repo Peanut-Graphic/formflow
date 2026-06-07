@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'admin/**'
+      - 'public/**'
+      - 'includes/**'
+      - 'formflow/**'
+      - '.peanut/static-rules/**'
+      - '.github/workflows/tests.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'admin/**'
+      - 'public/**'
+      - 'includes/**'
+      - 'formflow/**'
+      - '.peanut/static-rules/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  static:
+    name: Static Analysis / Security
+    runs-on: [self-hosted, linux, peanut-ci]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install semgrep
+        run: pip install --quiet semgrep
+
+      # CLASS-007 foot-gun gate. The repo is clean (0 findings); this step is
+      # BLOCKING so any newly-introduced empty()-coercion on superglobal input
+      # or negative-length substr fails CI. Intentional exceptions must carry a
+      # `// nosemgrep: <rule-id>` annotation with justification.
+      - name: Semgrep PHP foot-gun rules (CLASS-007)
+        run: semgrep --config .peanut/static-rules/peanut-php-footguns.yml includes/ public/ --error
