@@ -1,0 +1,23 @@
+# gitleaks config for FormFlow (Net 2 secret scan).
+#
+# Extends the upstream default ruleset, then allowlists the documented
+# example-credential PLACEHOLDERS that appear in the developer-portal API docs
+# and integration summaries. These are not real secrets — they are the literal
+# strings shown to users in example curl commands (X-API-Key / X-API-Secret /
+# Bearer). Real secrets are still caught; only these documented placeholders are
+# exempted.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented example/placeholder credentials in API docs"
+regexes = [
+  '''ff_your_api_key_here''',
+  '''your_api_secret_here''',
+  '''ff_your_api_key''',
+]
+paths = [
+  '''admin/views/developer-portal\.php''',
+  '''formflow/admin/views/developer-portal\.php''',
+  '''ML-INTEGRATION-SUMMARY\.md''',
+]

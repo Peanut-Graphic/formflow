@@ -61,6 +61,14 @@ abstract class TestCase extends PHPUnitTestCase
         // JSON functions
         Functions\when('wp_json_encode')->alias('json_encode');
 
+        // Cryptographic salt — Encryption::get_encryption_key() falls back to
+        // wp_salt('auth') when no ISF_ENCRYPTION_KEY constant is defined. Provide
+        // a deterministic, fixed salt so encryption-backed code paths are testable
+        // without booting WordPress.
+        Functions\when('wp_salt')->alias(function ($scheme = 'auth') {
+            return 'isf-test-salt-' . $scheme;
+        });
+
         // URL functions
         Functions\when('home_url')->justReturn('http://example.com');
         Functions\when('admin_url')->alias(function ($path = '') {

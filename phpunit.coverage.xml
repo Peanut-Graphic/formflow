@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  CI coverage-gate config (Net 1 / floor).
+
+  The repo's main phpunit.xml scopes <coverage> at the whole includes/ tree with
+  processUncoveredFiles="true", which currently fails to generate Clover because
+  some legacy class-*.php files have include-time side effects. Rather than weaken
+  the main config or paper over that pre-existing issue, this dedicated config
+  scopes coverage to the pure, WordPress-free modules that the property + contract
+  suites actually exercise, so the coverage floor reflects real, measured coverage
+  of the code under test ("scope coverage to tested files").
+-->
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+    bootstrap="tests/bootstrap.php"
+    colors="true"
+    beStrictAboutTestsThatDoNotTestAnything="true"
+    beStrictAboutOutputDuringTests="true"
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+>
+    <testsuites>
+        <testsuite name="gated">
+            <directory suffix="Test.php">tests/Property</directory>
+            <directory suffix="Test.php">tests/Contract</directory>
+        </testsuite>
+    </testsuites>
+
+    <coverage processUncoveredFiles="false">
+        <include>
+            <file>includes/tester-bridge/class-hmac-verifier.php</file>
+            <file>includes/class-tester-bridge.php</file>
+        </include>
+        <report>
+            <clover outputFile="coverage/clover.xml"/>
+        </report>
+    </coverage>
+</phpunit>
