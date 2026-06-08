@@ -183,16 +183,16 @@ $settings = get_option('isf_settings', []);
 
             <?php
             $filters = [];
-            if (!empty($_GET['action_filter'])) {
+            if (isset($_GET['action_filter']) && $_GET['action_filter'] !== '') {
                 $filters['action'] = sanitize_text_field($_GET['action_filter']);
             }
-            if (!empty($_GET['object_type'])) {
+            if (isset($_GET['object_type']) && $_GET['object_type'] !== '') {
                 $filters['object_type'] = sanitize_text_field($_GET['object_type']);
             }
-            if (!empty($_GET['date_from'])) {
+            if (isset($_GET['date_from']) && $_GET['date_from'] !== '') {
                 $filters['date_from'] = sanitize_text_field($_GET['date_from']);
             }
-            if (!empty($_GET['date_to'])) {
+            if (isset($_GET['date_to']) && $_GET['date_to'] !== '') {
                 $filters['date_to'] = sanitize_text_field($_GET['date_to']);
             }
 

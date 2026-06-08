@@ -154,6 +154,7 @@ if (!defined('ABSPATH')) {
         // Handle disable/enable rate limiting
         if (isset($_POST['isf_toggle_rate_limit']) && wp_verify_nonce($_POST['_wpnonce'], 'isf_toggle_rate_limit')) {
             $settings = get_option('isf_settings', []);
+            // nosemgrep: peanut-empty-coercion-on-input -- checkbox boolean flag: absent/''/'0' all mean false
             $settings['disable_rate_limit'] = !empty($_POST['disable_rate_limit']);
             update_option('isf_settings', $settings);
             echo '<div class="notice notice-success"><p>' . esc_html__('Rate limit settings updated!', 'formflow') . '</p></div>';

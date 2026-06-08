@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['isf_developer_nonce']
                 'rate_limit' => intval($_POST['rate_limit']),
                 'allowed_ips' => array_filter(array_map('trim', explode("\n", $_POST['allowed_ips'] ?? ''))),
                 'allowed_origins' => array_filter(array_map('trim', explode("\n", $_POST['allowed_origins'] ?? ''))),
-                'expires_at' => !empty($_POST['expires_at']) ? sanitize_text_field($_POST['expires_at']) : null,
+                'expires_at' => (isset($_POST['expires_at']) && $_POST['expires_at'] !== '') ? sanitize_text_field($_POST['expires_at']) : null,
             ]);
 
             if (!is_wp_error($result)) {

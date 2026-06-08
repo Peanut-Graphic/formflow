@@ -87,14 +87,14 @@ class UTMTracker {
 
         // Capture UTM parameters
         foreach (self::UTM_PARAMS as $param) {
-            if (!empty($_GET[$param])) {
+            if (isset($_GET[$param]) && $_GET[$param] !== '') {
                 $tracking[$param] = sanitize_text_field($_GET[$param]);
             }
         }
 
         // Capture extra tracking parameters
         foreach (self::EXTRA_PARAMS as $param) {
-            if (!empty($_GET[$param])) {
+            if (isset($_GET[$param]) && $_GET[$param] !== '') {
                 $tracking[$param] = sanitize_text_field($_GET[$param]);
             }
         }
@@ -154,7 +154,7 @@ class UTMTracker {
         }
 
         // Generate a session-based ID as fallback
-        if (!empty($_COOKIE['isf_visitor'])) {
+        if (isset($_COOKIE['isf_visitor']) && $_COOKIE['isf_visitor'] !== '') {
             return sanitize_text_field($_COOKIE['isf_visitor']);
         }
 
@@ -216,7 +216,7 @@ class UTMTracker {
         }
 
         // Fall back to cookie
-        if (!empty($_COOKIE[self::COOKIE_NAME])) {
+        if (isset($_COOKIE[self::COOKIE_NAME]) && $_COOKIE[self::COOKIE_NAME] !== '') {
             $cookie_data = json_decode(base64_decode($_COOKIE[self::COOKIE_NAME]), true);
             if (is_array($cookie_data)) {
                 $_SESSION[self::SESSION_KEY] = $cookie_data;

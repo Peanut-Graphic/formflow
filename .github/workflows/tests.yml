@@ -6,8 +6,9 @@
 #   Net 6 (property)  — tests/Property  (pure, WordPress-free invariants).
 #   Net 7 (contract)  — tests/Contract  (tester-bridge scenario-manifest shape).
 #   Net 1 (floor)     — coverage gate over the property/contract-covered modules.
+#   CLASS-007         — semgrep PHP foot-gun gate (BLOCKING) from the #38 sweep.
 #
-# Blocking gate = static-and-security + property + contract + regression.
+# Blocking gate = static-and-security + class-007 + property + contract + regression.
 # The legacy Unit + Integration suites run NON-BLOCKING: the Analytics handoff/
 # touch tests carry pre-existing $wpdb-mock test-quality debt (they were dormant
 # behind a missing wp_salt()/ARRAY_A bootstrap stub and only began executing once
@@ -16,6 +17,9 @@
 # PHP is pinned to 8.3 (the ecosystem CI baseline). The local dev toolchain runs
 # PHP 8.5, where ReflectionMethod::setAccessible() emits a deprecation that trips
 # beStrictAboutOutputDuringTests — that noise does not occur on 8.3.
+#
+# The trigger intentionally fires on every PR (no path filter): the testing gate
+# must never be skipped just because a change touched only test files or config.
 name: tests
 
 on:
@@ -28,6 +32,29 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  class-007:
+    name: Static Analysis / Security (CLASS-007)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install semgrep
+        run: pip install --quiet semgrep
+
+      # CLASS-007 foot-gun gate. The repo is clean (0 findings); this step is
+      # BLOCKING so any newly-introduced empty()-coercion on superglobal input
+      # or negative-length substr fails CI. Intentional exceptions must carry a
+      # `// nosemgrep: <rule-id>` annotation with justification.
+      - name: Semgrep PHP foot-gun rules (CLASS-007)
+        run: semgrep --config .peanut/static-rules/peanut-php-footguns.yml includes/ public/ --error
+
   static-and-security:
     name: Static + Security (Net 2)
     runs-on: ubuntu-latest
