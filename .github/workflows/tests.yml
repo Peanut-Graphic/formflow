@@ -77,16 +77,17 @@ jobs:
         run: composer audit || true
 
       # Net 2: secret scan. This one IS fail-fast — a committed secret should
-      # block the merge.
+      # block the merge. We run the FREE gitleaks CLI (the gitleaks-action@v2
+      # requires a paid GITLEAKS_LICENSE for org repos). Allowlist for the
+      # documented example placeholders lives in .gitleaks.toml.
       - name: Secret scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        uses: gacts/gitleaks@v1
+        with:
+          config: .gitleaks.toml
 
   php-tests:
     name: Property + Contract + Coverage gate
     runs-on: ubuntu-latest
-    needs: static-and-security
     env:
       # Real measured coverage of the property/contract-covered modules is
       # ~20.5%. Floor set under it with ratchet headroom. Raise as coverage grows.
