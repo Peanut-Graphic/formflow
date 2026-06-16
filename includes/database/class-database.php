@@ -17,6 +17,12 @@ use ISF\Encryption;
 
 class Database {
 
+    /**
+     * Maximum number of submissions processed per pass during the retention
+     * sweep, to keep memory and per-query time bounded on large tables.
+     */
+    const RETENTION_BATCH_SIZE = 500;
+
     private \wpdb $wpdb;
     private string $table_instances;
     private string $table_submissions;
@@ -2988,22 +2994,32 @@ class Database {
 
         $anonymize = !empty($settings['anonymize_instead_of_delete']);
 
-        // Process old submissions
+        // Process old submissions in bounded chunks. Loading every matching
+        // row at once (then iterating) is an OOM/timeout risk on large sites:
+        // the daily cron could pull hundreds of thousands of rows into memory.
+        // Instead, fetch a fixed-size batch, process it, and repeat until the
+        // query returns nothing. Each processed row is mutated (anonymized or
+        // deleted) so it drops out of the WHERE clause on the next pass, which
+        // guarantees the loop drains and never reprocesses a row.
         if (!empty($settings['retention_submissions_days'])) {
             $days = (int)$settings['retention_submissions_days'];
-            $old_submissions = $this->get_old_submissions($days);
+            $batch_size = self::RETENTION_BATCH_SIZE;
 
-            foreach ($old_submissions as $sub) {
-                if ($anonymize) {
-                    if ($this->anonymize_submission($sub['id'])) {
-                        $results['submissions_anonymized']++;
-                    }
-                } else {
-                    if ($this->permanently_delete_submission($sub['id'])) {
-                        $results['submissions_deleted']++;
+            do {
+                $old_submissions = $this->get_old_submissions($days, $batch_size);
+
+                foreach ($old_submissions as $sub) {
+                    if ($anonymize) {
+                        if ($this->anonymize_submission($sub['id'])) {
+                            $results['submissions_anonymized']++;
+                        }
+                    } else {
+                        if ($this->permanently_delete_submission($sub['id'])) {
+                            $results['submissions_deleted']++;
+                        }
                     }
                 }
-            }
+            } while (count($old_submissions) === $batch_size);
         }
 
         // Delete old analytics
@@ -3030,18 +3046,32 @@ class Database {
     }
 
     /**
-     * Get submissions older than X days
+     * Get submissions older than X days.
      *
-     * @param int $days Days threshold
+     * @param int $days  Days threshold
+     * @param int $limit Maximum rows to return (0 = no limit). The retention
+     *                   sweep passes a positive limit and loops; an unbounded
+     *                   fetch on a large table is an OOM/timeout risk.
      * @return array Old submissions
      */
-    public function get_old_submissions(int $days): array {
-        $sql = $this->wpdb->prepare(
-            "SELECT id, session_id FROM {$this->table_submissions}
-             WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)
-             AND (form_data NOT LIKE '%%\"_anonymized\":true%%' OR form_data IS NULL)",
-            $days
-        );
+    public function get_old_submissions(int $days, int $limit = 0): array {
+        if ($limit > 0) {
+            $sql = $this->wpdb->prepare(
+                "SELECT id, session_id FROM {$this->table_submissions}
+                 WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)
+                 AND (form_data NOT LIKE '%%\"_anonymized\":true%%' OR form_data IS NULL)
+                 LIMIT %d",
+                $days,
+                $limit
+            );
+        } else {
+            $sql = $this->wpdb->prepare(
+                "SELECT id, session_id FROM {$this->table_submissions}
+                 WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)
+                 AND (form_data NOT LIKE '%%\"_anonymized\":true%%' OR form_data IS NULL)",
+                $days
+            );
+        }
 
         return $this->wpdb->get_results($sql, ARRAY_A) ?: [];
     }

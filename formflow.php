@@ -3,7 +3,7 @@
  * Plugin Name: FormFlow
  * Plugin URI: https://formflow.dev
  * Description: Secure API-integrated enrollment and scheduling forms for utility demand response programs
- * Version: 4.0.5
+ * Version: 4.0.6
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * Text Domain: formflow
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin constants
-define('ISF_VERSION', '4.0.5');
+define('ISF_VERSION', '4.0.6');
 define('ISF_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ISF_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ISF_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -54,6 +54,7 @@ spl_autoload_register(function ($class) {
         'ISF\\CRMIntegration' => 'class-crm-integration.php',
         'ISF\\SMSHandler' => 'class-sms-handler.php',
         'ISF\\Analytics\\GTMHelper' => 'analytics/class-gtm-helper.php',
+        'ISF\\Platform\\APIPlatform' => 'platform/class-api-platform.php',
     ];
 
     // Check class map first
@@ -287,6 +288,10 @@ function isf_init() {
         require_once ISF_PLUGIN_DIR . 'includes/form-editor/class-capabilities.php';
         require_once ISF_PLUGIN_DIR . 'includes/class-activator.php';
         \ISF\FormEditor\Capabilities::register_on_activate();
+        // Re-run table creation FIRST (dbDelta is additive/idempotent) so any
+        // table or column added to the schema reaches auto-updated installs,
+        // THEN apply the hand-written column migrations that dbDelta can't do.
+        \ISF\Activator::ensure_schema();
         \ISF\Activator::run_migrations();
         update_option('isf_version', ISF_VERSION);
     }

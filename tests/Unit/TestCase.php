@@ -104,6 +104,12 @@ abstract class TestCase extends PHPUnitTestCase
 
         // User functions
         Functions\when('get_current_user_id')->justReturn(1);
+
+        // Transients (used for throttle/cache gates). Default to a cache miss
+        // so code under test exercises its real path; set/delete are no-ops.
+        Functions\when('get_transient')->justReturn(false);
+        Functions\when('set_transient')->justReturn(true);
+        Functions\when('delete_transient')->justReturn(true);
     }
 
     /**
