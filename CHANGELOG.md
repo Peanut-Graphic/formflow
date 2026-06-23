@@ -1,5 +1,21 @@
 # FormFlow Pro Changelog
 
+## 4.0.6 — 2026-06-16 (schema-drift + reliability)
+
+### Fixed
+- **P0 — corrupted `wp_isf_api_keys` schema destroyed the `api_key` column.** The CREATE TABLE column list was mangled in two files (`class-activator.php`, `platform/class-api-platform.php`): `api_PRIMARY KEY  (id),` fused two clauses together and left a stray `key VARCHAR(64) NOT NULL,` line, so the intended `api_key VARCHAR(64) NOT NULL` column was never created while `UNIQUE KEY api_key (api_key)` referenced a non-existent column. API-key authentication (`WHERE api_key = %s`) and key creation were broken on every install. The same corruption was present in the activator's `wp_isf_tenants` table. Restored `api_key VARCHAR(64) NOT NULL` and a standalone `PRIMARY KEY  (id)` line in both files, and added an idempotent v4.0.6 migration that `ALTER TABLE … ADD COLUMN api_key` (+ its unique index) on already-broken installs (guarded by `INFORMATION_SCHEMA` checks).
+- **P0 — white-label and module tables never reached upgraded installs.** `WhiteLabel::create_tables()` and the program/appointment module table creators were only ever run lazily (or never), while module code queried those tables — a "Table doesn't exist" crash waiting to happen on auto-updated sites. Activation now centralizes all module schema in `Activator::create_module_tables()` (white-label, API platform, programs, appointment bundler), and the upgrade path runs it too.
+- **Schema drift between the activator and white-label removed.** The activator carried its own, *different* (and partly corrupted) definition of `wp_isf_tenants` / `wp_isf_tenant_clients` / `wp_isf_tenant_usage` / `wp_isf_branding_profiles` than the code that queries them. `WhiteLabel::create_tables()` is now the single source of truth for those four tables; the activator no longer defines them. (See Notes for the residual on pre-4.0.6 installs.)
+- **#4 — unbounded retention sweep.** The daily `apply_retention_policy()` cron loaded *every* old submission into memory at once (`SELECT … WHERE created_at < …` with no `LIMIT`) — an OOM/timeout risk on large tables. It now processes submissions in bounded batches (`Database::RETENTION_BATCH_SIZE = 500`) and loops until the table drains.
+- **#4 — per-pageview visitor write.** `VisitorTracker` (hooked on `init@5`) issued an UPDATE for last-seen on every front-end pageview. Writes are now throttled to once per visitor per 15 minutes via a transient, and every visitor write short-circuits when the visitors table is missing/drifted so a schema problem can never become per-request error spam.
+
+### Added
+- **Migration-on-upgrade standardization (#2).** The version-drift path now runs `Activator::ensure_schema()` (re-runs every dbDelta — additive + idempotent) BEFORE the hand-written `run_migrations()` ALTERs, generalizing the pattern `wp_isf_deliveries` already used. Any table/column added to the schema now reaches existing installs on auto-update.
+- **Schema-drift CI guard (#3).** `SchemaDriftGuardTest` asserts every column written via `$wpdb->insert/update` in a self-contained schema file exists in that file's CREATE TABLE — catching the api_key class of bug in CI. Plus `ApiKeysSchemaCorruptionTest` (regression), `RetentionSweepChunkingTest`, and `VisitorTrackerThrottleTest`.
+
+### Notes
+- **Residual on pre-4.0.6 installs (flagged follow-up):** the four white-label tables were historically created by the activator's divergent schema. dbDelta is additive, so on upgrade `WhiteLabel::create_tables()` *adds* the columns the code needs but cannot remove the old activator-era columns. Two of those legacy columns (`name`, `slug` on `wp_isf_tenants`/`wp_isf_tenant_clients`) were declared `NOT NULL` without a default; on a pre-4.0.6 install that already materialized them, a WhiteLabel insert that doesn't set them could fail. White-label is a Pro/Agency feature with effectively no production tenants yet, so this is left as a documented follow-up rather than a risky data migration. Fresh 4.0.6 installs are unaffected (the white-label schema is canonical from the start).
+
 ## 4.0.5 — 2026-06-02
 
 ### Fixed

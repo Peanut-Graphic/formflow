@@ -101,8 +101,7 @@ class APIPlatform {
             user_id BIGINT UNSIGNED,
             name VARCHAR(100) NOT NULL,
             description TEXT,
-            api_PRIMARY KEY  (id),
-            key VARCHAR(64) NOT NULL,
+            api_key VARCHAR(64) NOT NULL,
             api_secret_hash VARCHAR(255) NOT NULL,
             permissions JSON NOT NULL,
             rate_limit INT UNSIGNED DEFAULT " . self::DEFAULT_RATE_LIMIT . ",
@@ -116,6 +115,7 @@ class APIPlatform {
             expires_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY api_key (api_key),
             KEY user_id (user_id),
             KEY is_active (is_active)
