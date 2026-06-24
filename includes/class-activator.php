@@ -185,6 +185,83 @@ class Activator {
             require_once ABSPATH . 'wp-admin/includes/upgrade.php';
             dbDelta(\ISF\Destinations\DeliveryLog::get_schema_sql());
         }
+
+        // Migration for v4.0.6: repair the corrupted wp_isf_api_keys schema.
+        // Before 4.0.6 the CREATE TABLE column list was mangled so the
+        // `api_key` column was never created (it became a stray `key` column),
+        // which broke API-key authentication (`WHERE api_key = %s`) on every
+        // install. dbDelta cannot fix this because the broken table still
+        // "exists", so repair it explicitly and idempotently: add the missing
+        // api_key column + its unique index only if absent. The bad `key`
+        // column (a reserved word, only ever created on installs that somehow
+        // survived the broken CREATE) is left in place — it is harmless and
+        // dropping it is not required for correctness.
+        if (version_compare($current_version, '4.0.6', '<')) {
+            $api_keys_table = $wpdb->prefix . 'isf_api_keys';
+
+            $table_exists = $wpdb->get_var(
+                $wpdb->prepare(
+                    "SELECT COUNT(*)
+                     FROM INFORMATION_SCHEMA.TABLES
+                     WHERE TABLE_SCHEMA = %s
+                     AND TABLE_NAME = %s",
+                    $wpdb->dbname,
+                    $api_keys_table
+                )
+            );
+
+            if ($table_exists) {
+                $api_key_col_exists = $wpdb->get_var(
+                    $wpdb->prepare(
+                        "SELECT COUNT(*)
+                         FROM INFORMATION_SCHEMA.COLUMNS
+                         WHERE TABLE_SCHEMA = %s
+                         AND TABLE_NAME = %s
+                         AND COLUMN_NAME = 'api_key'",
+                        $wpdb->dbname,
+                        $api_keys_table
+                    )
+                );
+
+                if (!$api_key_col_exists) {
+                    // Table name is the plugin-prefixed constant, column/type
+                    // are hardcoded literals — safe to interpolate.
+                    $wpdb->query("ALTER TABLE {$api_keys_table} ADD COLUMN api_key VARCHAR(64) NOT NULL AFTER description");
+                }
+
+                $api_key_index_exists = $wpdb->get_var(
+                    $wpdb->prepare(
+                        "SELECT COUNT(*)
+                         FROM INFORMATION_SCHEMA.STATISTICS
+                         WHERE TABLE_SCHEMA = %s
+                         AND TABLE_NAME = %s
+                         AND INDEX_NAME = 'api_key'",
+                        $wpdb->dbname,
+                        $api_keys_table
+                    )
+                );
+
+                if (!$api_key_index_exists) {
+                    $wpdb->query("ALTER TABLE {$api_keys_table} ADD UNIQUE KEY api_key (api_key)");
+                }
+            }
+        }
+    }
+
+    /**
+     * Ensure the full schema exists on an existing install.
+     *
+     * Called from the version-drift upgrade path in formflow.php BEFORE
+     * run_migrations(). Because every CREATE here goes through dbDelta (which
+     * is additive and idempotent), re-running it on upgrade backfills any
+     * table or column added to the schema since the install was created —
+     * without this, a brand-new table only ever reached fresh installs and
+     * silently 500'd on auto-updated sites. The hand-written ALTERs in
+     * run_migrations() still handle column *modifications* (e.g. ENUM widening)
+     * that dbDelta cannot express.
+     */
+    public static function ensure_schema(): void {
+        self::create_tables();
     }
 
     /**
@@ -527,8 +604,7 @@ class Activator {
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             description TEXT,
-            api_PRIMARY KEY  (id),
-            key VARCHAR(64) NOT NULL,
+            api_key VARCHAR(64) NOT NULL,
             api_secret_hash VARCHAR(255) NOT NULL,
             permissions JSON NOT NULL,
             rate_limit INT UNSIGNED DEFAULT 1000,
@@ -542,6 +618,7 @@ class Activator {
             expires_at TIMESTAMP NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             UNIQUE KEY api_key (api_key),
             KEY created_by (created_by),
             KEY is_active (is_active),
@@ -605,80 +682,15 @@ class Activator {
             KEY instance_id (instance_id)
         ) {$charset_collate};";
 
-        // Tenants table - White-label SaaS multi-tenancy
-        $table_tenants = $wpdb->prefix . 'isf_tenants';
-        $sql_tenants = "CREATE TABLE {$table_tenants} (
-            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            name VARCHAR(255) NOT NULL,
-            slug VARCHAR(100) NOT NULL,
-            domain VARCHAR(255),
-            contact_email VARCHAR(255) NOT NULL,
-            contact_phone VARCHAR(50),
-            tier ENUM('starter','professional','enterprise','custom') DEFAULT 'starter',
-            status ENUM('active','suspended','inactive') DEFAULT 'active',
-            api_PRIMARY KEY  (id),
-            key VARCHAR(64) NOT NULL,
-            settings JSON,
-            custom_limits JSON,
-            billing_info JSON,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            UNIQUE KEY slug (slug),
-            UNIQUE KEY api_key (api_key),
-            KEY domain (domain),
-            KEY tier_status (tier, status)
-        ) {$charset_collate};";
-
-        // Tenant Clients table - Clients under each tenant
-        $table_tenant_clients = $wpdb->prefix . 'isf_tenant_clients';
-        $sql_tenant_clients = "CREATE TABLE {$table_tenant_clients} (
-            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            tenant_id INT UNSIGNED NOT NULL,
-            name VARCHAR(255) NOT NULL,
-            slug VARCHAR(100) NOT NULL,
-            contact_email VARCHAR(255),
-            settings JSON,
-            is_active TINYINT(1) DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id),
-            KEY tenant_id (tenant_id),
-            UNIQUE KEY tenant_slug (tenant_id, slug)
-        ) {$charset_collate};";
-
-        // Branding Profiles table - White-label theming
-        $table_branding = $wpdb->prefix . 'isf_branding_profiles';
-        $sql_branding = "CREATE TABLE {$table_branding} (
-            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            tenant_id INT UNSIGNED,
-            name VARCHAR(255) NOT NULL,
-            settings JSON NOT NULL,
-            is_default TINYINT(1) DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id),
-            KEY tenant_id (tenant_id),
-            KEY is_default (is_default)
-        ) {$charset_collate};";
-
-        // Tenant Usage table - Track usage for billing
-        $table_tenant_usage = $wpdb->prefix . 'isf_tenant_usage';
-        $sql_tenant_usage = "CREATE TABLE {$table_tenant_usage} (
-            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-            tenant_id INT UNSIGNED NOT NULL,
-            period_start DATE NOT NULL,
-            period_end DATE NOT NULL,
-            submissions INT UNSIGNED DEFAULT 0,
-            api_calls INT UNSIGNED DEFAULT 0,
-            storage_mb INT UNSIGNED DEFAULT 0,
-            emails_sent INT UNSIGNED DEFAULT 0,
-            sms_sent INT UNSIGNED DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id),
-            UNIQUE KEY tenant_period (tenant_id, period_start),
-            KEY period_start (period_start)
-        ) {$charset_collate};";
+        // White-label multi-tenancy tables (isf_tenants, isf_tenant_clients,
+        // isf_tenant_usage, isf_branding_profiles) are NOT defined here. They
+        // are owned exclusively by \ISF\Platform\WhiteLabel::create_tables(),
+        // which is the schema source of truth for the code that queries them.
+        // The Activator used to carry a *different* (and partially corrupted)
+        // definition of these tables; that drift broke every WhiteLabel query
+        // because the consumer expected columns the Activator never created.
+        // create_module_tables() now delegates to WhiteLabel so the schema can
+        // never drift again.
 
         // BI Reports table - Saved custom reports
         $table_bi_reports = $wpdb->prefix . 'isf_reports';
@@ -754,12 +766,48 @@ class Activator {
         dbDelta($sql_api_rate_limits);
         dbDelta($sql_marketplace_items);
         dbDelta($sql_marketplace_installs);
-        dbDelta($sql_tenants);
-        dbDelta($sql_tenant_clients);
-        dbDelta($sql_branding);
-        dbDelta($sql_tenant_usage);
         dbDelta($sql_bi_reports);
         dbDelta($sql_bi_dashboards);
+
+        // Module-owned tables (white-label, programs, appointments, API
+        // platform). Each module owns its own schema; the Activator only
+        // ensures the creators run on fresh installs and reactivations.
+        self::create_module_tables();
+    }
+
+    /**
+     * Create tables owned by feature modules.
+     *
+     * Each module historically created its tables lazily (e.g. on admin_init
+     * or first use), which meant upgraded installs whose code queried those
+     * tables before the lazy creator ran would crash with "Table doesn't
+     * exist". This centralizes every module's create_tables() so they run on
+     * activation AND — via run_migrations() — on auto-update. All module
+     * creators use dbDelta with CREATE TABLE IF NOT EXISTS, so this is
+     * idempotent and additive: safe to run on every upgrade.
+     */
+    public static function create_module_tables(): void {
+        // White-label SaaS: owns isf_tenants / isf_tenant_clients /
+        // isf_tenant_usage / isf_branding_profiles.
+        if (class_exists('\\ISF\\Platform\\WhiteLabel')) {
+            \ISF\Platform\WhiteLabel::instance()->create_tables();
+        }
+
+        // API platform: owns isf_api_keys / isf_api_usage / isf_api_logs.
+        if (class_exists('\\ISF\\Platform\\APIPlatform')) {
+            \ISF\Platform\APIPlatform::instance()->create_tables();
+        }
+
+        // Programs module: owns isf_programs / isf_program_enrollments /
+        // isf_bundled_enrollments.
+        if (class_exists('\\ISF\\Programs\\ProgramManager')) {
+            \ISF\Programs\ProgramManager::instance()->maybe_create_tables();
+        }
+
+        // Appointment bundler: owns isf_bundled_appointments.
+        if (class_exists('\\ISF\\Programs\\AppointmentBundler')) {
+            \ISF\Programs\AppointmentBundler::instance()->maybe_create_tables();
+        }
     }
 
     /**

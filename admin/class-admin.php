@@ -972,7 +972,7 @@ class Admin {
         // Parse settings — legacy editor sends JSON string, new form-editor
         // sends PHP nested array via settings[a][b] form notation. Handle both.
         $new_settings = [];
-        if (!empty($_POST['settings'])) {
+        if (isset($_POST['settings']) && $_POST['settings'] !== '') {
             $raw = $_POST['settings'];
             if (is_array($raw)) {
                 // Already nested by PHP's form parser (new form-editor.js)
@@ -1000,6 +1000,7 @@ class Admin {
 
         // Merge with existing settings and add demo_mode
         $settings = array_merge($existing_settings, $new_settings, [
+            // nosemgrep: peanut-empty-coercion-on-input -- boolean flag: absent, '', '0' all mean "off"
             'demo_mode' => !empty($_POST['demo_mode']) && $_POST['demo_mode'] !== '0'
         ]);
 

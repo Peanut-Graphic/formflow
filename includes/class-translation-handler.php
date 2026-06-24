@@ -46,14 +46,14 @@ class TranslationHandler {
         $config = FeatureManager::get_feature($instance, 'spanish_translation');
 
         // Check URL parameter first
-        if (!empty($_GET['lang']) && array_key_exists($_GET['lang'], self::LANGUAGES)) {
+        if (isset($_GET['lang']) && $_GET['lang'] !== '' && array_key_exists($_GET['lang'], self::LANGUAGES)) {
             $lang = sanitize_text_field($_GET['lang']);
             self::set_language_cookie($lang);
             return $lang;
         }
 
         // Check cookie
-        if (!empty($_COOKIE['isf_language']) && array_key_exists($_COOKIE['isf_language'], self::LANGUAGES)) {
+        if (isset($_COOKIE['isf_language']) && $_COOKIE['isf_language'] !== '' && array_key_exists($_COOKIE['isf_language'], self::LANGUAGES)) {
             return $_COOKIE['isf_language'];
         }
 

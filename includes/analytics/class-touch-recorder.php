@@ -168,7 +168,7 @@ class TouchRecorder {
         // UTM parameters
         $utm_params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
         foreach ($utm_params as $param) {
-            if (!empty($_GET[$param])) {
+            if (isset($_GET[$param]) && $_GET[$param] !== '') {
                 $attribution[$param] = sanitize_text_field($_GET[$param]);
             }
         }
@@ -176,13 +176,13 @@ class TouchRecorder {
         // Ad platform click IDs
         $click_ids = ['gclid', 'fbclid', 'msclkid', 'dclid'];
         foreach ($click_ids as $param) {
-            if (!empty($_GET[$param])) {
+            if (isset($_GET[$param]) && $_GET[$param] !== '') {
                 $attribution[$param] = sanitize_text_field($_GET[$param]);
             }
         }
 
         // Promo code
-        if (!empty($_GET['promo'])) {
+        if (isset($_GET['promo']) && $_GET['promo'] !== '') {
             $attribution['promo_code'] = sanitize_text_field($_GET['promo']);
         }
 

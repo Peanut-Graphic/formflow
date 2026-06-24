@@ -29,6 +29,14 @@ class VisitorTracker {
     private int $cookie_days = 365;
 
     /**
+     * Minimum seconds between "last seen" writes for the same visitor.
+     * Without this, every front-end pageview issues an UPDATE (the tracker is
+     * hooked on init@5), which is needless write load on busy sites. One write
+     * per visitor per window is plenty for last-seen/visit-count accuracy.
+     */
+    private const SEEN_THROTTLE_SECONDS = 900; // 15 minutes
+
+    /**
      * Database instance
      */
     private Database $db;
@@ -37,6 +45,11 @@ class VisitorTracker {
      * Current visitor ID
      */
     private ?string $visitor_id = null;
+
+    /**
+     * Per-instance cache of the visitors-table existence probe (null = unknown).
+     */
+    private ?bool $table_ready = null;
 
     /**
      * Constructor
@@ -66,7 +79,7 @@ class VisitorTracker {
         }
 
         // Check for existing cookie
-        if (!empty($_COOKIE[self::COOKIE_NAME])) {
+        if (isset($_COOKIE[self::COOKIE_NAME]) && $_COOKIE[self::COOKIE_NAME] !== '') {
             $visitor_id = sanitize_text_field($_COOKIE[self::COOKIE_NAME]);
 
             // Validate format (should be 32 hex chars)
@@ -104,6 +117,10 @@ class VisitorTracker {
      * @param string $visitor_id Visitor ID from Peanut Suite
      */
     private function ensure_visitor_record(string $visitor_id): void {
+        if (!$this->visitors_table_ready()) {
+            return;
+        }
+
         global $wpdb;
         $table = $wpdb->prefix . ISF_TABLE_VISITORS;
 
@@ -130,7 +147,7 @@ class VisitorTracker {
             return $this->visitor_id;
         }
 
-        if (!empty($_COOKIE[self::COOKIE_NAME])) {
+        if (isset($_COOKIE[self::COOKIE_NAME]) && $_COOKIE[self::COOKIE_NAME] !== '') {
             $visitor_id = sanitize_text_field($_COOKIE[self::COOKIE_NAME]);
             if (preg_match('/^[a-f0-9]{32}$/', $visitor_id)) {
                 return $visitor_id;
@@ -174,6 +191,10 @@ class VisitorTracker {
      * Create a new visitor record in the database
      */
     private function create_visitor_record(string $visitor_id): bool {
+        if (!$this->visitors_table_ready()) {
+            return false;
+        }
+
         global $wpdb;
         $table = $wpdb->prefix . ISF_TABLE_VISITORS;
 
@@ -201,9 +222,24 @@ class VisitorTracker {
     }
 
     /**
-     * Update visitor last seen timestamp and visit count
+     * Update visitor last seen timestamp and visit count.
+     *
+     * Throttled to one write per visitor per SEEN_THROTTLE_SECONDS via a
+     * transient, so a burst of pageviews from the same visitor doesn't issue
+     * an UPDATE on every hit. Also short-circuits when the visitors table is
+     * missing/drifted so a schema problem can never become per-request error
+     * spam in the log.
      */
     private function update_visitor_seen(string $visitor_id): void {
+        if (!$this->visitors_table_ready()) {
+            return;
+        }
+
+        $throttle_key = 'isf_vseen_' . md5($visitor_id);
+        if (get_transient($throttle_key)) {
+            return;
+        }
+
         global $wpdb;
         $table = $wpdb->prefix . ISF_TABLE_VISITORS;
 
@@ -214,6 +250,40 @@ class VisitorTracker {
             current_time('mysql'),
             $visitor_id
         ));
+
+        set_transient($throttle_key, 1, self::SEEN_THROTTLE_SECONDS);
+    }
+
+    /**
+     * Whether the visitors table exists.
+     *
+     * Cached per-request (and across requests via a short transient) so the
+     * existence probe doesn't itself become a per-pageview query. Guards every
+     * write so a missing/drifted table degrades gracefully instead of logging
+     * a "Table doesn't exist" error on every front-end request.
+     */
+    private function visitors_table_ready(): bool {
+        if ($this->table_ready !== null) {
+            return $this->table_ready;
+        }
+
+        if (get_transient('isf_visitors_table_ok')) {
+            $this->table_ready = true;
+            return $this->table_ready;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . ISF_TABLE_VISITORS;
+        $found = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table));
+        $this->table_ready = ($found === $table);
+
+        if ($this->table_ready) {
+            // Cache the positive result; negative results stay uncached so a
+            // freshly-created table is picked up on the next request.
+            set_transient('isf_visitors_table_ok', 1, HOUR_IN_SECONDS);
+        }
+
+        return $this->table_ready;
     }
 
     /**
@@ -242,7 +312,7 @@ class VisitorTracker {
         // UTM parameters
         $utm_params = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'];
         foreach ($utm_params as $param) {
-            if (!empty($_GET[$param])) {
+            if (isset($_GET[$param]) && $_GET[$param] !== '') {
                 $attribution[$param] = sanitize_text_field($_GET[$param]);
             }
         }
@@ -250,13 +320,13 @@ class VisitorTracker {
         // Ad platform click IDs
         $click_ids = ['gclid', 'fbclid', 'msclkid', 'dclid'];
         foreach ($click_ids as $param) {
-            if (!empty($_GET[$param])) {
+            if (isset($_GET[$param]) && $_GET[$param] !== '') {
                 $attribution[$param] = sanitize_text_field($_GET[$param]);
             }
         }
 
         // Promo code
-        if (!empty($_GET['promo'])) {
+        if (isset($_GET['promo']) && $_GET['promo'] !== '') {
             $attribution['promo_code'] = sanitize_text_field($_GET['promo']);
         }
 

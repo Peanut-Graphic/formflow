@@ -31,6 +31,10 @@ class VisitorTrackerTest extends TestCase
             'insert_id' => 1,
             'get_row' => null,
             'query' => 1,
+            // visitors_table_ready() probes "SHOW TABLES LIKE %s" and expects
+            // the table name back when the table exists. Return the prefixed
+            // visitors table so the write-guard passes in tests.
+            'get_var' => 'wp_' . ISF_TABLE_VISITORS,
         ]);
     }
 
