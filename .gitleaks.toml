@@ -45,6 +45,8 @@ paths = [
 regexTarget = "match"
 regexes = [
   # Obvious documentation placeholders
+  # Developer-portal API docs use placeholder example creds (ff_your_api_key_here, your_api_secret_here)
+  '''your_api_(key|secret)_here''',
   '''sk_test_(example|placeholder|xxx|0{4,})''',
   '''YOUR_[A-Z_]*(KEY|TOKEN|SECRET)''',
 ]
