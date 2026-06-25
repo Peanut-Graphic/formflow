@@ -83,7 +83,7 @@ jobs:
       - name: Secret scan (gitleaks)
         uses: gacts/gitleaks@v1
         with:
-          config: .gitleaks.toml
+          config-path: .gitleaks.toml
 
   php-tests:
     name: Property + Contract + Coverage gate

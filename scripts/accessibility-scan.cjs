@@ -66,6 +66,10 @@ function findPhpFiles(dir) {
  * Check for images without alt attributes
  */
 function checkImageAltAttributes(content, filePath) {
+  // PHP-interpolated attrs like src="<?php ... ?>" contain a ?> whose ">" would
+  // truncate the attribute capture below and falsely report "missing alt".
+  // Neutralize PHP blocks first (newline-preserving so line numbers stay accurate).
+  content = content.replace(/<\?(?:php|=)?[\s\S]*?\?>/g, (m) => 'PHP' + '\n'.repeat((m.match(/\n/g) || []).length));
   // Match <img tags (both echo and literal HTML)
   const imgRegex = /<img\s+([^>]*?)>/gi;
   let match;
@@ -95,6 +99,7 @@ function checkImageAltAttributes(content, filePath) {
  * Check for form inputs without associated labels
  */
 function checkFormLabels(content, filePath) {
+  content = content.replace(/<\?(?:php|=)?[\s\S]*?\?>/g, (m) => 'PHP' + '\n'.repeat((m.match(/\n/g) || []).length));
   // Match input fields (text, email, password, etc.)
   const inputRegex = /<input\s+type="(?:text|email|password|number|tel|url|date|time)"\s+([^>]*?)>/gi;
   let match;
@@ -107,8 +112,11 @@ function checkFormLabels(content, filePath) {
 
     if (hasId) {
       const inputId = hasId[1];
+      // Escape regex metachars — PHP-interpolated ids (e.g. id="<?php ... [ ?>") crashed
+      // RegExp with "Unterminated group".
+      const escapedId = inputId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       // Check if there's a corresponding label
-      const labelRegex = new RegExp(`for\\s*=\\s*["']${inputId}["']`, 'i');
+      const labelRegex = new RegExp(`for\\s*=\\s*["']${escapedId}["']`, 'i');
       if (!labelRegex.test(content) && !hasAriaLabel && !hasAriaLabelledby) {
         const lineNum = content.substring(0, match.index).split('\n').length;
         issues.push({
