@@ -34,7 +34,7 @@ concurrency:
 jobs:
   class-007:
     name: Static Analysis / Security (CLASS-007)
-    runs-on: [self-hosted, linux, peanut-ci]
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -57,7 +57,7 @@ jobs:
 
   static-and-security:
     name: Static + Security (Net 2)
-    runs-on: [self-hosted, linux, peanut-ci]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -83,11 +83,11 @@ jobs:
       - name: Secret scan (gitleaks)
         uses: gacts/gitleaks@v1
         with:
-          config: .gitleaks.toml
+          config-path: .gitleaks.toml
 
   php-tests:
     name: Property + Contract + Coverage gate
-    runs-on: [self-hosted, linux, peanut-ci]
+    runs-on: ubuntu-latest
     env:
       # Real measured coverage of the property/contract-covered modules is
       # ~20.5%. Floor set under it with ratchet headroom. Raise as coverage grows.
