@@ -1,5 +1,15 @@
 # FormFlow Pro Changelog
 
+## 4.0.8 — 2026-07-05 (delivery fix)
+
+### Fixed
+
+- **Trust GitHub as an update-package host.** The 4.0.7 updater host-pin only allowed peanutgraphic.com, but the license server's unified update endpoint now serves the canonical GitHub-release package — so 4.0.7 would have refused its own updates. The updater now trusts both hosts.
+
+### Security
+
+- **Verify update-package signatures.** Downloads are now checked against an Ed25519 signature manifest (`<asset>.manifest.json`) before install; a tampered or unsigned package from our update host is refused.
+
 ## 4.0.7 — 2026-07-05 (security)
 
 ### Security (microscope remediation)
