@@ -477,6 +477,14 @@ class IntelliSourceConnector implements ApiConnectorInterface {
             $body = http_build_query($params);
         }
 
+        // SSRF guard: the api_endpoint is admin-set and previously validated
+        // only by FILTER_VALIDATE_URL, which happily accepts http://127.0.0.1,
+        // http://169.254.169.254 (cloud metadata), internal hostnames, etc.
+        // Before making any outbound request we assert the resolved target is a
+        // public http(s) host and refuse loopback / private / link-local /
+        // reserved ranges. sslverify stays TRUE below — do not disable it.
+        $this->assert_safe_request_url($url);
+
         $args = [
             'method' => $method,
             'timeout' => 30,
@@ -508,6 +516,114 @@ class IntelliSourceConnector implements ApiConnectorInterface {
         }
 
         return $body;
+    }
+
+    /**
+     * Assert an outbound request URL is safe (anti-SSRF).
+     *
+     * The IntelliSOURCE api_endpoint is admin-configured. Validating it with
+     * FILTER_VALIDATE_URL alone does NOT stop a misconfigured or malicious
+     * endpoint from pointing the server at internal infrastructure (loopback,
+     * the cloud metadata service at 169.254.169.254, RFC1918 hosts, etc.).
+     *
+     * This guard enforces:
+     *   - scheme is http or https (no file://, gopher://, dict://, ...)
+     *   - every IP the host resolves to is a public unicast address, rejecting
+     *     127.0.0.0/8, 10/8, 172.16/12, 192.168/16, 169.254/16, ::1 and the
+     *     rest of the private/reserved space.
+     *
+     * @param string $url
+     * @return void
+     * @throws \Exception if the URL targets a disallowed scheme or IP range.
+     */
+    private function assert_safe_request_url(string $url): void {
+        $parts  = wp_parse_url($url);
+        $scheme = strtolower($parts['scheme'] ?? '');
+
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            throw new \Exception(
+                __('Blocked API request: only http(s) endpoints are allowed.', 'formflow')
+            );
+        }
+
+        $host = $parts['host'] ?? '';
+        if ($host === '') {
+            throw new \Exception(
+                __('Blocked API request: endpoint host is missing.', 'formflow')
+            );
+        }
+
+        $ips = $this->resolve_host_ips($host);
+        if (empty($ips)) {
+            throw new \Exception(
+                __('Blocked API request: endpoint host could not be resolved.', 'formflow')
+            );
+        }
+
+        foreach ($ips as $ip) {
+            if ($this->is_blocked_ip($ip)) {
+                throw new \Exception(
+                    __('Blocked API request: endpoint resolves to a private or reserved network address.', 'formflow')
+                );
+            }
+        }
+    }
+
+    /**
+     * Resolve a host to the list of IP addresses it points at.
+     *
+     * IP literals (v4/v6, optionally bracketed) are returned as-is so an
+     * attacker cannot smuggle a raw internal IP past DNS resolution.
+     *
+     * @param string $host
+     * @return array<int,string>
+     */
+    private function resolve_host_ips(string $host): array {
+        $host = trim($host, '[]');
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return [$host];
+        }
+
+        $ips = [];
+
+        $v4 = gethostbynamel($host);
+        if (is_array($v4)) {
+            $ips = array_merge($ips, $v4);
+        }
+
+        if (function_exists('dns_get_record')) {
+            $records = @dns_get_record($host, DNS_AAAA);
+            if (is_array($records)) {
+                foreach ($records as $record) {
+                    if (!empty($record['ipv6'])) {
+                        $ips[] = $record['ipv6'];
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($ips));
+    }
+
+    /**
+     * Whether an IP address is outside the public unicast space.
+     *
+     * Uses PHP's own private/reserved-range tables, which cover loopback
+     * (127.0.0.0/8, ::1), RFC1918 (10/8, 172.16/12, 192.168/16), link-local
+     * (169.254/16, fe80::/10) and other reserved blocks.
+     *
+     * @param string $ip
+     * @return bool
+     */
+    private function is_blocked_ip(string $ip): bool {
+        // filter_var returns false when the IP falls in a private OR reserved
+        // range, i.e. anything we must refuse.
+        return false === filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        );
     }
 
     /**

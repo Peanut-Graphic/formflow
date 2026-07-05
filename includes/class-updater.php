@@ -91,13 +91,22 @@ class Updater {
         $update_data = $this->get_update_data();
 
         if ($update_data && version_compare($this->version, $update_data['version'], '<')) {
+            // INTERIM SUPPLY-CHAIN STOPGAP: the license-server response is trusted
+            // to name a package URL, but a compromised/spoofed/MITM'd response
+            // could point WordPress at an attacker-controlled zip that then runs
+            // as plugin code. Until real package-signature verification lands
+            // (the DURABLE fix — tracked, Nat-gated, lockstep with
+            // peanut-license-server), pin the package to HTTPS on the expected
+            // Peanut update host and drop anything else.
+            $package = $this->assert_trusted_package_url($update_data['download_url'] ?? '');
+
             $item = (object) [
                 'id' => self::PLUGIN_SLUG,
                 'slug' => self::PLUGIN_SLUG,
                 'plugin' => self::PLUGIN_FILE,
                 'new_version' => $update_data['version'],
                 'url' => $update_data['homepage'] ?? 'https://peanutgraphic.com/formflow',
-                'package' => $update_data['download_url'] ?? '',
+                'package' => $package,
                 'icons' => [
                     '1x' => $update_data['icons']['1x'] ?? '',
                     '2x' => $update_data['icons']['2x'] ?? '',
@@ -250,7 +259,12 @@ class Updater {
                 'changelog' => $info['sections']['changelog'] ?? '',
                 'faq' => $info['sections']['faq'] ?? '',
             ],
-            'download_link' => $license->is_pro() ? ($info['download_url'] ?? '') : '',
+            // Same interim host-pin as check_for_update(): the "View details"
+            // download link is also an install vector, so refuse any URL that
+            // is not HTTPS on the expected Peanut update host.
+            'download_link' => $license->is_pro()
+                ? $this->assert_trusted_package_url($info['download_url'] ?? '')
+                : '',
             'banners' => [
                 'low' => $info['banners']['low'] ?? '',
                 'high' => $info['banners']['high'] ?? '',
@@ -428,5 +442,73 @@ class Updater {
     public function force_check(): ?array {
         delete_transient($this->cache_key);
         return $this->get_update_data();
+    }
+
+    /**
+     * Validate a package/download URL before handing it to the WP updater.
+     *
+     * INTERIM supply-chain stopgap. Returns the URL unchanged when it is HTTPS
+     * on the expected Peanut update host; otherwise logs and returns '' so the
+     * updater simply offers no package (the WP core update flow treats an empty
+     * package as "no downloadable update"). This blocks MITM / rogue-host
+     * package swaps without needing the full signing pipeline.
+     *
+     * NOTE: this is NOT a substitute for cryptographic package-signature
+     * verification, which remains the durable fix (tracked, Nat-gated, in
+     * lockstep with peanut-license-server). Host-pinning only proves the zip
+     * came from the right host over TLS, not that its contents are authentic.
+     *
+     * @param string $url
+     * @return string The trusted URL, or '' if it is not trusted.
+     */
+    private function assert_trusted_package_url(string $url): string {
+        if ($url === '') {
+            return '';
+        }
+
+        $parts  = wp_parse_url($url);
+        $scheme = strtolower($parts['scheme'] ?? '');
+        $host   = strtolower($parts['host'] ?? '');
+        $expected = $this->get_update_host();
+
+        $trusted = $scheme === 'https'
+            && $host !== ''
+            && ($host === $expected || $this->host_ends_with($host, '.' . $expected));
+
+        if (!$trusted) {
+            error_log(sprintf(
+                '[FormFlow Updater] Rejected update package from untrusted source: %s '
+                . '(require HTTPS on %s). Aborting update offer.',
+                $url,
+                $expected
+            ));
+            return '';
+        }
+
+        return $url;
+    }
+
+    /**
+     * Expected update host, derived from the pinned API base URL so the two can
+     * never drift apart.
+     *
+     * @return string
+     */
+    private function get_update_host(): string {
+        $host = wp_parse_url(self::API_URL, PHP_URL_HOST);
+
+        return strtolower(is_string($host) && $host !== '' ? $host : 'peanutgraphic.com');
+    }
+
+    /**
+     * Suffix match on a host label boundary (avoids "evilpeanutgraphic.com"
+     * slipping past a naive substring check).
+     *
+     * @param string $host
+     * @param string $suffix
+     * @return bool
+     */
+    private function host_ends_with(string $host, string $suffix): bool {
+        return $suffix !== '' && str_ends_with($host, $suffix);
     }
 }
