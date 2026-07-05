@@ -83,9 +83,6 @@ $is_pro = $license->is_pro();
             <p class="description" style="margin-top: 10px;">
                 <?php esc_html_e('Enter your license key to unlock Pro features. Purchase a license at formflow.dev', 'formflow'); ?>
             </p>
-            <p class="description" style="margin-top: 5px; font-size: 11px; color: #888;">
-                <?php esc_html_e('For development/testing, use key: FFTEST-ADMIN-DEV-MODE', 'formflow'); ?>
-            </p>
         <?php endif; ?>
     </form>
 

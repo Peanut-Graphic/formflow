@@ -44,7 +44,7 @@ foreach ($tables as $table) {
 
 // Deactivate license on Peanut License Server before deleting data
 $license_key = get_option('formflow_license_key');
-if (!empty($license_key) && $license_key !== 'FFTEST-ADMIN-DEV-MODE') {
+if (!empty($license_key)) {
     $api_url = 'https://peanutgraphic.com/wp-json/peanut-api/v1/license/deactivate';
     wp_remote_post($api_url, [
         'timeout' => 10,

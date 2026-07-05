@@ -66,11 +66,6 @@ class LicenseManager {
     const CACHE_DURATION = 43200;
 
     /**
-     * Admin testing key - enables all Pro features for development
-     */
-    const ADMIN_TEST_KEY = 'FFTEST-ADMIN-DEV-MODE';
-
-    /**
      * Features available in Free version
      */
     const FREE_FEATURES = [
@@ -227,11 +222,6 @@ class LicenseManager {
      */
     public function is_admin_testing_mode(): bool {
         $key = $this->license_data['key'] ?? '';
-
-        // Check for built-in admin test key
-        if ($key === self::ADMIN_TEST_KEY) {
-            return true;
-        }
 
         // Check for custom admin key defined in wp-config.php
         if (defined('FORMFLOW_ADMIN_KEY') && !empty(FORMFLOW_ADMIN_KEY)) {
@@ -581,8 +571,8 @@ class LicenseManager {
             ];
         }
 
-        // Admin test key
-        if ($key === self::ADMIN_TEST_KEY || (defined('FORMFLOW_ADMIN_KEY') && $key === FORMFLOW_ADMIN_KEY)) {
+        // Admin key defined in wp-config.php
+        if (defined('FORMFLOW_ADMIN_KEY') && $key === FORMFLOW_ADMIN_KEY) {
             update_option(self::OPTION_LICENSE_KEY, $key);
             update_option(self::OPTION_LICENSE_DATA, [
                 'status' => 'active',
@@ -643,7 +633,7 @@ class LicenseManager {
         $key = $this->license_data['key'] ?? '';
 
         // Call deactivation endpoint if we have a key
-        if (!empty($key) && $key !== self::ADMIN_TEST_KEY) {
+        if (!empty($key)) {
             $this->deactivate_license_remote($key);
         }
 

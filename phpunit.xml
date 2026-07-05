@@ -23,9 +23,6 @@
         <testsuite name="property">
             <directory suffix="Test.php">tests/Property</directory>
         </testsuite>
-        <testsuite name="contract">
-            <directory suffix="Test.php">tests/Contract</directory>
-        </testsuite>
         <testsuite name="accessibility">
             <directory suffix=".php">tests/accessibility</directory>
         </testsuite>

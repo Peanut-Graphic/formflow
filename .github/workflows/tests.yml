@@ -4,11 +4,9 @@
 #   Net 2 (security)  — composer audit (non-blocking; ratchet to blocking later)
 #                       + gitleaks secret scan; fail-fast on the job.
 #   Net 6 (property)  — tests/Property  (pure, WordPress-free invariants).
-#   Net 7 (contract)  — tests/Contract  (tester-bridge scenario-manifest shape).
-#   Net 1 (floor)     — coverage gate over the property/contract-covered modules.
 #   CLASS-007         — semgrep PHP foot-gun gate (BLOCKING) from the #38 sweep.
 #
-# Blocking gate = static-and-security + class-007 + property + contract + regression.
+# Blocking gate = static-and-security + class-007 + property + regression.
 # The legacy Unit + Integration suites run NON-BLOCKING: the Analytics handoff/
 # touch tests carry pre-existing $wpdb-mock test-quality debt (they were dormant
 # behind a missing wp_salt()/ARRAY_A bootstrap stub and only began executing once
@@ -86,42 +84,27 @@ jobs:
           config-path: .gitleaks.toml
 
   php-tests:
-    name: Property + Contract + Coverage gate
+    name: Property + Regression
     runs-on: ubuntu-latest
-    env:
-      # Real measured coverage of the property/contract-covered modules is
-      # ~20.5%. Floor set under it with ratchet headroom. Raise as coverage grows.
-      MIN_COVERAGE: "15"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup PHP (with pcov)
+      - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-          coverage: pcov
           tools: composer
 
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
-      # Net 6 + Net 7 — the blocking gate. These suites are pure / WordPress-free
+      # Net 6 — the blocking gate. These suites are pure / WordPress-free
       # and must stay green.
       - name: Property tests (Net 6)
         run: vendor/bin/phpunit --testsuite=property
 
-      - name: Contract tests (Net 7)
-        run: vendor/bin/phpunit --testsuite=contract
-
       - name: Regression tests
         run: vendor/bin/phpunit --testsuite=regression
-
-      # Net 1 — coverage floor over the property/contract-covered modules.
-      - name: Coverage (property + contract) → Clover
-        run: vendor/bin/phpunit -c phpunit.coverage.xml
-
-      - name: Coverage gate
-        run: php scripts/coverage-gate.php coverage/clover.xml "$MIN_COVERAGE"
 
       # Legacy suites — non-blocking until the analytics $wpdb-mock debt is repaired.
       - name: Unit tests (non-blocking — see known-gaps.md)
@@ -131,10 +114,3 @@ jobs:
       - name: Integration tests (non-blocking until infra wired)
         continue-on-error: true
         run: vendor/bin/phpunit --testsuite=integration
-
-      - name: Upload coverage artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: php-coverage
-          path: coverage/

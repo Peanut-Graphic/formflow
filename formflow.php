@@ -254,10 +254,6 @@ function isf_init() {
     $embed = new ISF\EmbedHandler();
     $embed->init();
 
-    // Initialize tester-bridge harness (dormant unless TESTER_MODE is true)
-    require_once ISF_PLUGIN_DIR . 'includes/class-tester-bridge.php';
-    (new ISF\TesterBridge())->init();
-
     // Load bundled connectors + destinations (both share the same
     // glob — any connectors/*/loader.php is required, regardless of
     // whether it registers a Connector or a Destination).
