@@ -214,33 +214,137 @@ class Security {
     }
 
     /**
-     * Get client IP address
+     * Get client IP address.
+     *
+     * SECURITY: `CF-Connecting-IP` and `X-Forwarded-For` are request headers
+     * that ANY caller can set. Trusting the first value in them (as an earlier
+     * revision did) let an attacker rotate the rate-limit bucket key on every
+     * request by sending a fresh spoofed header — defeating the sole throttle
+     * in front of the public nopriv enrollment handlers (paid external enroll +
+     * SMS + email per hit) and the expensive geocode/address routes.
+     *
+     * This resolver therefore defaults to REMOTE_ADDR (the real TCP peer, which
+     * the client cannot forge) and only honors the forwarded headers when
+     * REMOTE_ADDR is itself a configured, trusted reverse proxy (Cloudflare, a
+     * load balancer, etc.). When honoring X-Forwarded-For we take the
+     * RIGHT-MOST hop that is not itself a trusted proxy — the closest address a
+     * trusted proxy actually observed — never the left-most (attacker-supplied)
+     * value.
+     *
+     * Configure the allowlist via either:
+     *   - the `ISF_TRUSTED_PROXIES` constant (comma-separated string or array), or
+     *   - the `isf_settings` option key `trusted_proxies` (comma-separated string
+     *     or array).
+     *
+     * Follow-up (not trivial here): CIDR-range matching. The allowlist is
+     * currently exact single-IP match only; document the proxy's egress IP(s).
      */
     public static function get_client_ip(): string {
-        $ip_keys = [
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_FORWARDED',
-            'HTTP_X_CLUSTER_CLIENT_IP',
-            'HTTP_FORWARDED_FOR',
-            'HTTP_FORWARDED',
-            'REMOTE_ADDR'
-        ];
+        $remote = isset($_SERVER['REMOTE_ADDR']) ? trim((string) $_SERVER['REMOTE_ADDR']) : '';
 
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
-                // Handle comma-separated IPs (X-Forwarded-For)
-                if (strpos($ip, ',') !== false) {
-                    $ip = trim(explode(',', $ip)[0]);
+        // REMOTE_ADDR is the only address the client cannot spoof. If it isn't a
+        // valid IP we can't trust anything, so fall back to the sentinel.
+        if (!filter_var($remote, FILTER_VALIDATE_IP)) {
+            return '0.0.0.0';
+        }
+
+        // Unless the request actually arrived from a trusted proxy, IGNORE every
+        // forwarded header and key on the real peer address.
+        if (!self::is_trusted_proxy($remote)) {
+            return $remote;
+        }
+
+        // Request came through a trusted proxy — honor the forwarded client IP.
+        // Cloudflare's CF-Connecting-IP is a single, unambiguous value.
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            $cf = trim((string) $_SERVER['HTTP_CF_CONNECTING_IP']);
+            if (filter_var($cf, FILTER_VALIDATE_IP)) {
+                return $cf;
+            }
+        }
+
+        // X-Forwarded-For is "client, proxy1, proxy2, ..." with the closest hop
+        // on the RIGHT. Walk right-to-left and return the first hop that is not
+        // itself a trusted proxy: that is the nearest address a trusted proxy
+        // genuinely observed, and the furthest left an attacker can influence.
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $hops = array_map('trim', explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']));
+            for ($i = count($hops) - 1; $i >= 0; $i--) {
+                $hop = $hops[$i];
+                if ($hop === '' || !filter_var($hop, FILTER_VALIDATE_IP)) {
+                    continue;
                 }
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
+                if (!self::is_trusted_proxy($hop)) {
+                    return $hop;
                 }
             }
         }
 
-        return '0.0.0.0';
+        // Trusted proxy but no usable forwarded value — key on the proxy itself.
+        return $remote;
+    }
+
+    /**
+     * Return the configured trusted-proxy allowlist (exact single IPs).
+     *
+     * Sources are merged: the `ISF_TRUSTED_PROXIES` constant and the
+     * `isf_settings` option key `trusted_proxies`. Each may be a comma-separated
+     * string or an array. Only syntactically valid IPs are kept.
+     *
+     * @return array<int, string>
+     */
+    private static function trusted_proxies(): array {
+        $raw = [];
+
+        if (defined('ISF_TRUSTED_PROXIES')) {
+            $raw = array_merge($raw, self::split_ip_list(ISF_TRUSTED_PROXIES));
+        }
+
+        $settings = get_option('isf_settings', []);
+        if (is_array($settings) && isset($settings['trusted_proxies'])) {
+            $raw = array_merge($raw, self::split_ip_list($settings['trusted_proxies']));
+        }
+
+        $valid = [];
+        foreach ($raw as $ip) {
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                $valid[$ip] = true;
+            }
+        }
+
+        return array_keys($valid);
+    }
+
+    /**
+     * Normalize a trusted-proxy config value (string|array|mixed) into a flat
+     * list of trimmed, non-empty IP-candidate strings.
+     *
+     * @param mixed $value
+     * @return array<int, string>
+     */
+    private static function split_ip_list($value): array {
+        if (is_array($value)) {
+            $parts = [];
+            foreach ($value as $item) {
+                $parts = array_merge($parts, self::split_ip_list($item));
+            }
+            return $parts;
+        }
+
+        if (!is_string($value)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('trim', explode(',', $value)), static function ($ip) {
+            return $ip !== '';
+        }));
+    }
+
+    /**
+     * Whether the given address is an admin-configured trusted reverse proxy.
+     */
+    private static function is_trusted_proxy(string $ip): bool {
+        return in_array($ip, self::trusted_proxies(), true);
     }
 
     /**
