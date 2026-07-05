@@ -36,6 +36,18 @@ class Updater {
     const API_URL = 'https://peanutgraphic.com/wp-json/peanut-api/v1';
 
     /**
+     * Ed25519 public key (base64) used to verify the signature of our own
+     * release packages. This is a PUBLIC key — it is safe to embed and is NOT a
+     * secret. Fingerprint faaad8d7a7d7eaa9. The matching private key lives only
+     * in the Peanut release-signing tooling (Peanut-meta scripts/publish-plugin.sh),
+     * which signs every release and ships a "<asset>.manifest.json" alongside the
+     * zip. This is DEFENSE-IN-DEPTH on top of the existing host-pin: the pin
+     * proves the zip came from the right host over TLS; the signature proves the
+     * bytes are authentically ours.
+     */
+    const PEANUT_SIGNING_PUBKEY = 'NtHnWTBLVzCBKMAq9CO8LHDSD9ZfpGV0UloQdgToIwM=';
+
+    /**
      * Current version
      */
     private string $version;
@@ -66,6 +78,10 @@ class Updater {
 
         // Plugin info popup
         add_filter('plugins_api', [$this, 'plugin_info'], 20, 3);
+
+        // Verify our own release package's Ed25519 signature BEFORE WordPress
+        // installs it. Defense-in-depth on top of the host-pin above.
+        add_filter('upgrader_pre_download', [$this, 'verify_package_signature'], 10, 4);
 
         // After update, clear cache
         add_action('upgrader_process_complete', [$this, 'clear_update_cache'], 10, 2);
@@ -445,6 +461,165 @@ class Updater {
     }
 
     /**
+     * Verify the Ed25519 signature of our own release package before install.
+     *
+     * Hooked on 'upgrader_pre_download'. Returning a local file path from this
+     * filter makes WordPress SKIP its own download and install from that
+     * (already verified) file; returning a WP_Error aborts the update. We only
+     * gate OUR plugin's own packages and let everything else pass through
+     * untouched. For our packages the behaviour is FAIL-CLOSED: a missing /
+     * malformed manifest, a hash mismatch, an unavailable libsodium, or a bad
+     * signature all abort the install rather than fall back to WordPress's
+     * unverified download.
+     *
+     * Layered on top of assert_trusted_package_url() (the host-pin) — the pin is
+     * unchanged; this adds cryptographic authenticity on top of transport trust.
+     *
+     * @param bool|\WP_Error $reply      Short-circuit reply (false = let WP download).
+     * @param string         $package    The package URL WP is about to download.
+     * @param mixed          $upgrader   The WP_Upgrader instance (unused).
+     * @param array          $hook_extra Context, incl. ['plugin' => '<dir>/<file>.php'].
+     * @return bool|string|\WP_Error Verified local path, original $reply, or WP_Error.
+     */
+    public function verify_package_signature($reply, $package, $upgrader = null, $hook_extra = array()) {
+        // Only gate OUR plugin's own release packages; let everything else pass.
+        if (!empty($hook_extra['plugin']) && $hook_extra['plugin'] !== self::PLUGIN_FILE) {
+            return $reply;
+        }
+
+        // Only interfere with packages served from our own (host-pinned) update
+        // host. NOTE: the shipped template keys this off a 'github.com/...'
+        // substring, but FormFlow's packages are served by the peanutgraphic.com
+        // license server (see assert_trusted_package_url()); keying off the same
+        // pinned host is what makes this gate actually fire for FormFlow instead
+        // of being dead code.
+        if (!is_string($package) || $package === '' || !$this->is_our_package_url($package)) {
+            return $reply;
+        }
+
+        if (!function_exists('download_url')) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+        }
+
+        $zip = download_url($package);
+        if (is_wp_error($zip)) {
+            return $zip;
+        }
+
+        $manifest_url = $package . '.manifest.json';
+        $mresp        = wp_remote_get($manifest_url, ['timeout' => 20]);
+        $manifest     = json_decode(wp_remote_retrieve_body($mresp), true);
+
+        if (!is_array($manifest) || empty($manifest['sha256']) || empty($manifest['signature'])) {
+            @unlink($zip);
+            return new \WP_Error(
+                'peanut_update_signature',
+                __('Update signature manifest missing — refusing to install an unsigned package.', 'formflow')
+            );
+        }
+
+        $bytes = (string) file_get_contents($zip);
+
+        if (!hash_equals((string) $manifest['sha256'], hash('sha256', $bytes))) {
+            @unlink($zip);
+            return new \WP_Error(
+                'peanut_update_signature',
+                __('Update package hash mismatch — refusing to install.', 'formflow')
+            );
+        }
+
+        if (!function_exists('sodium_crypto_sign_verify_detached')) {
+            @unlink($zip);
+            return new \WP_Error(
+                'peanut_update_signature',
+                __('Signature verification unavailable (libsodium) — refusing to install.', 'formflow')
+            );
+        }
+
+        if (!$this->verify_bytes($bytes, $manifest)) {
+            @unlink($zip);
+            return new \WP_Error(
+                'peanut_update_signature',
+                __('Update package signature invalid — refusing to install.', 'formflow')
+            );
+        }
+
+        return $zip; // verified — WordPress installs from this local file.
+    }
+
+    /**
+     * Pure verification of package bytes against a manifest, using the embedded
+     * Peanut signing public key. Extracted so the sha256 + Ed25519 logic can be
+     * unit-tested in isolation (no live download / booted WordPress needed).
+     *
+     * @param string $zipBytes Raw package bytes.
+     * @param array  $manifest Decoded manifest, expects ['sha256', 'signature'].
+     * @return bool True iff the sha256 matches AND the Ed25519 signature verifies.
+     */
+    public function verify_bytes(string $zipBytes, array $manifest): bool {
+        return self::verify_bytes_with_key($zipBytes, $manifest, self::PEANUT_SIGNING_PUBKEY);
+    }
+
+    /**
+     * Key-parameterised core of verify_bytes(). Static + pure so tests can prove
+     * the round-trip with a throwaway keypair (the production private key is not
+     * in this repo). Fail-CLOSED: any missing field, decode failure, wrong key /
+     * signature length, or unavailable libsodium returns false.
+     *
+     * @param string $zipBytes     Raw package bytes.
+     * @param array  $manifest     Decoded manifest, expects ['sha256', 'signature'].
+     * @param string $base64Pubkey Base64 Ed25519 public key to verify against.
+     * @return bool
+     */
+    public static function verify_bytes_with_key(string $zipBytes, array $manifest, string $base64Pubkey): bool {
+        if (empty($manifest['sha256']) || empty($manifest['signature'])) {
+            return false;
+        }
+
+        if (!hash_equals((string) $manifest['sha256'], hash('sha256', $zipBytes))) {
+            return false;
+        }
+
+        if (!function_exists('sodium_crypto_sign_verify_detached')) {
+            return false;
+        }
+
+        $sig = base64_decode((string) $manifest['signature'], true);
+        $key = base64_decode($base64Pubkey, true);
+
+        if ($sig === false || $key === false
+            || strlen($sig) !== SODIUM_CRYPTO_SIGN_BYTES
+            || strlen($key) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+            return false;
+        }
+
+        return sodium_crypto_sign_verify_detached($sig, $zipBytes, $key);
+    }
+
+    /**
+     * True when $url is served from our own (host-pinned) update host or a
+     * subdomain of it. Mirrors assert_trusted_package_url()'s host rules so the
+     * signature gate fires on exactly the packages the pin already trusts.
+     *
+     * @param string $url
+     * @return bool
+     */
+    private function is_our_package_url(string $url): bool {
+        $host = strtolower((string) (wp_parse_url($url, PHP_URL_HOST) ?? ''));
+        if ($host === '') {
+            return false;
+        }
+
+        foreach ($this->trusted_package_hosts() as $expected) {
+            if ($host === $expected || $this->host_ends_with($host, '.' . $expected)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Validate a package/download URL before handing it to the WP updater.
      *
      * INTERIM supply-chain stopgap. Returns the URL unchanged when it is HTTPS
@@ -469,18 +644,26 @@ class Updater {
         $parts  = wp_parse_url($url);
         $scheme = strtolower($parts['scheme'] ?? '');
         $host   = strtolower($parts['host'] ?? '');
-        $expected = $this->get_update_host();
 
-        $trusted = $scheme === 'https'
-            && $host !== ''
-            && ($host === $expected || $this->host_ends_with($host, '.' . $expected));
+        // The update API lives on peanutgraphic.com, but the license server's
+        // unified /updates/check now serves the canonical GitHub-release package
+        // (github.com/peanutgraphic/<slug>/...). Trust both delivery hosts.
+        $trusted = false;
+        if ($scheme === 'https' && $host !== '') {
+            foreach ($this->trusted_package_hosts() as $expected) {
+                if ($host === $expected || $this->host_ends_with($host, '.' . $expected)) {
+                    $trusted = true;
+                    break;
+                }
+            }
+        }
 
         if (!$trusted) {
             error_log(sprintf(
                 '[FormFlow Updater] Rejected update package from untrusted source: %s '
                 . '(require HTTPS on %s). Aborting update offer.',
                 $url,
-                $expected
+                implode(' or ', $this->trusted_package_hosts())
             ));
             return '';
         }
@@ -494,6 +677,14 @@ class Updater {
      *
      * @return string
      */
+    /**
+     * Hosts the update package may be served from: the update API host and the
+     * GitHub-release CDN the unified /updates/check now points at.
+     */
+    private function trusted_package_hosts(): array {
+        return array_values(array_unique([$this->get_update_host(), 'github.com']));
+    }
+
     private function get_update_host(): string {
         $host = wp_parse_url(self::API_URL, PHP_URL_HOST);
 
