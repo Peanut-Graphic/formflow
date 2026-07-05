@@ -1,5 +1,13 @@
 # FormFlow Pro Changelog
 
+## Unreleased (security)
+
+### Security
+- **Removed the hardcoded license-bypass key `FFTEST-ADMIN-DEV-MODE`.** `LicenseManager::ADMIN_TEST_KEY` shipped in client installs; anyone who entered that literal string as their license key had every Pro/Agency feature unlocked for free (`is_admin_testing_mode()` short-circuited to true, `is_pro()` rode on top, and `activate_license()` minted a local `agency` license without contacting the license server). Deleted the constant and every branch that special-cased it. The legitimate operator escape hatch — the wp-config-defined `FORMFLOW_ADMIN_KEY` constant — is kept. Also dropped the tools-settings UI hint that advertised the key and the `uninstall.php` special-case. Regression-guarded by `LicenseAdminBypassKeyTest`.
+
+### Removed
+- **Removed the dormant tester-bridge harness from the shipped plugin.** Deleted `includes/class-tester-bridge.php`, `includes/tester-bridge/`, and the top-level `tester/scenarios/` fixtures, plus the loader/init in `formflow.php`. This harness was development/QA scaffolding that should not ship to client installs. Its dedicated CI nets lost their subject: the now-empty `contract` testsuite and the tester-bridge-scoped coverage floor (`phpunit.coverage.xml`) were removed rather than repointed at a facade; the property + regression + security nets remain intact.
+
 ## 4.0.6 — 2026-06-16 (schema-drift + reliability)
 
 ### Fixed
