@@ -509,11 +509,6 @@ class Updater {
      * @return bool
      */
     private function host_ends_with(string $host, string $suffix): bool {
-        $len = strlen($suffix);
-        if ($len === 0 || strlen($host) < $len) {
-            return false;
-        }
-
-        return substr($host, -$len) === $suffix;
+        return $suffix !== '' && str_ends_with($host, $suffix);
     }
 }
