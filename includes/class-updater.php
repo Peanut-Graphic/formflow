@@ -640,18 +640,26 @@ class Updater {
         $parts  = wp_parse_url($url);
         $scheme = strtolower($parts['scheme'] ?? '');
         $host   = strtolower($parts['host'] ?? '');
-        $expected = $this->get_update_host();
 
-        $trusted = $scheme === 'https'
-            && $host !== ''
-            && ($host === $expected || $this->host_ends_with($host, '.' . $expected));
+        // The update API lives on peanutgraphic.com, but the license server's
+        // unified /updates/check now serves the canonical GitHub-release package
+        // (github.com/peanutgraphic/<slug>/...). Trust both delivery hosts.
+        $trusted = false;
+        if ($scheme === 'https' && $host !== '') {
+            foreach ($this->trusted_package_hosts() as $expected) {
+                if ($host === $expected || $this->host_ends_with($host, '.' . $expected)) {
+                    $trusted = true;
+                    break;
+                }
+            }
+        }
 
         if (!$trusted) {
             error_log(sprintf(
                 '[FormFlow Updater] Rejected update package from untrusted source: %s '
                 . '(require HTTPS on %s). Aborting update offer.',
                 $url,
-                $expected
+                implode(' or ', $this->trusted_package_hosts())
             ));
             return '';
         }
@@ -665,6 +673,14 @@ class Updater {
      *
      * @return string
      */
+    /**
+     * Hosts the update package may be served from: the update API host and the
+     * GitHub-release CDN the unified /updates/check now points at.
+     */
+    private function trusted_package_hosts(): array {
+        return array_values(array_unique([$this->get_update_host(), 'github.com']));
+    }
+
     private function get_update_host(): string {
         $host = wp_parse_url(self::API_URL, PHP_URL_HOST);
 
