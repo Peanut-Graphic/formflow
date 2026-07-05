@@ -17,6 +17,7 @@ if (!defined('ABSPATH')) {
 use ISF\Analytics\HandoffTracker;
 use ISF\Analytics\VisitorTracker;
 use ISF\Database\Database;
+use ISF\Security;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -111,8 +112,34 @@ class HandoffEndpoint {
      * Create a new tracked handoff
      */
     public function create_handoff(WP_REST_Request $request): WP_REST_Response|WP_Error {
+        // Abuse guard: this route is intentionally public (see register_routes),
+        // so throttle anonymous writes to isf_handoffs / isf_visitors / isf_touches
+        // exactly the way the enrollment handlers do. After the cluster-2 IP fix,
+        // check_rate_limit() keys on the trusted client IP.
+        if (!Security::check_rate_limit()) {
+            return new WP_Error(
+                'rate_limited',
+                'Too many requests. Please try again in a moment.',
+                ['status' => 429]
+            );
+        }
+
         $instance_id = (int) $request->get_param('instance_id');
-        $destination_url = esc_url_raw($request->get_param('destination_url'));
+
+        // Open-redirect guard: only accept a well-formed absolute http(s) URL
+        // with a host. esc_url_raw() with an explicit protocol allowlist strips
+        // javascript:/data:/vbscript:/etc; is_safe_destination_url() then rejects
+        // anything that isn't http/https-with-a-host (protocol-relative,
+        // malformed, control-char smuggling, ...).
+        $destination_url = esc_url_raw($request->get_param('destination_url'), ['http', 'https']);
+        if (!self::is_safe_destination_url($destination_url)) {
+            return new WP_Error(
+                'invalid_destination',
+                'Destination URL must be a well-formed absolute http(s) URL.',
+                ['status' => 400]
+            );
+        }
+
         $params = $request->get_param('params') ?? [];
 
         // Validate instance exists
@@ -168,6 +195,18 @@ class HandoffEndpoint {
 
         if (!$destination) {
             // Invalid or expired token - redirect to home
+            wp_safe_redirect(home_url('/'));
+            exit;
+        }
+
+        // Open-redirect guard (defense in depth): never redirect to a stored
+        // destination that isn't a well-formed absolute http(s) URL — even if a
+        // bad value was persisted before this validation existed.
+        if (!self::is_safe_destination_url($destination)) {
+            $this->db->log('warning', 'Handoff redirect blocked: unsafe destination', [
+                'token' => $token,
+                'destination' => $destination,
+            ]);
             wp_safe_redirect(home_url('/'));
             exit;
         }
@@ -240,11 +279,45 @@ class HandoffEndpoint {
             return;
         }
 
+        // Open-redirect guard (defense in depth) — mirror process_redirect().
+        if (!self::is_safe_destination_url($destination)) {
+            return;
+        }
+
         // Build final URL with tracking token
         $final_url = add_query_arg('isf_ref', $token, $destination);
 
         // Perform redirect
         wp_redirect($final_url, 302);
         exit;
+    }
+
+    /**
+     * Validate a handoff destination URL.
+     *
+     * Blocks open-redirect / phishing / XSS vectors by requiring a well-formed
+     * ABSOLUTE http(s) URL that has a host. Rejects javascript:, data:,
+     * vbscript:, file:, protocol-relative (//host), malformed URLs, and any
+     * value carrying control characters that could smuggle a dangerous scheme
+     * past a lenient parser (e.g. "java\nscript:...").
+     *
+     * Pure / WordPress-free so the invariant can be unit-tested directly.
+     */
+    public static function is_safe_destination_url(?string $url): bool {
+        if (!is_string($url) || $url === '') {
+            return false;
+        }
+
+        // Reject control characters (incl. embedded NUL / CR / LF / TAB).
+        if (preg_match('/[\x00-\x1f\x7f]/', $url) === 1) {
+            return false;
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false || empty($parts['scheme']) || empty($parts['host'])) {
+            return false;
+        }
+
+        return in_array(strtolower($parts['scheme']), ['http', 'https'], true);
     }
 }
