@@ -610,9 +610,13 @@ class Updater {
             return false;
         }
 
-        $expected = $this->get_update_host();
+        foreach ($this->trusted_package_hosts() as $expected) {
+            if ($host === $expected || $this->host_ends_with($host, '.' . $expected)) {
+                return true;
+            }
+        }
 
-        return $host === $expected || $this->host_ends_with($host, '.' . $expected);
+        return false;
     }
 
     /**
