@@ -1,5 +1,19 @@
 # FormFlow Pro Changelog
 
+## 4.0.7 — 2026-07-05 (security)
+
+### Security (microscope remediation)
+
+- Escaped every field in the admin submission-detail view (stored XSS) and neutralized CSV formula injection on the submissions and attribution exports.
+- Validated handoff redirect destinations (block javascript:/malformed) and rate-limited the anonymous handoff writes.
+- Trusted-proxy client-IP resolution so the public-form rate limit cannot be bypassed with spoofed headers.
+- SSRF guard on IntelliSource endpoints + pinned the updater download host (interim supply-chain hardening).
+
+### Removed
+
+- **Removed the hardcoded `FFTEST-ADMIN-DEV-MODE` license-bypass key** — anyone who entered it unlocked all Pro/Agency features for free. The legitimate wp-config `FORMFLOW_ADMIN_KEY` operator escape hatch is kept.
+- **Removed the tester-bridge test harness** (`includes/class-tester-bridge.php`, `tester/`) — it no longer ships to client installs.
+
 ## Unreleased (security)
 
 ### Security
