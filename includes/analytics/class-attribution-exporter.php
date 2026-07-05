@@ -302,13 +302,39 @@ class AttributionExporter {
         // Add BOM for Excel UTF-8 compatibility
         fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-        // Write rows
+        // Write rows. Every cell is passed through sanitize_csv_cell() first:
+        // anon-seeded UTM fields (utm_source/medium/campaign) reach this export
+        // unfiltered, so a value leading with = + - @ TAB CR could execute as a
+        // formula in Excel / Sheets. fputcsv() still handles quoting/escaping.
         foreach ($rows as $row) {
-            fputcsv($output, $row);
+            fputcsv($output, array_map([self::class, 'sanitize_csv_cell'], $row));
         }
 
         fclose($output);
         exit;
+    }
+
+    /**
+     * Neutralize spreadsheet formula/CSV-injection in a single cell.
+     *
+     * A cell whose first character is one of = + - @ or a TAB / CR is treated as
+     * a formula by Excel / Google Sheets / LibreOffice. Prefixing a single quote
+     * forces literal-text rendering. Used on export output only; it does not
+     * alter stored data.
+     *
+     * @param mixed $value Raw cell value.
+     * @return string Neutralized cell value.
+     */
+    private static function sanitize_csv_cell($value): string {
+        $value = (string) ($value ?? '');
+        if ($value === '') {
+            return $value;
+        }
+        $first = $value[0];
+        if (in_array($first, ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     /**

@@ -203,9 +203,14 @@ trait Admin_Submissions {
         $csv_output = '';
         foreach ($csv_lines as $line) {
             $escaped = array_map(function($field) {
-                // Escape double quotes and wrap in quotes if needed
-                $field = str_replace('"', '""', $field ?? '');
-                if (strpos($field, ',') !== false || strpos($field, '"') !== false || strpos($field, "\n") !== false) {
+                // Neutralize spreadsheet formula injection FIRST (attacker-
+                // submitted PII can lead with = + - @ TAB CR to trigger formula
+                // execution in Excel/Sheets), then apply CSV quoting.
+                $field = self::sanitize_csv_cell($field);
+                // Escape double quotes and wrap in quotes if needed. \r is a
+                // wrap trigger too — a bare CR would otherwise split the record.
+                $field = str_replace('"', '""', $field);
+                if (strpos($field, ',') !== false || strpos($field, '"') !== false || strpos($field, "\n") !== false || strpos($field, "\r") !== false) {
                     return '"' . $field . '"';
                 }
                 return $field;
@@ -220,6 +225,33 @@ trait Admin_Submissions {
             'filename' => $filename,
             'count' => count($submissions),
         ]);
+    }
+
+    /**
+     * Neutralize spreadsheet formula/CSV-injection in a single cell.
+     *
+     * Attacker-submitted PII (name, account number, custom fields) flows into
+     * the admin CSV export. A cell whose first character is one of = + - @ or a
+     * TAB / CR is interpreted as a formula by Excel / Google Sheets / LibreOffice
+     * (e.g. `=HYPERLINK(...)`, `+cmd`, `@SUM(...)`). Prefixing a single quote
+     * forces the cell to render as literal text without altering the displayed
+     * value beyond the leading apostrophe. This does NOT touch the input
+     * sanitizers feeding the encrypted store / IntelliSource — it only hardens
+     * the export rendering.
+     *
+     * @param mixed $value Raw cell value.
+     * @return string Neutralized cell value.
+     */
+    private static function sanitize_csv_cell($value): string {
+        $value = (string) ($value ?? '');
+        if ($value === '') {
+            return $value;
+        }
+        $first = $value[0];
+        if (in_array($first, ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     // =========================================================================
