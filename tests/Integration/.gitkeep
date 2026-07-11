@@ -1,0 +1,5 @@
+# Placeholder so the "integration" PHPUnit testsuite declared in phpunit.xml
+# resolves. Without this directory PHPUnit 9.6 aborts the whole run with
+# "Test directory tests/Integration not found" (exit 2), which broke the full
+# `composer test` and the accessibility.yml `--filter=Accessibility` step once
+# the a11y gate stopped swallowing errors. Real integration tests can land here.
