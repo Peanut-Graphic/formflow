@@ -60,16 +60,14 @@ jobs:
       - name: Run accessibility unit tests
         run: |
           if [ -d "tests/accessibility" ] && [ -f "phpunit.xml" ]; then
-            composer test -- --testsuite=accessibility || true
+            composer test -- --testsuite=accessibility
           fi
-        continue-on-error: true
 
       - name: Run accessibility integration tests
         run: |
           if [ -d "tests/accessibility" ] && [ -f "phpunit.xml" ]; then
-            composer test -- --filter=Accessibility || true
+            composer test -- --filter=Accessibility
           fi
-        continue-on-error: true
 
       - name: Comment on PR with results
         continue-on-error: true

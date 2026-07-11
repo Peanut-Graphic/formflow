@@ -12,15 +12,29 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-use ISF\Frontend\FormRenderer;
-use ISF\Forms\FormHandler;
+use PHPUnit\Framework\TestCase;
+
+// esc_html() shim. These tests run against the plugin's lightweight stub
+// bootstrap (no wordpress-tests-lib), so declare a real escaping fallback that
+// mirrors WordPress core behaviour. Per tests/bootstrap.php, plain PHPUnit tests
+// declare their own function_exists() guards rather than the bootstrap doing so.
+if (!function_exists('esc_html')) {
+    function esc_html($text) {
+        return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
+    }
+}
 
 /**
  * Test_Template_Accessibility class
  *
- * Tests accessibility of form template output
+ * Tests accessibility of form template output.
+ *
+ * Ported from WP_UnitTestCase to plain PHPUnit\Framework\TestCase to match this
+ * repo's stub-bootstrap convention (see tests/Regression/*): the suite runs
+ * without wordpress-tests-lib or MySQL. These assertions are self-contained
+ * string checks over rendered HTML fragments and need no WordPress runtime.
  */
-class Test_Template_Accessibility extends WP_UnitTestCase {
+class Test_Template_Accessibility extends TestCase {
 
     /**
      * Form instance for testing
@@ -71,9 +85,9 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('<form', $output);
-        $this->assertStringContains('<fieldset', $output);
-        $this->assertStringContains('<legend>', $output);
+        $this->assertStringContainsString('<form', $output);
+        $this->assertStringContainsString('<fieldset', $output);
+        $this->assertStringContainsString('<legend>', $output);
     }
 
     /**
@@ -95,12 +109,12 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         $output = ob_get_clean();
 
         // Check label exists
-        $this->assertStringContains('<label for="email"', $output);
+        $this->assertStringContainsString('<label for="email"', $output);
         // Check input has matching id
-        $this->assertStringContains('id="email"', $output);
+        $this->assertStringContainsString('id="email"', $output);
         // Check required indicator
-        $this->assertStringContains('class="isf-required"', $output);
-        $this->assertStringContains('required', $output);
+        $this->assertStringContainsString('class="isf-required"', $output);
+        $this->assertStringContainsString('required', $output);
     }
 
     /**
@@ -115,8 +129,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('aria-required="true"', $output);
-        $this->assertStringContains('required', $output);
+        $this->assertStringContainsString('aria-required="true"', $output);
+        $this->assertStringContainsString('required', $output);
     }
 
     /**
@@ -133,8 +147,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('role="alert"', $output);
-        $this->assertStringContains('isf-alert-error', $output);
+        $this->assertStringContainsString('role="alert"', $output);
+        $this->assertStringContainsString('isf-alert-error', $output);
     }
 
     /**
@@ -151,9 +165,9 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('role="status"', $output);
-        $this->assertStringContains('aria-live="polite"', $output);
-        $this->assertStringContains('aria-busy="true"', $output);
+        $this->assertStringContainsString('role="status"', $output);
+        $this->assertStringContainsString('aria-live="polite"', $output);
+        $this->assertStringContainsString('aria-busy="true"', $output);
     }
 
     /**
@@ -168,7 +182,7 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('alt="Smart Thermostat Device"', $output);
+        $this->assertStringContainsString('alt="Smart Thermostat Device"', $output);
     }
 
     /**
@@ -183,8 +197,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('alt=""', $output);
-        $this->assertStringContains('aria-hidden="true"', $output);
+        $this->assertStringContainsString('alt=""', $output);
+        $this->assertStringContainsString('aria-hidden="true"', $output);
     }
 
     /**
@@ -199,7 +213,7 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('Continue to Next Step', $output);
+        $this->assertStringContainsString('Continue to Next Step', $output);
     }
 
     /**
@@ -216,8 +230,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('aria-label="Close modal"', $output);
-        $this->assertStringContains('aria-hidden="true"', $output);
+        $this->assertStringContainsString('aria-label="Close modal"', $output);
+        $this->assertStringContainsString('aria-hidden="true"', $output);
     }
 
     /**
@@ -232,8 +246,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('Learn More About This Program', $output);
-        $this->assertStringNotContains('click here', strtolower($output));
+        $this->assertStringContainsString('Learn More About This Program', $output);
+        $this->assertStringNotContainsString('click here', strtolower($output));
     }
 
     /**
@@ -264,9 +278,9 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('<fieldset', $output);
-        $this->assertStringContains('<legend>Select Device Type</legend>', $output);
-        $this->assertStringContains('type="radio"', $output);
+        $this->assertStringContainsString('<fieldset', $output);
+        $this->assertStringContainsString('<legend>Select Device Type</legend>', $output);
+        $this->assertStringContainsString('type="radio"', $output);
     }
 
     /**
@@ -297,9 +311,9 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('<fieldset', $output);
-        $this->assertStringContains('<legend>Select preferred contact methods</legend>', $output);
-        $this->assertStringContains('type="checkbox"', $output);
+        $this->assertStringContainsString('<fieldset', $output);
+        $this->assertStringContainsString('<legend>Select preferred contact methods</legend>', $output);
+        $this->assertStringContainsString('type="checkbox"', $output);
     }
 
     /**
@@ -320,9 +334,9 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('data-step="1"', $output);
-        $this->assertStringContains('isf-step-title', $output);
-        $this->assertStringContains('Step 1 of 5', $output);
+        $this->assertStringContainsString('data-step="1"', $output);
+        $this->assertStringContainsString('isf-step-title', $output);
+        $this->assertStringContainsString('Step 1 of 5', $output);
     }
 
     /**
@@ -343,10 +357,10 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('<h2>', $output);
-        $this->assertStringContains('<h3>', $output);
+        $this->assertStringContainsString('<h2>', $output);
+        $this->assertStringContainsString('<h3>', $output);
         // Should not skip heading levels
-        $this->assertStringNotContains('<h4>', $output);
+        $this->assertStringNotContainsString('<h4>', $output);
     }
 
     /**
@@ -367,8 +381,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('aria-describedby="account_help"', $output);
-        $this->assertStringContains('id="account_help"', $output);
+        $this->assertStringContainsString('aria-describedby="account_help"', $output);
+        $this->assertStringContainsString('id="account_help"', $output);
     }
 
     /**
@@ -385,8 +399,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('Verify Account and Continue', $output);
-        $this->assertStringNotContains('<button></button>', $output);
+        $this->assertStringContainsString('Verify Account and Continue', $output);
+        $this->assertStringNotContainsString('<button></button>', $output);
     }
 
     /**
@@ -403,7 +417,7 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('Go Back to Previous Step', $output);
+        $this->assertStringContainsString('Go Back to Previous Step', $output);
     }
 
     /**
@@ -420,11 +434,11 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('role="progressbar"', $output);
-        $this->assertStringContains('aria-valuenow="40"', $output);
-        $this->assertStringContains('aria-valuemin="0"', $output);
-        $this->assertStringContains('aria-valuemax="100"', $output);
-        $this->assertStringContains('aria-label=', $output);
+        $this->assertStringContainsString('role="progressbar"', $output);
+        $this->assertStringContainsString('aria-valuenow="40"', $output);
+        $this->assertStringContainsString('aria-valuemin="0"', $output);
+        $this->assertStringContainsString('aria-valuemax="100"', $output);
+        $this->assertStringContainsString('aria-label=', $output);
     }
 
     /**
@@ -445,9 +459,9 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('role="dialog"', $output);
-        $this->assertStringContains('aria-modal="true"', $output);
-        $this->assertStringContains('aria-labelledby="modal-title"', $output);
+        $this->assertStringContainsString('role="dialog"', $output);
+        $this->assertStringContainsString('aria-modal="true"', $output);
+        $this->assertStringContainsString('aria-labelledby="modal-title"', $output);
     }
 
     /**
@@ -469,9 +483,9 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('<label for="cycling_level"', $output);
-        $this->assertStringContains('id="cycling_level"', $output);
-        $this->assertStringContains('aria-required="true"', $output);
+        $this->assertStringContainsString('<label for="cycling_level"', $output);
+        $this->assertStringContainsString('id="cycling_level"', $output);
+        $this->assertStringContainsString('aria-required="true"', $output);
     }
 
     /**
@@ -489,9 +503,9 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('role="alert"', $output);
-        $this->assertStringContains('aria-live="assertive"', $output);
-        $this->assertStringContains('isf-alert-success', $output);
+        $this->assertStringContainsString('role="alert"', $output);
+        $this->assertStringContainsString('aria-live="assertive"', $output);
+        $this->assertStringContainsString('isf-alert-success', $output);
     }
 
     /**
@@ -521,8 +535,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('<thead>', $output);
-        $this->assertStringContains('<th scope="col">', $output);
+        $this->assertStringContainsString('<thead>', $output);
+        $this->assertStringContainsString('<th scope="col">', $output);
     }
 
     /**
@@ -542,8 +556,8 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringContains('Skip to form', $output);
-        $this->assertStringContains('href="#isf-main-form"', $output);
+        $this->assertStringContainsString('Skip to form', $output);
+        $this->assertStringContainsString('href="#isf-main-form"', $output);
     }
 
     /**
@@ -559,7 +573,7 @@ class Test_Template_Accessibility extends WP_UnitTestCase {
         <?php
         $output = ob_get_clean();
 
-        $this->assertStringNotContains('<script>', $output);
-        $this->assertStringContains('&lt;script&gt;', $output);
+        $this->assertStringNotContainsString('<script>', $output);
+        $this->assertStringContainsString('&lt;script&gt;', $output);
     }
 }
