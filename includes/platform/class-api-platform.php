@@ -1115,26 +1115,10 @@ class APIPlatform {
      * Get client IP address
      */
     private function get_client_ip(): string {
-        $headers = [
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'REMOTE_ADDR',
-        ];
-
-        foreach ($headers as $header) {
-            if (!empty($_SERVER[$header])) {
-                $ip = $_SERVER[$header];
-                if (strpos($ip, ',') !== false) {
-                    $ip = trim(explode(',', $ip)[0]);
-                }
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
-            }
-        }
-
-        return '0.0.0.0';
+        // Route through the hardened, trusted-proxy-aware resolver so an
+        // API-key allowlist (allowed_ips) can't be bypassed by spoofing
+        // X-Forwarded-For / X-Real-IP / CF-Connecting-IP on a direct request.
+        return \ISF\Security::get_client_ip();
     }
 
     /**

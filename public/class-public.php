@@ -968,6 +968,28 @@ class Frontend {
     public function isf_submit_builder_form(): void {
         check_ajax_referer('isf_form_submit', 'isf_nonce');
 
+        // Anti-abuse on the live submit path. The standalone SecurityHardening
+        // guards only hook the legacy isf_form_action AJAX action, which this
+        // handler does not use — so rate-limiting and the honeypot must be
+        // enforced here, or every nopriv POST fans out to destinations,
+        // webhooks, SMS and email unthrottled.
+        if (! Security::check_rate_limit()) {
+            wp_send_json_error(
+                ['message' => __('Too many requests. Please try again in a moment.', 'formflow')],
+                429
+            );
+        }
+        if (isset($_POST['isf_website_url']) && $_POST['isf_website_url'] !== '') {
+            // Honeypot filled — almost certainly a bot. Log and return a decoy
+            // success (matching SecurityHardening::validate_ajax_request) so the
+            // bot sees no signal, and never persist the submission.
+            Security::log_security_event('honeypot_triggered', [
+                'ip'    => Security::get_client_ip(),
+                'value' => sanitize_text_field(wp_unslash((string) $_POST['isf_website_url'])),
+            ]);
+            wp_send_json_success(['message' => __('Form submitted successfully.', 'formflow')]);
+        }
+
         $instance_id = isset($_POST['instance_id']) ? (int) $_POST['instance_id'] : 0;
         if ($instance_id <= 0) {
             wp_send_json_error(['message' => __('Invalid form.', 'formflow')], 400);
@@ -999,7 +1021,7 @@ class Frontend {
             'form_data'      => $form_data,
             'status'         => 'completed',
             'step'           => 1,
-            'ip_address'     => $_SERVER['REMOTE_ADDR'] ?? '',
+            'ip_address'     => Security::get_client_ip(),
             'user_agent'     => $_SERVER['HTTP_USER_AGENT'] ?? '',
         ]);
 
