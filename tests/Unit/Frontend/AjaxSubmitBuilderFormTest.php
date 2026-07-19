@@ -126,6 +126,65 @@ final class AjaxSubmitBuilderFormTest extends TestCase
     }
 
     /**
+     * F1 (audit 2026-07) regression guard — anti-abuse on the LIVE submit path.
+     * The SecurityHardening guards only hook the legacy isf_form_action action
+     * this handler never uses, so the live handler must enforce the per-IP rate
+     * limit itself, BEFORE it persists and fans out to destinations/webhooks/
+     * SMS/email. Removing this reopens an unthrottled, replayable nopriv spam
+     * and cost amplifier.
+     */
+    public function test_handler_rate_limits_before_persisting(): void
+    {
+        $this->assertMatchesRegularExpression(
+            '/Security::check_rate_limit\(\)/',
+            $this->source,
+            'isf_submit_builder_form must call Security::check_rate_limit() (F1 hotfix).'
+        );
+        $rl_pos      = strpos($this->source, 'Security::check_rate_limit(');
+        $persist_pos = strpos($this->source, '$this->db->create_submission(');
+        $this->assertNotFalse($rl_pos, 'rate-limit check missing from isf_submit_builder_form');
+        $this->assertNotFalse($persist_pos, 'create_submission call missing');
+        $this->assertLessThan(
+            $persist_pos,
+            $rl_pos,
+            'Rate limit must run BEFORE create_submission — otherwise abusive POSTs still persist and fan out.'
+        );
+    }
+
+    /**
+     * F1 regression guard — honeypot enforced on the live path.
+     */
+    public function test_handler_enforces_honeypot(): void
+    {
+        $this->assertMatchesRegularExpression(
+            "/isset\\(\\\$_POST\\['isf_website_url'\\]\\)/",
+            $this->source,
+            'isf_submit_builder_form must check the isf_website_url honeypot (F1 hotfix).'
+        );
+        $hp_pos      = strpos($this->source, "isf_website_url");
+        $persist_pos = strpos($this->source, '$this->db->create_submission(');
+        $this->assertLessThan(
+            $persist_pos,
+            $hp_pos,
+            'Honeypot check must run before create_submission so bot fills never persist.'
+        );
+    }
+
+    /**
+     * F1 regression guard — the persisted IP must come from the hardened,
+     * trusted-proxy-aware resolver, not raw REMOTE_ADDR (which is correct only
+     * when there is no trusted proxy in front).
+     */
+    public function test_handler_stores_hardened_client_ip(): void
+    {
+        $this->assertMatchesRegularExpression(
+            "/'ip_address'\\s*=>\\s*Security::get_client_ip\\(\\)/",
+            $this->source,
+            'isf_submit_builder_form must persist Security::get_client_ip(), not raw $_SERVER[REMOTE_ADDR].'
+        );
+    }
+
+    /**
      * The handler must be registered under both isf_* and formflow_*
      * action names (F5 ASM mirror, see memory 2026-05-09).
      */

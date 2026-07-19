@@ -316,29 +316,9 @@ class SecurityHardening {
      * Get client IP address
      */
     public function get_client_ip(): string {
-        $ip_keys = [
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'REMOTE_ADDR'
-        ];
-
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
-
-                // Handle comma-separated list
-                if (strpos($ip, ',') !== false) {
-                    $ip = trim(explode(',', $ip)[0]);
-                }
-
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
-            }
-        }
-
-        return '0.0.0.0';
+        // Delegate to the hardened, trusted-proxy-aware resolver so security
+        // logs and IP blocks key on an address the client cannot spoof.
+        return Security::get_client_ip();
     }
 
     /**
