@@ -9,15 +9,19 @@
  * a future PHI (Pepco/Delmarva) XML->JSON migration has a home; it deliberately
  * ships NO utility presets, so nothing here implies PHI is validated.
  *
- * @package FormFlow\Tests\Unit
+ * Lives in the REGRESSION suite (blocking Net 6 gate), not `unit` — CI runs
+ * `unit` with `continue-on-error: true`, so these would have been unenforced.
+ *
+ * @package FormFlow\Tests\Regression
  */
 
-namespace ISF\Tests\Unit\Connectors;
+namespace ISF\Tests\Regression;
 
+use Brain\Monkey;
 use Brain\Monkey\Functions;
 use ISF\Connectors\DominionPtr\DominionPtrConnector;
 use ISF\Connectors\PowerportalJson\PowerportalJsonConnector;
-use ISF\Tests\Unit\TestCase;
+use PHPUnit\Framework\TestCase;
 
 require_once ISF_PLUGIN_DIR . 'includes/api/interface-api-connector.php';
 require_once ISF_PLUGIN_DIR . 'includes/api/class-scheduling-result.php';
@@ -29,7 +33,14 @@ final class PowerportalJsonConnectorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Monkey\setUp();
         Functions\when('__')->returnArg(1);
+    }
+
+    protected function tearDown(): void
+    {
+        Monkey\tearDown();
+        parent::tearDown();
     }
 
     private function baseReturning(array $byPath): PowerportalJsonConnector
