@@ -482,69 +482,30 @@ class Updater {
      * @return bool|string|\WP_Error Verified local path, original $reply, or WP_Error.
      */
     public function verify_package_signature($reply, $package, $upgrader = null, $hook_extra = array()) {
-        // Only gate OUR plugin's own release packages; let everything else pass.
-        if (!empty($hook_extra['plugin']) && $hook_extra['plugin'] !== self::PLUGIN_FILE) {
-            return $reply;
-        }
+        return $this->update_gate()->verifyPackageSignature($reply, $package, $upgrader, $hook_extra);
+    }
 
-        // Only interfere with packages served from our own (host-pinned) update
-        // host. NOTE: the shipped template keys this off a 'github.com/...'
-        // substring, but FormFlow's packages are served by the peanutgraphic.com
-        // license server (see assert_trusted_package_url()); keying off the same
-        // pinned host is what makes this gate actually fire for FormFlow instead
-        // of being dead code.
-        if (!is_string($package) || $package === '' || !$this->is_our_package_url($package)) {
-            return $reply;
-        }
-
-        if (!function_exists('download_url')) {
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-        }
-
-        $zip = download_url($package);
-        if (is_wp_error($zip)) {
-            return $zip;
-        }
-
-        $manifest_url = $package . '.manifest.json';
-        $mresp        = wp_remote_get($manifest_url, ['timeout' => 20]);
-        $manifest     = json_decode(wp_remote_retrieve_body($mresp), true);
-
-        if (!is_array($manifest) || empty($manifest['sha256']) || empty($manifest['signature'])) {
-            @unlink($zip);
-            return new \WP_Error(
-                'peanut_update_signature',
-                __('Update signature manifest missing — refusing to install an unsigned package.', 'formflow')
-            );
-        }
-
-        $bytes = (string) file_get_contents($zip);
-
-        if (!hash_equals((string) $manifest['sha256'], hash('sha256', $bytes))) {
-            @unlink($zip);
-            return new \WP_Error(
-                'peanut_update_signature',
-                __('Update package hash mismatch — refusing to install.', 'formflow')
-            );
-        }
-
-        if (!function_exists('sodium_crypto_sign_verify_detached')) {
-            @unlink($zip);
-            return new \WP_Error(
-                'peanut_update_signature',
-                __('Signature verification unavailable (libsodium) — refusing to install.', 'formflow')
-            );
-        }
-
-        if (!$this->verify_bytes($bytes, $manifest)) {
-            @unlink($zip);
-            return new \WP_Error(
-                'peanut_update_signature',
-                __('Update package signature invalid — refusing to install.', 'formflow')
-            );
-        }
-
-        return $zip; // verified — WordPress installs from this local file.
+    /**
+     * The shared signed-update gate (peanut/formflow-core), configured for this
+     * plugin. Replaces FormFlow's own forked copy of the download+verify logic
+     * so Pro, Lite and Connect all enforce identically instead of drifting
+     * (2026-07 audit, finding A6).
+     *
+     * NOTE: the shared gate is slightly STRICTER than the code it replaces — a
+     * package identified as ours but served from an untrusted host is refused
+     * rather than skipped. Harmless here (assert_trusted_package_url already
+     * suppresses offers from untrusted hosts, so WP never sees such a URL), and
+     * it removes the skip-means-install-unverified failure mode.
+     *
+     * @return \Peanut\FormCore\Update\SignedUpdateGate
+     */
+    private function update_gate(): \Peanut\FormCore\Update\SignedUpdateGate {
+        return new \Peanut\FormCore\Update\SignedUpdateGate(
+            self::PLUGIN_FILE,
+            $this->trusted_package_hosts(),
+            self::PEANUT_SIGNING_PUBKEY,
+            'formflow'
+        );
     }
 
     /**
@@ -572,28 +533,7 @@ class Updater {
      * @return bool
      */
     public static function verify_bytes_with_key(string $zipBytes, array $manifest, string $base64Pubkey): bool {
-        if (empty($manifest['sha256']) || empty($manifest['signature'])) {
-            return false;
-        }
-
-        if (!hash_equals((string) $manifest['sha256'], hash('sha256', $zipBytes))) {
-            return false;
-        }
-
-        if (!function_exists('sodium_crypto_sign_verify_detached')) {
-            return false;
-        }
-
-        $sig = base64_decode((string) $manifest['signature'], true);
-        $key = base64_decode($base64Pubkey, true);
-
-        if ($sig === false || $key === false
-            || strlen($sig) !== SODIUM_CRYPTO_SIGN_BYTES
-            || strlen($key) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
-            return false;
-        }
-
-        return sodium_crypto_sign_verify_detached($sig, $zipBytes, $key);
+        return \Peanut\FormCore\Update\PackageVerifier::verifyBytes($zipBytes, $manifest, $base64Pubkey);
     }
 
     /**
@@ -605,18 +545,7 @@ class Updater {
      * @return bool
      */
     private function is_our_package_url(string $url): bool {
-        $host = strtolower((string) (wp_parse_url($url, PHP_URL_HOST) ?? ''));
-        if ($host === '') {
-            return false;
-        }
-
-        foreach ($this->trusted_package_hosts() as $expected) {
-            if ($host === $expected || $this->host_ends_with($host, '.' . $expected)) {
-                return true;
-            }
-        }
-
-        return false;
+        return \Peanut\FormCore\Update\PackageVerifier::isTrustedPackageUrl($url, $this->trusted_package_hosts());
     }
 
     /**
@@ -641,22 +570,10 @@ class Updater {
             return '';
         }
 
-        $parts  = wp_parse_url($url);
-        $scheme = strtolower($parts['scheme'] ?? '');
-        $host   = strtolower($parts['host'] ?? '');
-
-        // The update API lives on peanutgraphic.com, but the license server's
-        // unified /updates/check now serves the canonical GitHub-release package
-        // (github.com/peanutgraphic/<slug>/...). Trust both delivery hosts.
-        $trusted = false;
-        if ($scheme === 'https' && $host !== '') {
-            foreach ($this->trusted_package_hosts() as $expected) {
-                if ($host === $expected || $this->host_ends_with($host, '.' . $expected)) {
-                    $trusted = true;
-                    break;
-                }
-            }
-        }
+        // Host decision delegated to the shared verifier so the offer-time pin
+        // and the install-time signature gate can never disagree about what
+        // "our host" means (they used to be two hand-rolled copies).
+        $trusted = \Peanut\FormCore\Update\PackageVerifier::isTrustedPackageUrl($url, $this->trusted_package_hosts());
 
         if (!$trusted) {
             error_log(sprintf(
@@ -691,15 +608,4 @@ class Updater {
         return strtolower(is_string($host) && $host !== '' ? $host : 'peanutgraphic.com');
     }
 
-    /**
-     * Suffix match on a host label boundary (avoids "evilpeanutgraphic.com"
-     * slipping past a naive substring check).
-     *
-     * @param string $host
-     * @param string $suffix
-     * @return bool
-     */
-    private function host_ends_with(string $host, string $suffix): bool {
-        return $suffix !== '' && str_ends_with($host, $suffix);
-    }
 }
