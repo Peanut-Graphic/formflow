@@ -20,89 +20,38 @@ class Encryption {
 
     private string $key;
 
+    private \Peanut\FormCore\Crypto\Encryptor $encryptor;
+
     /**
      * Constructor
      */
     public function __construct() {
-        $this->key = $this->get_encryption_key();
+        $this->key       = $this->get_encryption_key();
+        $this->encryptor = new \Peanut\FormCore\Crypto\Encryptor($this->key);
     }
 
     /**
      * Get or generate the encryption key
      */
     private function get_encryption_key(): string {
-        // First, check for defined constant
-        if (defined('ISF_ENCRYPTION_KEY') && strlen(ISF_ENCRYPTION_KEY) >= 32) {
-            return substr(ISF_ENCRYPTION_KEY, 0, 32);
-        }
-
-        // Fall back to WordPress auth salt
-        $key = wp_salt('auth');
-
-        // Ensure key is exactly 32 bytes
-        return substr(hash('sha256', $key), 0, 32);
+        return \Peanut\FormCore\Crypto\Encryptor::deriveKey(
+            defined('ISF_ENCRYPTION_KEY') ? (string) ISF_ENCRYPTION_KEY : null,
+            (string) wp_salt('auth')
+        );
     }
 
     /**
      * Encrypt data
      */
     public function encrypt(string $data): string {
-        if (empty($data)) {
-            return '';
-        }
-
-        // Generate random IV
-        $iv = openssl_random_pseudo_bytes(self::IV_LENGTH);
-
-        // Encrypt
-        $encrypted = openssl_encrypt(
-            $data,
-            self::METHOD,
-            $this->key,
-            OPENSSL_RAW_DATA,
-            $iv
-        );
-
-        if ($encrypted === false) {
-            throw new \RuntimeException('Encryption failed');
-        }
-
-        // Combine IV and encrypted data, then base64 encode
-        return base64_encode($iv . $encrypted);
+        return $this->encryptor->encrypt($data);
     }
 
     /**
      * Decrypt data
      */
     public function decrypt(string $data): string {
-        if (empty($data)) {
-            return '';
-        }
-
-        // Decode base64
-        $decoded = base64_decode($data, true);
-        if ($decoded === false) {
-            return '';
-        }
-
-        // Extract IV and encrypted data
-        $iv = substr($decoded, 0, self::IV_LENGTH);
-        $encrypted = substr($decoded, self::IV_LENGTH);
-
-        if (strlen($iv) !== self::IV_LENGTH) {
-            return '';
-        }
-
-        // Decrypt
-        $decrypted = openssl_decrypt(
-            $encrypted,
-            self::METHOD,
-            $this->key,
-            OPENSSL_RAW_DATA,
-            $iv
-        );
-
-        return $decrypted !== false ? $decrypted : '';
+        return $this->encryptor->decrypt($data);
     }
 
     /**

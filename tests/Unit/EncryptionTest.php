@@ -94,6 +94,27 @@ final class EncryptionTest extends TestCase
         $this->assertSame($data, $this->enc->decrypt_array($this->enc->encrypt_array($data)));
     }
 
+    /**
+     * The one that actually guards the migration: a ciphertext blob produced by
+     * the PRE-EXTRACTION implementation, hardcoded here. Round-tripping the new
+     * code against itself would pass happily even if key derivation had drifted
+     * — and every already-stored record would be silently unreadable in prod.
+     *
+     * Blob was encrypted with the legacy algorithm using the salt-fallback key
+     * derived from the same wp_salt() value setUp() mocks, and a fixed IV.
+     */
+    public function test_decrypts_ciphertext_written_before_the_extraction(): void
+    {
+        $stored = 'AQEBAQEBAQEBAQEBAQEBAefC7n+zsNXWXljeq6gsPaHr3Yy+KBdo0cu5w9Kfe533';
+
+        $this->assertSame(
+            'account-1234567890',
+            $this->enc->decrypt($stored),
+            'Stored records written before the formflow-core extraction must still decrypt. '
+            . 'A failure here means the key derivation or wire format drifted and live data is unreadable.'
+        );
+    }
+
     public function test_hash_and_verify(): void
     {
         $this->assertSame(hash('sha256', 'v'), Encryption::hash('v'));

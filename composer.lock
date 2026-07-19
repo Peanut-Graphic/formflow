@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bd83f24f70c84c8df09ef1643959000c",
+    "content-hash": "5fcb7d9a93ae2399ead4fac9053ab4d4",
     "packages": [
         {
             "name": "paragonie/constant_time_encoding",
@@ -127,16 +127,16 @@
         },
         {
             "name": "peanut/formflow-core",
-            "version": "v0.4.0",
+            "version": "v0.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Peanut-Graphic/formflow-core.git",
-                "reference": "711ade4b235f0c2d8e8f94cd7634c97ca1a63725"
+                "reference": "f168a8c05e829d36994a731bdf144689da73cf4e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Peanut-Graphic/formflow-core/zipball/711ade4b235f0c2d8e8f94cd7634c97ca1a63725",
-                "reference": "711ade4b235f0c2d8e8f94cd7634c97ca1a63725",
+                "url": "https://api.github.com/repos/Peanut-Graphic/formflow-core/zipball/f168a8c05e829d36994a731bdf144689da73cf4e",
+                "reference": "f168a8c05e829d36994a731bdf144689da73cf4e",
                 "shasum": ""
             },
             "require": {
@@ -161,10 +161,10 @@
             ],
             "description": "Shared form-engine + API/connector core for FormFlow Pro and Lite (extracted from the duplicated isf/fffl code).",
             "support": {
-                "source": "https://github.com/Peanut-Graphic/formflow-core/tree/v0.4.0",
+                "source": "https://github.com/Peanut-Graphic/formflow-core/tree/v0.5.0",
                 "issues": "https://github.com/Peanut-Graphic/formflow-core/issues"
             },
-            "time": "2026-07-19T12:24:09+00:00"
+            "time": "2026-07-19T13:52:59+00:00"
         },
         {
             "name": "phpseclib/phpseclib",
