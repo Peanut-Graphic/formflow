@@ -1,5 +1,24 @@
 # FormFlow Pro Changelog
 
+## Unreleased (Dominion PTR)
+
+### Added
+
+- **Dominion Peak Time Rebates connector (`dominion-ptr`), ported from FormFlow Lite.** dominionenergyptr.com runs FormFlow **Pro**, but the Dominion connector shipped only in **Lite** (Lite PR #23) — the connector and the live site were in different plugins, so nothing Pro shipped could serve Dominion. This closes that gap. Speaks Dominion's IntelliSource **JSON** API (`prospect/validate`, `portal_user_emails`, `cep_configurations`) under `/ptr/residential/api`. The XML `intellisource` connector serving Energy Wise (Pepco/Delmarva) is untouched.
+- **`ApiClient::is_safe_outbound_url()`** — the shared anti-SSRF guard from Lite, so connectors share one implementation instead of hand-rolling their own. Rejects non-http(s) schemes and any host resolving to loopback/private/link-local/reserved space; fails closed on unresolvable hosts. The IntelliSource connector's older private `assert_safe_request_url()` is equivalent and left in place.
+- 45 tests covering the connector, its device-less step list, field normalisation, validate parsing (including a non-fatal portal-lookup outage), the test-mode demo path, the seeder row, and the SSRF guard.
+
+### Changed
+
+- **`EnrollmentResult` / `BookingResult`: added `get_error_code()` and `get_error_message()`.** Both already had populated public `$error_code`/`$error_message` properties but no getters, while Lite's identical DTOs had them — a real portability break for any connector moved between the plugins. Purely additive.
+- **`SchedulingResult` now distinguishes a connector-reported status from a parse failure.** It previously treated *any* payload without a `message` key as `'Unexpected response format'`, so a connector saying "scheduling is not applicable to this program" was indistinguishable from malformed Energy Wise XML. It now honours an explicit `error_code`/`error_message` and exposes `get_error_code()` / `is_successful()`. **The Energy Wise XML parse path is unchanged.**
+
+### Notes
+
+- **PTR enrollment is not live.** `submit_enrollment()` returns `not_implemented` outside test mode. Stage 2 is blocked on Itron confirming the enroll endpoint, whether `prospect_verifications` is mandatory, and the IP allowlist for the marketing server (`10.29.84.71`). See `peanut-meta/itron-ptr-api-request-email.md`.
+- PTR is a rate/bill-credit program with no device and no install, so `get_schedule_slots()` and `book_appointment()` report `unsupported` by design, not as pending work.
+- Stage 2 (the `powerportal-json` base + verification/hand-off scaffold) follows in #60. It was ported here from Lite's PR #24, which is now closed; Lite's copy of the connector is removed in formflow-lite#29, so Dominion has exactly one home.
+
 ## 4.0.8 — 2026-07-05 (delivery fix)
 
 ### Fixed

@@ -18,6 +18,7 @@ class SchedulingResult {
 
     private array $root_node = [];
     private string $error_message = '';
+    private string $error_code = '';
 
     // Equipment arrays by type
     private array $thermostats_ac = [];      // Type 05, 10 (Split AC, Package AC)
@@ -50,9 +51,48 @@ class SchedulingResult {
             $this->root_node = $response['message'];
             $this->parse_equipment();
             $this->parse_slots();
-        } else {
-            $this->error_message = 'Unexpected response format';
+
+            return;
         }
+
+        // Not a parsed IntelliSOURCE XML payload. Two distinct cases, and
+        // conflating them is what made this class un-portable:
+        //
+        //  1. A connector deliberately reporting a status — e.g. the Dominion
+        //     PTR connector returning 'unsupported' because PTR is a
+        //     device-less rate program with no install appointment at all.
+        //  2. A genuinely malformed response from the Energy Wise XML API.
+        //
+        // Case 1 must not be reported as a parse failure. The Energy Wise
+        // parse path above is untouched.
+        if (isset($response['error_code']) || isset($response['error_message'])) {
+            $this->error_code = (string) ($response['error_code'] ?? '');
+            $this->error_message = (string) ($response['error_message'] ?? '');
+
+            return;
+        }
+
+        $this->error_message = 'Unexpected response format';
+    }
+
+    /**
+     * Machine-readable status for connector-reported outcomes.
+     *
+     * Empty for a successfully parsed Energy Wise response. 'unsupported' when
+     * a connector does not implement scheduling at all.
+     */
+    public function get_error_code(): string {
+        return $this->error_code;
+    }
+
+    /**
+     * Did this represent a usable scheduling response?
+     *
+     * False when a connector reported an error/unsupported status, or when the
+     * payload could not be parsed.
+     */
+    public function is_successful(): bool {
+        return $this->error_code === '' && $this->error_message === '';
     }
 
     // =========================================================================

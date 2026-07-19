@@ -242,6 +242,22 @@ class EnrollmentResult {
         return $this->confirmation_number;
     }
 
+    /**
+     * Accessors for the error pair.
+     *
+     * Additive: the properties were already public and populated, but had no
+     * getters here while FormFlow Lite's identical DTO did. Connectors ported
+     * from Lite (dominion-ptr) call these, so the gap was a real portability
+     * break rather than a style difference.
+     */
+    public function get_error_code(): string {
+        return $this->error_code;
+    }
+
+    public function get_error_message(): string {
+        return $this->error_message;
+    }
+
     public function toArray(): array {
         return [
             'success' => $this->success,
@@ -275,6 +291,15 @@ class BookingResult {
 
     public function is_successful(): bool {
         return $this->success;
+    }
+
+    /** Additive accessors — see the note on EnrollmentResult. */
+    public function get_error_code(): string {
+        return $this->error_code;
+    }
+
+    public function get_error_message(): string {
+        return $this->error_message;
     }
 
     public function toArray(): array {
