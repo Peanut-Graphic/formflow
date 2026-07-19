@@ -292,6 +292,19 @@ function isf_init() {
         update_option('isf_version', ISF_VERSION);
     }
 }
+/**
+ * Warn admins when ISF_ENCRYPTION_KEY is missing or too weak.
+ *
+ * Previously Lite-only — Pro users could sit silently on the wp_salt fallback
+ * with no indication their data-at-rest key was unconfigured. Registered on
+ * admin_init so it only costs anything in wp-admin.
+ */
+add_action('admin_init', function () {
+    if (class_exists('\\ISF\\Encryption')) {
+        \ISF\Encryption::register_admin_notices();
+    }
+});
+
 add_action('plugins_loaded', 'isf_init');
 
 /**
