@@ -15,14 +15,18 @@
  * IP allowlist. Treat a green suite here as "we built what we read", not
  * "Dominion enrollment works".
  *
- * @package FormFlow\Tests\Unit
+ * Lives in the REGRESSION suite (blocking Net 6 gate), not `unit` — CI runs
+ * `unit` with `continue-on-error: true`, so these would have been unenforced.
+ *
+ * @package FormFlow\Tests\Regression
  */
 
-namespace ISF\Tests\Unit\Connectors;
+namespace ISF\Tests\Regression;
 
+use Brain\Monkey;
 use Brain\Monkey\Functions;
 use ISF\Connectors\DominionPtr\DominionPtrConnector;
-use ISF\Tests\Unit\TestCase;
+use PHPUnit\Framework\TestCase;
 
 require_once ISF_PLUGIN_DIR . 'includes/api/interface-api-connector.php';
 require_once ISF_PLUGIN_DIR . 'includes/api/class-scheduling-result.php';
@@ -36,7 +40,14 @@ final class DominionPtrStage2Test extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Monkey\setUp();
         Functions\when('__')->returnArg(1);
+    }
+
+    protected function tearDown(): void
+    {
+        Monkey\tearDown();
+        parent::tearDown();
     }
 
     /**

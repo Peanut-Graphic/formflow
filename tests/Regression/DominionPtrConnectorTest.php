@@ -13,16 +13,23 @@
  * The unsupported scheduling paths are pinned deliberately so a future change
  * cannot quietly turn them into "not implemented yet".
  *
- * @package FormFlow\Tests\Unit
+ * Lives in the REGRESSION suite, not `unit`: CI runs `unit` with
+ * `continue-on-error: true` (non-blocking until the analytics $wpdb-mock debt
+ * is repaired), so these would have been unenforced there — green CI would not
+ * have meant the connector works. `regression` is part of the blocking Net 6
+ * gate.
+ *
+ * @package FormFlow\Tests\Regression
  */
 
-namespace ISF\Tests\Unit\Connectors;
+namespace ISF\Tests\Regression;
 
+use Brain\Monkey;
 use Brain\Monkey\Functions;
 use ISF\Api\ApiClient;
 use ISF\Connectors\DominionPtr\DominionPtrConnector;
 use ISF\Connectors\DominionPtr\Seeder;
-use ISF\Tests\Unit\TestCase;
+use PHPUnit\Framework\TestCase;
 
 require_once ISF_PLUGIN_DIR . 'includes/api/interface-api-connector.php';
 require_once ISF_PLUGIN_DIR . 'includes/api/class-scheduling-result.php';
@@ -69,8 +76,15 @@ final class DominionPtrConnectorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Monkey\setUp();
         Functions\when('__')->returnArg(1);
         $this->connector = new DominionPtrConnector();
+    }
+
+    protected function tearDown(): void
+    {
+        Monkey\tearDown();
+        parent::tearDown();
     }
 
     // ---------------------------------------------------------------- identity
