@@ -13,8 +13,15 @@
 - **`EnrollmentResult` / `BookingResult`: added `get_error_code()` and `get_error_message()`.** Both already had populated public `$error_code`/`$error_message` properties but no getters, while Lite's identical DTOs had them — a real portability break for any connector moved between the plugins. Purely additive.
 - **`SchedulingResult` now distinguishes a connector-reported status from a parse failure.** It previously treated *any* payload without a `message` key as `'Unexpected response format'`, so a connector saying "scheduling is not applicable to this program" was indistinguishable from malformed Energy Wise XML. It now honours an explicit `error_code`/`error_message` and exposes `get_error_code()` / `is_successful()`. **The Energy Wise XML parse path is unchanged.**
 
+### Added (Stage 2 scaffold — ported from Lite PR #24)
+
+- **Shared `powerportal-json` connector.** The modern IntelliSource / PowerPortal JSON API is utility-agnostic — every call is driven by the instance's `api_endpoint` — so the logic now lives in `PowerportalJsonConnector` and **`DominionPtrConnector` is a thin subclass** fixing the connector id (back-compat with the seeded `dominion_ptr` instance) and shipping the validated Dominion preset. Behaviour-preserving: the existing Dominion tests pass unchanged through the subclass.
+- **The base ships no utility presets, deliberately.** Pepco/Delmarva are added as a small subclass *once their JSON enrollment flow is confirmed*, not before. This sets up a future PHI XML→JSON migration without pretending it's done.
+- **Stage 2 enrollment back half** (scaffolded, not wired to the live form): `send_verification()` / `check_verification()` for the `prospect_verifications` identity-code step, `create_portal_handoff()` for `POST create_from_prospect` → `portal_user.{id, enrollment_token}`, and an SSRF-guarded `http_post_json()`.
+
 ### Notes
 
+- **Stage 2 shapes are read from Itron's SPA, not proven against their API.** No write endpoint has ever been called. A green suite means "we built what we read", not "Dominion enrollment works". `check_verification()` fails closed — the "passed" field is inferred, so an unrecognised response never reads as verified.
 - **PTR enrollment is not live.** `submit_enrollment()` returns `not_implemented` outside test mode. Stage 2 is blocked on Itron confirming the enroll endpoint, whether `prospect_verifications` is mandatory, and the IP allowlist for the marketing server (`10.29.84.71`). See `peanut-meta/itron-ptr-api-request-email.md`.
 - PTR is a rate/bill-credit program with no device and no install, so `get_schedule_slots()` and `book_appointment()` report `unsupported` by design, not as pending work.
 - Stage 2 (the `powerportal-json` base + verification/hand-off scaffold) follows in #60. It was ported here from Lite's PR #24, which is now closed; Lite's copy of the connector is removed in formflow-lite#29, so Dominion has exactly one home.
