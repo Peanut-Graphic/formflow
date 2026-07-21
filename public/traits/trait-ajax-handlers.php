@@ -403,7 +403,7 @@ trait Frontend_Ajax_Handlers {
         $form_data = array_merge($submission['form_data'] ?? [], Security::sanitize_form_data($submitted_data));
 
         // Server-side validation for all steps before final submission
-        $validation_errors = $this->validate_all_form_steps($form_data);
+        $validation_errors = $this->validate_all_form_steps($form_data, $instance);
         if (!empty($validation_errors)) {
             $this->db->log('warning', 'Enrollment failed server-side validation', [
                 'errors' => $validation_errors,
