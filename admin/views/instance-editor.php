@@ -496,6 +496,24 @@ $wizard_steps = [
                                         <p class="isf-field-help"><?php esc_html_e('Drag fields to reorder. Toggle visibility and required status using the switches.', 'formflow'); ?></p>
                                     </div>
                                 </div>
+
+                                <!-- Eligibility Pod -->
+                                <div class="isf-pod isf-pod-full">
+                                    <div class="isf-pod-header">
+                                        <h3><span class="dashicons dashicons-shield"></span><?php esc_html_e('Eligibility', 'formflow'); ?></h3>
+                                    </div>
+                                    <div class="isf-pod-body">
+                                        <label class="isf-checkbox-row">
+                                            <input type="checkbox" name="require_wifi" value="1" <?php checked($instance['settings']['require_wifi'] ?? false); ?>>
+                                            <span>
+                                                <strong><?php esc_html_e('Require WiFi for thermostat', 'formflow'); ?></strong>
+                                            </span>
+                                        </label>
+                                        <p class="isf-field-help">
+                                            <?php esc_html_e('Asks customers who choose the Web-Programmable Thermostat whether their home has WiFi. Answering "No" blocks the thermostat and offers to enroll them in the Outdoor Switch program instead. Leave off for utilities that have not requested this check.', 'formflow'); ?>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

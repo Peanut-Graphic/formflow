@@ -95,6 +95,10 @@
         $(document).on('change', '.isf-device-option input', handleDeviceSelection);
         $(document).on('click', '.isf-device-info', handleDeviceInfoPopup);
 
+        // WiFi eligibility gate (only rendered on instances that enabled it)
+        $(document).on('change', 'input[name="has_wifi"]', handleWifiAnswer);
+        $(document).on('click', '.isf-convert-to-dcu', handleConvertToDcu);
+
         // Enrollment form submissions
         $(document).on('submit', '#isf-step-1-form', handleStep1Submit);
         $(document).on('submit', '#isf-step-2-form', handleStep2Submit);
@@ -209,6 +213,65 @@
         var $option = $(this).closest('.isf-device-option');
         $('.isf-device-option').removeClass('selected');
         $option.addClass('selected');
+
+        syncWifiVisibility($(this).val());
+    }
+
+    /**
+     * The WiFi question only applies to the thermostat.
+     *
+     * Selecting the switch must clear the answer as well as hide the field:
+     * a stale "no" left behind by a customer who changed their mind would sit
+     * in the submission and misreport why they chose the switch.
+     */
+    function syncWifiVisibility(deviceType) {
+        var $check = $('#isf-wifi-check');
+
+        if (!$check.length) {
+            return; // Instance has not enabled the gate.
+        }
+
+        if (deviceType === 'thermostat') {
+            $check.prop('hidden', false);
+            return;
+        }
+
+        $check.prop('hidden', true);
+        $('#isf-wifi-callout').prop('hidden', true);
+        $('input[name="has_wifi"]').prop('checked', false);
+    }
+
+    /**
+     * Reveal the conversion offer when the customer says they have no WiFi.
+     */
+    function handleWifiAnswer() {
+        $('#isf-wifi-callout').prop('hidden', $(this).val() !== 'no');
+    }
+
+    /**
+     * Convert a WiFi-ineligible thermostat enrollment into a switch enrollment.
+     *
+     * Moves the visible selection too, so the customer sees what changed rather
+     * than being silently reassigned to a different device.
+     */
+    function handleConvertToDcu(e) {
+        e.preventDefault();
+
+        var $dcu = $('.isf-device-option input[value="dcu"]');
+        $dcu.prop('checked', true);
+        $('.isf-device-option').removeClass('selected');
+        $dcu.closest('.isf-device-option').addClass('selected');
+
+        ISFEnrollment.formData.device_type = 'dcu';
+        ISFEnrollment.formData.has_wifi = 'no';
+        // Distinguishes a gate-driven conversion from someone who chose the
+        // switch outright. Without it the feature cannot be measured.
+        ISFEnrollment.formData.device_converted = 1;
+
+        $('#isf-wifi-callout').prop('hidden', true);
+        $('#isf-wifi-check').prop('hidden', true);
+
+        goToStep(2);
     }
 
     /**
@@ -241,8 +304,31 @@
             return;
         }
 
+        // WiFi eligibility gate. Only present on instances that enabled it, so
+        // its absence must never block anyone.
+        var $wifiCheck = $('#isf-wifi-check');
+        var hasWifi = $form.find('input[name="has_wifi"]:checked').val();
+
+        if ($wifiCheck.length && deviceType === 'thermostat') {
+            if (!hasWifi) {
+                showAlert('Please let us know whether your home has WiFi.', 'error');
+                return;
+            }
+
+            if (hasWifi !== 'yes') {
+                // Do not advance. The callout is already open and carries the
+                // offer to switch, which is where this customer should go.
+                $('#isf-wifi-callout').prop('hidden', false);
+                return;
+            }
+        }
+
         ISFEnrollment.formData.has_ac = hasAc;
         ISFEnrollment.formData.device_type = deviceType;
+
+        if ($wifiCheck.length) {
+            ISFEnrollment.formData.has_wifi = deviceType === 'thermostat' ? hasWifi : null;
+        }
 
         goToStep(2);
     }

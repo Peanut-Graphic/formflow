@@ -2436,3 +2436,101 @@ input[type="date"]::-webkit-calendar-picker-indicator {
         break-inside: avoid;
     }
 }
+
+/* =========================================================================
+   WiFi Eligibility Gate
+   Shown only on instances that require WiFi for the thermostat.
+   ========================================================================= */
+
+.isf-wifi-check {
+    margin: 20px 0;
+    padding: 16px;
+    border: 1px solid var(--isf-border);
+    border-radius: var(--isf-radius-sm);
+}
+
+.isf-wifi-check[hidden],
+.isf-wifi-callout[hidden] {
+    display: none;
+}
+
+.isf-wifi-options {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.isf-wifi-check .isf-field-help {
+    margin-top: 10px;
+}
+
+/*
+   The callout must not rely on red alone to carry its meaning: the icon and
+   the heading state the problem in words. #721c24 on #f8d7da is the same pair
+   already used by .isf-alert-error and clears WCAG AA for body text.
+*/
+.isf-wifi-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin: 20px 0;
+    padding: 18px;
+    background: var(--isf-error-light);
+    border: 1px solid var(--isf-error);
+    border-left-width: 4px;
+    border-radius: var(--isf-radius-sm);
+    color: #721c24;
+}
+
+.isf-wifi-callout-icon {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    color: var(--isf-error);
+}
+
+.isf-wifi-callout-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.isf-wifi-callout-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.isf-wifi-callout-heading {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    line-height: 1.3;
+    color: #721c24;
+}
+
+.isf-wifi-callout p {
+    margin: 0 0 10px;
+    line-height: 1.5;
+}
+
+.isf-wifi-callout-reassurance {
+    font-weight: 600;
+}
+
+.isf-wifi-callout-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+@media (max-width: 480px) {
+    .isf-wifi-callout {
+        flex-direction: column;
+    }
+
+    .isf-wifi-callout-actions .isf-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

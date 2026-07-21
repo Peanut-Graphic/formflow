@@ -57,10 +57,20 @@ class FormHandler
     /**
      * Validate step 1 data (Program Selection)
      *
-     * @param array $data Form data.
+     * When $require_wifi is true, the instance has opted into the WiFi
+     * eligibility gate: a Web-Programmable Thermostat cannot be installed in a
+     * home without WiFi, so that combination is rejected here. The check must
+     * live server-side because the client-side gate is bypassable, and the
+     * purpose of the feature is preventing installs that cannot succeed.
+     *
+     * The Outdoor Switch has no WiFi requirement, so the answer is never
+     * required for it and its absence never blocks enrollment.
+     *
+     * @param array $data         Form data.
+     * @param bool  $require_wifi Whether this instance enforces the WiFi gate.
      * @return bool True if valid.
      */
-    public function validateStep1(array $data): bool
+    public function validateStep1(array $data, bool $require_wifi = false): bool
     {
         $this->errors = [];
 
@@ -70,6 +80,14 @@ class FormHandler
 
         if (empty($data['device_type']) || !in_array($data['device_type'], ['thermostat', 'dcu'], true)) {
             $this->errors['device_type'] = __('Please select a device type.', 'formflow');
+        }
+
+        // Fails closed: only an explicit "yes" clears the gate.
+        if ($require_wifi
+            && ($data['device_type'] ?? '') === 'thermostat'
+            && ($data['has_wifi'] ?? '') !== 'yes'
+        ) {
+            $this->errors['has_wifi'] = __('Home WiFi is required for the Web-Programmable Thermostat. Please choose the Outdoor Switch instead.', 'formflow');
         }
 
         return empty($this->errors);

@@ -920,13 +920,18 @@ class Frontend {
      * client-side validation (e.g., manipulated requests).
      *
      * @param array $form_data The complete form data
+     * @param array $instance  The form instance, used to read per-instance
+     *                         rules such as the WiFi eligibility gate. Optional
+     *                         so pre-existing callers keep working.
      * @return array Array of validation errors, empty if valid
      */
-    private function validate_all_form_steps(array $form_data): array {
+    private function validate_all_form_steps(array $form_data, array $instance = []): array {
         $all_errors = [];
 
-        // Step 1: Device type validation
-        if (!$this->form_handler->validateStep1($form_data)) {
+        // Step 1: Device type validation, plus the WiFi eligibility gate when
+        // this instance enforces it. Without the instance the gate cannot be
+        // reached at all, which is how a correct rule ends up doing nothing.
+        if (!$this->form_handler->validateStep1($form_data, isf_requires_wifi($instance))) {
             $all_errors = array_merge($all_errors, $this->form_handler->getErrors());
         }
 
@@ -1102,6 +1107,33 @@ function isf_get_content(array $instance, string $key, string $default = ''): st
  */
 function isf_get_default_state(array $instance): string {
     return $instance['settings']['default_state'] ?? '';
+}
+
+/**
+ * Whether this instance enforces the WiFi eligibility gate.
+ *
+ * A Web-Programmable Thermostat cannot be installed in a home without WiFi,
+ * but only some utilities have asked us to enforce that in the form. The gate
+ * is therefore opt-in per instance and must stay inert everywhere it has not
+ * been explicitly enabled.
+ *
+ * Settings round-trip through admin forms and JSON, so a stored "1"/"yes"/"on"
+ * counts as enabled. The values deliberately excluded are the ones that are
+ * truthy in PHP but plainly mean "off" — "0", "false", "off", "no" — because
+ * reading any of those as consent would switch the gate on for a client who
+ * turned it off.
+ *
+ * @param array $instance The form instance data
+ * @return bool True when the thermostat requires a WiFi answer
+ */
+function isf_requires_wifi(array $instance): bool {
+    $setting = $instance['settings']['require_wifi'] ?? false;
+
+    if (is_string($setting)) {
+        return in_array(strtolower(trim($setting)), ['1', 'yes', 'true', 'on'], true);
+    }
+
+    return (bool) $setting;
 }
 
 /**

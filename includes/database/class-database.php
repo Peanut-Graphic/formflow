@@ -290,6 +290,10 @@ class Database {
             'account_number' => $data['account_number'] ?? null,
             'customer_name' => $data['customer_name'] ?? null,
             'device_type' => $data['device_type'] ?? null,
+            // NULL, not '', when unanswered: "never asked" has to stay
+            // distinguishable from an actual answer for the gate's reporting.
+            'has_wifi' => $data['has_wifi'] ?? null,
+            'device_converted' => (int) ($data['device_converted'] ?? 0),
             'form_data' => $this->encryption->encrypt_array($data['form_data'] ?? []),
             'status' => $data['status'] ?? 'in_progress',
             'step' => $data['step'] ?? 1,
@@ -364,6 +368,14 @@ class Database {
 
         if (isset($data['device_type'])) {
             $update_data['device_type'] = $data['device_type'];
+        }
+
+        if (isset($data['has_wifi'])) {
+            $update_data['has_wifi'] = $data['has_wifi'];
+        }
+
+        if (isset($data['device_converted'])) {
+            $update_data['device_converted'] = (int) $data['device_converted'];
         }
 
         if (isset($data['form_data'])) {
