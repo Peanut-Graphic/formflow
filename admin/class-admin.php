@@ -998,10 +998,14 @@ class Admin {
             $new_settings['support_phone'] = sanitize_text_field($new_settings['support_phone']);
         }
 
-        // Merge with existing settings and add demo_mode
+        // Merge with existing settings and add the boolean flags
         $settings = array_merge($existing_settings, $new_settings, [
             // nosemgrep: peanut-empty-coercion-on-input -- boolean flag: absent, '', '0' all mean "off"
-            'demo_mode' => !empty($_POST['demo_mode']) && $_POST['demo_mode'] !== '0'
+            'demo_mode' => !empty($_POST['demo_mode']) && $_POST['demo_mode'] !== '0',
+            // WiFi eligibility gate. Opt-in per instance: a utility that never
+            // asked for it must never have its live form change.
+            // nosemgrep: peanut-empty-coercion-on-input -- boolean flag: absent, '', '0' all mean "off"
+            'require_wifi' => !empty($_POST['require_wifi']) && $_POST['require_wifi'] !== '0'
         ]);
 
         // Destinations (2.9.0+): posted as a separate destinations_json

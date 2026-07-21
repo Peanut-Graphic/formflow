@@ -9,10 +9,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Import content helper function
+// Import content helper functions
 use function ISF\Frontend\isf_get_content;
+use function ISF\Frontend\isf_requires_wifi;
 
 $device_type = $form_data['device_type'] ?? '';
+
+// A Web-Programmable Thermostat cannot be installed without home WiFi. Only
+// instances that opted in ask about it; everywhere else this whole block is
+// absent and the step renders exactly as it always has.
+$requires_wifi = isf_requires_wifi($instance);
+$has_wifi      = $form_data['has_wifi'] ?? '';
 
 // Get customizable content
 $step_title = isf_get_content($instance, 'step1_title', __('Choose Your Energy-Saving Device', 'formflow'));
@@ -80,6 +87,73 @@ $btn_next = isf_get_content($instance, 'btn_next', __('Continue', 'formflow'));
                 </div>
             </label>
         </div>
+
+        <?php if ($requires_wifi) : ?>
+            <?php
+            $wifi_question = isf_get_content($instance, 'wifi_question', __('Does your home have WiFi?', 'formflow'));
+            $wifi_help     = isf_get_content($instance, 'wifi_help', __('A wireless internet connection from a router in your home.', 'formflow'));
+            $wifi_heading  = isf_get_content($instance, 'wifi_callout_heading', __('Home WiFi is required for the thermostat', 'formflow'));
+            $wifi_body     = isf_get_content($instance, 'wifi_callout_body', __('The Web-Programmable Thermostat connects to your home WiFi to receive schedule changes and take part in energy-saving events. Without it, it cannot be installed.', 'formflow'));
+            $wifi_reassure = isf_get_content($instance, 'wifi_callout_reassurance', __('The Outdoor Switch gets you the same program. Same bill credits, same participation levels, same enrollment — it is simply a different device, installed outside on your AC unit instead of on your wall. No WiFi required.', 'formflow'));
+            $wifi_convert  = isf_get_content($instance, 'wifi_convert_button', __('Yes, enroll me in the Outdoor Switch program', 'formflow'));
+            ?>
+            <!--
+                Shown only once the thermostat is selected. Hidden on load so
+                nobody is warned about ineligibility before they have answered.
+            -->
+            <fieldset class="isf-field isf-wifi-check" id="isf-wifi-check" hidden>
+                <legend class="isf-label">
+                    <?php echo esc_html($wifi_question); ?>
+                    <span class="isf-required">*</span>
+                </legend>
+
+                <div class="isf-wifi-options">
+                    <label class="isf-radio-option">
+                        <input type="radio" name="has_wifi" value="yes"
+                               <?php checked($has_wifi, 'yes'); ?>>
+                        <span class="isf-radio-label"><?php esc_html_e('Yes', 'formflow'); ?></span>
+                    </label>
+
+                    <label class="isf-radio-option">
+                        <input type="radio" name="has_wifi" value="no"
+                               <?php checked($has_wifi, 'no'); ?>>
+                        <span class="isf-radio-label"><?php esc_html_e('No', 'formflow'); ?></span>
+                    </label>
+                </div>
+
+                <p class="isf-field-help" id="isf-wifi-help"><?php echo esc_html($wifi_help); ?></p>
+            </fieldset>
+
+            <!--
+                role="alert" so the callout is announced rather than silently
+                appearing. Meaning must not depend on the red treatment alone:
+                the icon and the heading state the problem in words, per WCAG AA.
+            -->
+            <div class="isf-wifi-callout" id="isf-wifi-callout" role="alert" hidden>
+                <div class="isf-wifi-callout-icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <path d="M12 9v4M12 17h.01"/>
+                    </svg>
+                </div>
+
+                <div class="isf-wifi-callout-content">
+                    <h3 class="isf-wifi-callout-heading"><?php echo esc_html($wifi_heading); ?></h3>
+                    <p><?php echo esc_html($wifi_body); ?></p>
+                    <p class="isf-wifi-callout-reassurance"><?php echo esc_html($wifi_reassure); ?></p>
+
+                    <div class="isf-wifi-callout-actions">
+                        <button type="button" class="isf-btn isf-btn-primary isf-convert-to-dcu">
+                            <?php echo esc_html($wifi_convert); ?>
+                            <span class="isf-btn-arrow">&rarr;</span>
+                        </button>
+                        <a href="#" class="isf-device-info" data-popup="dcu">
+                            <?php esc_html_e("What's the Outdoor Switch?", 'formflow'); ?>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
 
         <div class="isf-step-actions">
             <button type="submit" class="isf-btn isf-btn-primary isf-btn-next">

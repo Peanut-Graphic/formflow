@@ -501,6 +501,10 @@ trait Frontend_Ajax_Handlers {
             $this->db->update_submission($submission['id'], [
                 'customer_name' => $customer_name,
                 'device_type' => $form_data['device_type'] ?? null,
+                // Dedicated columns, not form_data: that blob is encrypted at
+                // rest and cannot be queried for the gate's reporting.
+                'has_wifi' => $form_data['has_wifi'] ?? null,
+                'device_converted' => (int) ($form_data['device_converted'] ?? 0),
                 'form_data' => $form_data,
                 'status' => 'completed',
                 'step' => 5,

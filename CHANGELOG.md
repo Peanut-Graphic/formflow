@@ -1,5 +1,21 @@
 # FormFlow Pro Changelog
 
+## 4.1.0 — WiFi eligibility gate
+
+### Added
+
+- **WiFi eligibility gate for the Web-Programmable Thermostat.** A thermostat cannot be installed in a home without WiFi, but the enrollment form never asked — so those enrollments completed, got scheduled, and a technician was dispatched to a home where the install could not succeed. Found in testing on the Pepco/Delmarva forms before launch. Step 1 now asks "Does your home have WiFi?" when the thermostat is selected; answering **No** opens a callout offering one-click conversion to the Outdoor Switch program.
+- **Per-instance opt-in** (`settings.require_wifi`, "Require WiFi for thermostat" under Form Fields → Eligibility). **Default off.** FormFlow serves several Itron utilities from one enrollment flow and only PHI asked for this, so every other instance renders and behaves exactly as before. Stored `"0"`, `"false"`, `"off"` and `"no"` are read as OFF despite being truthy strings in PHP.
+- **Server-side enforcement.** `FormHandler::validateStep1()` takes an opt-in `$require_wifi` flag and rejects thermostat + no/missing WiFi, and the final-submission path passes it. The client-side gate alone is bypassable with a hand-crafted POST, which would defeat the entire purpose. Fails closed: only an explicit `"yes"` clears it.
+- **`has_wifi` and `device_converted` columns on submissions**, in both the `CREATE TABLE` and a guarded, idempotent migration. These need real columns because `form_data` is encrypted at rest and cannot be queried. `has_wifi` is nullable on purpose — NULL means "never asked", which keeps switch-first and pre-4.1.0 enrollments distinguishable from an actual answer.
+- **Report figures**: how many customers were asked, how many answered No, and how many of those the gate converted rather than lost. A switch-first enrollment is never counted as a conversion.
+- **69 tests**, each written and watched fail before the code existed.
+
+### Notes
+
+- **The "same bill credits" line in the callout is not verified.** Participation-level parity *is* — Step 2 renders the same 50/75/100 cycling options for both devices — but no incentive figures exist anywhere in this codebase; that lives in the utility's tariff. It is a financial claim in a regulated enrollment form and needs written client confirmation. All callout copy is instance-editable content, so softening it is a settings change rather than a release.
+- The unused `ISF\Database\Traits\Submissions` trait carries a stale copy of `create_submission()` and was deliberately left untouched — nothing references it. Worth deleting separately.
+
 ## Unreleased (Dominion PTR)
 
 ### Added

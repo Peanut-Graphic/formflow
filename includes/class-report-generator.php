@@ -139,6 +139,16 @@ class ReportGenerator {
 
         $by_day = [];
 
+        // WiFi eligibility gate. `asked` deliberately counts only non-NULL
+        // answers: NULL means the question was never put to this customer
+        // (they chose the switch outright, or the instance has no gate), and
+        // folding those in would make the gate look like it ran everywhere.
+        $wifi = [
+            'asked'     => 0,
+            'no_wifi'   => 0,
+            'converted' => 0,
+        ];
+
         foreach ($submissions as $sub) {
             // Count by device type
             $device = $sub['device_type'] ?? 'other';
@@ -146,6 +156,21 @@ class ReportGenerator {
                 $by_device[$device]++;
             } else {
                 $by_device['other']++;
+            }
+
+            $has_wifi = $sub['has_wifi'] ?? null;
+            if ($has_wifi !== null && $has_wifi !== '') {
+                $wifi['asked']++;
+
+                if ($has_wifi === 'no') {
+                    $wifi['no_wifi']++;
+                }
+            }
+
+            // Only a gate-driven conversion counts. Someone who picked the
+            // switch from the start is not a customer the gate saved.
+            if (!empty($sub['device_converted'])) {
+                $wifi['converted']++;
             }
 
             // Count by day
@@ -161,6 +186,7 @@ class ReportGenerator {
         return [
             'by_device' => $by_device,
             'by_day' => $by_day,
+            'wifi' => $wifi,
             'total_completed' => count($submissions),
         ];
     }

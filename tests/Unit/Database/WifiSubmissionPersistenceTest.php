@@ -144,4 +144,44 @@ final class WifiSubmissionPersistenceTest extends TestCase
         $this->assertArrayNotHasKey('has_wifi', $update);
         $this->assertArrayNotHasKey('device_converted', $update);
     }
+
+    /**
+     * Database::update_submission can carry the fields, but the completion
+     * handler has to actually hand them over. Miss this and both columns stay
+     * at their defaults on every completed enrollment — the write path works
+     * perfectly and never runs.
+     *
+     * Source-contract guard, in the style of AjaxSubmitBuilderFormTest: this
+     * repo's AJAX layer is not directly invocable under the stub bootstrap.
+     */
+    public function test_completion_handler_writes_the_wifi_columns(): void
+    {
+        $source = (string) file_get_contents(
+            ISF_PLUGIN_DIR . 'public/traits/trait-ajax-handlers.php'
+        );
+
+        $found = preg_match(
+            "/'status'\s*=>\s*'completed'.*?\]\s*\)/s",
+            $source,
+            $m
+        );
+        $this->assertSame(1, $found, 'Could not locate the completion update.');
+
+        // Search backwards from the completion marker to the start of its array.
+        $offset = strpos($source, $m[0]);
+        $window = substr($source, max(0, $offset - 600), 600 + strlen($m[0]));
+
+        $this->assertStringContainsString(
+            "'has_wifi'",
+            $window,
+            'The completed-enrollment write omits has_wifi, so the column stays NULL '
+            . 'on every real enrollment.'
+        );
+        $this->assertStringContainsString(
+            "'device_converted'",
+            $window,
+            'The completed-enrollment write omits device_converted, so every '
+            . 'gate-driven conversion is recorded as 0.'
+        );
+    }
 }
