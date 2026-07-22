@@ -37,6 +37,7 @@ class RetryProcessor {
             'succeeded' => 0,
             'failed' => 0,
             'permanent_failures' => 0,
+            'needs_review' => 0,
         ];
 
         foreach ($pending as $item) {
@@ -58,6 +59,42 @@ class RetryProcessor {
 
                     // Trigger webhook for successful retry
                     $this->trigger_webhook('enrollment.completed', $item);
+
+                } elseif (!empty($result['ambiguous'])) {
+                    // The enroll POST is not idempotent, and this failure could
+                    // mean the request reached IntelliSource and enrolled the
+                    // customer (a read timeout, a dropped connection after send,
+                    // or a 2xx body we couldn't parse). Auto-retrying would risk
+                    // a duplicate enrollment — exactly the corruption the utility
+                    // cannot tolerate. Park it terminally instead of re-queuing:
+                    // 'failed' is a stop state that get_pending_retries() never
+                    // re-selects, so nothing retries it. A human must confirm
+                    // whether the enrollment actually went through.
+                    //
+                    // ('failed' is reused deliberately: the status column is a
+                    // MySQL ENUM, so a fresh value would be coerced to '' in
+                    // production. The needs-review meaning is carried by the
+                    // distinct webhook event and the last_error text below.)
+                    $this->db->update_retry_status(
+                        $item['id'],
+                        'failed',
+                        'NEEDS MANUAL REVIEW — enrollment may have reached IntelliSource '
+                        . '(ambiguous transmission failure); not auto-retried to avoid a '
+                        . 'duplicate enrollment. Verify in IntelliSource before re-submitting. '
+                        . 'Original error: ' . ($result['error'] ?? 'unknown')
+                    );
+
+                    $results['needs_review']++;
+
+                    $this->db->log('warning', 'Enrollment retry parked for manual review (possible duplicate risk)', [
+                        'queue_id' => $item['id'],
+                        'submission_id' => $item['submission_id'],
+                        'error' => $result['error'] ?? '',
+                    ], $item['instance_id']);
+
+                    // Distinct from enrollment.failed so operators can route
+                    // possible-duplicates to a human rather than a dead-letter.
+                    $this->trigger_webhook('enrollment.needs_review', $item, $result['error'] ?? null);
 
                 } else {
                     // Increment retry count
@@ -87,11 +124,12 @@ class RetryProcessor {
         // Log summary if any items were processed
         if ($results['processed'] > 0) {
             $this->db->log('info', sprintf(
-                'Retry queue processed: %d items, %d succeeded, %d failed, %d permanent failures',
+                'Retry queue processed: %d items, %d succeeded, %d failed, %d permanent failures, %d parked for review',
                 $results['processed'],
                 $results['succeeded'],
                 $results['failed'],
-                $results['permanent_failures']
+                $results['permanent_failures'],
+                $results['needs_review']
             ), $results);
         }
 
@@ -178,17 +216,79 @@ class RetryProcessor {
                 ];
             }
 
+            // A parsed response with no success flag means IntelliSource
+            // received the request and returned a business-level rejection.
+            // That is a definitive negative, not an ambiguous outcome — safe
+            // to treat as an ordinary retryable/permanent failure.
             return [
                 'success' => false,
                 'error' => $response['error'] ?? 'Unknown enrollment error',
             ];
 
         } catch (\Exception $e) {
+            // ApiClient::request() throws ApiException($message, $status): a
+            // non-zero code is an HTTP status the server returned (it received
+            // the request); code 0 is a transport-level failure whose message
+            // carries the cURL reason. Only failures we can prove happened
+            // before any bytes were sent may be safely retried.
             return [
                 'success' => false,
+                'ambiguous' => !$this->enroll_failure_is_transmission_safe(
+                    (int) $e->getCode(),
+                    $e->getMessage()
+                ),
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Can a failed enrollment attempt be safely auto-retried without risking a
+     * duplicate enrollment?
+     *
+     * The enroll POST is not idempotent, so retry is safe ONLY when we can
+     * prove the request never reached IntelliSource — i.e. a DNS resolution
+     * failure or a refused/failed TCP connection, where no bytes were sent.
+     * Everything else is ambiguous and must NOT be retried:
+     *   - any non-zero HTTP status: the server received the request;
+     *   - a read timeout: the request may have been delivered and processed;
+     *   - "max retries exceeded": ApiClient exhausted its own attempts, state
+     *     unknown;
+     *   - an unparseable body: a 2xx response we couldn't read — the server
+     *     almost certainly enrolled the customer.
+     *
+     * @param int    $status  ApiException code (HTTP status, or 0 for transport)
+     * @param string $message ApiException message (carries the cURL reason at 0)
+     * @return bool True only when the failure is provably pre-transmission.
+     */
+    private function enroll_failure_is_transmission_safe(int $status, string $message): bool {
+        // Any HTTP status the server returned means it received the request.
+        if ($status !== 0) {
+            return false;
+        }
+
+        $m = strtolower($message);
+
+        // Provably pre-transmission transport failures: no request was sent.
+        $pre_transmission = [
+            'could not resolve host',
+            "couldn't resolve host",
+            "couldn't resolve",
+            'name or service not known',
+            'failed to connect',
+            "couldn't connect",
+            'connection refused',
+        ];
+
+        foreach ($pre_transmission as $needle) {
+            if (strpos($m, $needle) !== false) {
+                return true;
+            }
+        }
+
+        // Timeouts, "max retries exceeded", parse failures, resets, unknown —
+        // all ambiguous. Fail safe: do not retry.
+        return false;
     }
 
     /**
