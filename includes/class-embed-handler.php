@@ -107,21 +107,63 @@ class EmbedHandler {
             return;
         }
 
-        $allowed_origins = $this->get_allowed_origins();
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-
-        if (in_array($origin, $allowed_origins) || in_array('*', $allowed_origins)) {
-            header('Access-Control-Allow-Origin: ' . ($origin ?: '*'));
-            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-            header('Access-Control-Allow-Headers: Content-Type, X-Embed-Token');
-            header('Access-Control-Allow-Credentials: true');
+        foreach ($this->cors_headers_for($origin, $this->get_allowed_origins()) as $line) {
+            header($line);
         }
 
         // Handle preflight requests
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
             status_header(200);
             exit;
         }
+    }
+
+    /**
+     * Build the CORS header set for an embed request.
+     *
+     * Pure (returns the header lines rather than emitting them) so the
+     * credential/origin policy is unit-testable. Empty array when the origin is
+     * not allowed.
+     *
+     * Policy: with an explicit allowlist the request origin is matched exactly,
+     * so it is safe to reflect it and allow credentials. With a wildcard ('*')
+     * allowlist the embed is public — reflect the origin (or '*') but send NO
+     * credentials: the Fetch spec rejects '*' + credentials outright, and
+     * pairing Allow-Credentials:true with a reflected-any origin would let any
+     * site make cookie-bearing cross-origin calls and read the response. Embed
+     * auth is the token + per-token nonce, which need no cookies.
+     *
+     * @param string   $origin  Request Origin header (may be '').
+     * @param string[] $allowed Configured allowlist ('*' or explicit origins).
+     * @return string[] Header lines to emit.
+     */
+    private function cors_headers_for(string $origin, array $allowed): array {
+        $is_wildcard = in_array('*', $allowed, true);
+
+        if (!$is_wildcard && !in_array($origin, $allowed, true)) {
+            return [];
+        }
+
+        // X-WP-Nonce must be allowed or the browser preflight strips it and the
+        // nonce-gated validate/schedule calls fail cross-origin.
+        $headers = [
+            'Access-Control-Allow-Methods: GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers: Content-Type, X-Embed-Token, X-WP-Nonce',
+        ];
+
+        if ($is_wildcard) {
+            $headers[] = 'Access-Control-Allow-Origin: ' . ($origin ?: '*');
+        } else {
+            $headers[] = 'Access-Control-Allow-Origin: ' . $origin;
+            $headers[] = 'Access-Control-Allow-Credentials: true';
+        }
+
+        // Responses vary by Origin — keep shared caches from serving one
+        // origin's ACAO header to another.
+        $headers[] = 'Vary: Origin';
+
+        return $headers;
     }
 
     /**
@@ -325,11 +367,25 @@ class EmbedHandler {
      * @return \WP_REST_Response
      */
     public function handle_embed_validation(\WP_REST_Request $request): \WP_REST_Response {
-        $token = $request->get_header('X-Embed-Token');
+        $token = (string) $request->get_header('X-Embed-Token');
         $instance = $this->get_instance_by_embed_token($token);
 
         if (!$instance) {
             return new \WP_REST_Response(['error' => 'Invalid token'], 403);
+        }
+
+        // Throttle first, so unauthenticated probes are capped before any
+        // nonce check or live upstream call.
+        if ($limited = $this->embed_rate_limited($token)) {
+            return $limited;
+        }
+
+        // Parity with /embed/submit: the embed token is public (it ships in the
+        // page config), so it is not authentication. Require the per-token nonce
+        // issued by /embed/config, which raises the bar from "read the token" to
+        // "complete a config handshake" and blunts scripted enumeration.
+        if (!$this->embed_nonce_valid($request, $token)) {
+            return new \WP_REST_Response(['error' => 'Invalid or missing nonce'], 403);
         }
 
         $data = $request->get_json_params();
@@ -343,7 +399,7 @@ class EmbedHandler {
         $config = $this->get_connector_config($instance);
         $result = $connector->validate_account($data, $config);
 
-        return new \WP_REST_Response($result->toArray());
+        return new \WP_REST_Response($this->minimize_validation_response($result->toArray()));
     }
 
     /**
@@ -353,11 +409,19 @@ class EmbedHandler {
      * @return \WP_REST_Response
      */
     public function handle_embed_schedule(\WP_REST_Request $request): \WP_REST_Response {
-        $token = $request->get_header('X-Embed-Token');
+        $token = (string) $request->get_header('X-Embed-Token');
         $instance = $this->get_instance_by_embed_token($token);
 
         if (!$instance) {
             return new \WP_REST_Response(['error' => 'Invalid token'], 403);
+        }
+
+        if ($limited = $this->embed_rate_limited($token)) {
+            return $limited;
+        }
+
+        if (!$this->embed_nonce_valid($request, $token)) {
+            return new \WP_REST_Response(['error' => 'Invalid or missing nonce'], 403);
         }
 
         $data = $request->get_json_params();
@@ -394,6 +458,83 @@ class EmbedHandler {
         );
 
         return $instance ?: null;
+    }
+
+    /**
+     * Per-IP + per-token rate limit for the public read endpoints (validate,
+     * schedule). Returns a 429 response once the caller exceeds the window, or
+     * null to proceed.
+     *
+     * Keyed on REMOTE_ADDR (the TCP peer, which cannot be spoofed) rather than
+     * X-Forwarded-For, so an attacker can't rotate a header to evade it. Backed
+     * by a transient, so it is best-effort (resets on cache flush) — enough to
+     * cap casual scraping / account enumeration and to stop a single client
+     * from hammering the live IntelliSource API. Tunable via filters.
+     *
+     * @param string $token Embed token (part of the bucket key).
+     * @return \WP_REST_Response|null 429 response when limited, else null.
+     */
+    private function embed_rate_limited(string $token): ?\WP_REST_Response {
+        $ip     = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        $window = max(1, (int) apply_filters('isf_embed_rate_window', 60));
+        $max    = max(1, (int) apply_filters('isf_embed_rate_max', 20));
+
+        $bucket = 'isf_embed_rl_' . md5($token . '|' . $ip);
+        $count  = (int) get_transient($bucket);
+
+        if ($count >= $max) {
+            return new \WP_REST_Response(
+                ['error' => __('Too many requests. Please slow down and try again shortly.', 'formflow')],
+                429
+            );
+        }
+
+        set_transient($bucket, $count + 1, $window);
+
+        return null;
+    }
+
+    /**
+     * Verify the per-token embed nonce (issued by /embed/config), the same
+     * check /embed/submit already performs.
+     *
+     * @param \WP_REST_Request $request
+     * @param string $token
+     * @return bool
+     */
+    private function embed_nonce_valid(\WP_REST_Request $request, string $token): bool {
+        $nonce = (string) $request->get_header('X-WP-Nonce');
+
+        return (bool) wp_verify_nonce($nonce, 'isf_embed_' . $token);
+    }
+
+    /**
+     * Trim the account-validation response returned to the (public) browser.
+     *
+     * On failure, drop the raw upstream error text — a failed probe should not
+     * leak internal codes/messages (or any residual customer_data) that aid
+     * enumeration. On success the caller supplied a matching account, so the
+     * customer_data needed to confirm and advance the flow is preserved.
+     * Filterable so a custom integration that needs the detailed error can
+     * restore it deliberately.
+     *
+     * @param array $result AccountValidationResult::toArray() output.
+     * @return array
+     */
+    private function minimize_validation_response(array $result): array {
+        if (!empty($result['is_valid'])) {
+            return $result;
+        }
+
+        if (apply_filters('isf_embed_generic_validation_errors', true)) {
+            return [
+                'is_valid'      => false,
+                'error_code'    => (string) ($result['error_code'] ?? 'validation_failed'),
+                'error_message' => __('We could not verify that account. Please check your details and try again.', 'formflow'),
+            ];
+        }
+
+        return $result;
     }
 
     /**
