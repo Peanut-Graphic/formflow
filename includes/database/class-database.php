@@ -1847,6 +1847,84 @@ class Database {
     }
 
     /**
+     * Acquire a server-wide advisory lock so only one retry processor runs at
+     * a time.
+     *
+     * Without this, two overlapping cron passes (or cron racing a manual "process
+     * now") both SELECT the same 'pending' rows before either marks them
+     * 'processing', and both send the non-idempotent enroll POST — a duplicate
+     * enrollment. GET_LOCK is connection-scoped, so if a process dies holding it
+     * MySQL releases it automatically when the connection drops (no deadlock).
+     * The name is scoped by database + table prefix so separate installs sharing
+     * a MySQL server don't block each other.
+     *
+     * @param int $timeout Seconds to wait for the lock (0 = non-blocking).
+     * @return bool True if the lock was acquired.
+     */
+    public function acquire_retry_lock(int $timeout = 0): bool {
+        $got = $this->wpdb->get_var(
+            $this->wpdb->prepare('SELECT GET_LOCK(%s, %d)', $this->retry_lock_name(), $timeout)
+        );
+
+        return (string) $got === '1';
+    }
+
+    /**
+     * Release the retry-processor advisory lock. Safe to call even if this
+     * connection does not hold it (RELEASE_LOCK is a no-op then).
+     */
+    public function release_retry_lock(): void {
+        $this->wpdb->query(
+            $this->wpdb->prepare('SELECT RELEASE_LOCK(%s)', $this->retry_lock_name())
+        );
+    }
+
+    /**
+     * Lock name, scoped to this database + table prefix (GET_LOCK names are
+     * global to the MySQL server, shared across databases and connections).
+     */
+    private function retry_lock_name(): string {
+        return substr($this->wpdb->dbname . '_' . $this->wpdb->prefix . 'isf_retry', 0, 64);
+    }
+
+    /**
+     * Reclaim retry rows abandoned mid-flight in 'processing'.
+     *
+     * A row is set to 'processing' before the enroll attempt; if the PHP worker
+     * is then killed (fatal, timeout, OOM) it stays 'processing' forever, and
+     * get_pending_retries() — which only selects 'pending' — never touches it
+     * again, so the enrollment is silently dropped.
+     *
+     * Because we could not observe whether the abandoned attempt actually
+     * reached IntelliSource, these rows are moved to the terminal 'failed'
+     * status (NOT back to 'pending') with a needs-review marker rather than
+     * blindly re-enrolled — same duplicate-safety principle as the ambiguous
+     * enroll-failure path. Called while the processor lock is held, so any
+     * matching row is genuinely abandoned, not in flight elsewhere. The time
+     * floor (default 15 min) is well beyond a normal attempt (≤~96s).
+     *
+     * @param int $older_than_minutes Only reclaim rows untouched this long.
+     * @return int Number of rows reclaimed.
+     */
+    public function reclaim_stuck_retries(int $older_than_minutes = 15): int {
+        $table = $this->wpdb->prefix . 'isf_retry_queue';
+        $minutes = max(1, $older_than_minutes);
+
+        $affected = $this->wpdb->query(
+            $this->wpdb->prepare(
+                "UPDATE {$table}
+                 SET status = 'failed',
+                     last_error = 'NEEDS MANUAL REVIEW — abandoned in processing (worker died mid-attempt); not auto-retried to avoid a possible duplicate enrollment. Verify in IntelliSource before re-submitting.'
+                 WHERE status = 'processing'
+                 AND updated_at < (NOW() - INTERVAL %d MINUTE)",
+                $minutes
+            )
+        );
+
+        return (int) $affected;
+    }
+
+    /**
      * Get retry queue statistics
      *
      * @param int|null $instance_id Optional: limit to specific instance

@@ -31,13 +31,35 @@ class RetryProcessor {
      * @return array Processing results
      */
     public function process(int $limit = 10): array {
-        $pending = $this->db->get_pending_retries($limit);
         $results = [
             'processed' => 0,
             'succeeded' => 0,
             'failed' => 0,
             'permanent_failures' => 0,
         ];
+
+        // Only one retry processor may run at a time. Overlapping runs (cron
+        // racing cron, or cron racing a manual "process now") would both claim
+        // the same pending rows and both send the non-idempotent enroll POST —
+        // a duplicate enrollment. If another run holds the lock, skip this pass;
+        // the queue is drained by whichever run holds it.
+        if (!$this->db->acquire_retry_lock()) {
+            return $results;
+        }
+
+        // Holding the lock, no other processor is active — so any row still in
+        // 'processing' was abandoned by a worker that died mid-attempt. Move
+        // those to a terminal needs-review state rather than leaving them lost
+        // or blindly re-enrolling them (see reclaim_stuck_retries()).
+        $reclaimed = $this->db->reclaim_stuck_retries();
+        if ($reclaimed > 0) {
+            $this->db->log('warning', sprintf(
+                'Reclaimed %d retry row(s) abandoned in processing; marked failed for manual review (possible duplicate risk).',
+                $reclaimed
+            ));
+        }
+
+        $pending = $this->db->get_pending_retries($limit);
 
         foreach ($pending as $item) {
             // Mark as processing
@@ -94,6 +116,13 @@ class RetryProcessor {
                 $results['permanent_failures']
             ), $results);
         }
+
+        // Release the advisory lock for the next run. A per-item try/catch
+        // already contains exceptions inside the loop, so process() does not
+        // throw here; and if the worker is fatally killed before this line,
+        // GET_LOCK is connection-scoped and MySQL frees it when the connection
+        // drops — so the lock cannot leak across requests either way.
+        $this->db->release_retry_lock();
 
         return $results;
     }
