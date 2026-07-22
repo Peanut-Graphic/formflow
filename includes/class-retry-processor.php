@@ -82,6 +82,12 @@ class RetryProcessor {
                     // Trigger webhook for successful retry
                     $this->trigger_webhook('enrollment.completed', $item);
 
+                    // Send the confirmation the form promised. The normal AJAX
+                    // success handler emails the customer, but the retry path
+                    // bypasses it — so an enrollment that only succeeded on a
+                    // retry left the customer with no confirmation at all.
+                    $this->maybe_notify_customer($item, $result);
+
                 } elseif (!empty($result['ambiguous'])) {
                     // The enroll POST is not idempotent, and this failure could
                     // mean the request reached IntelliSource and enrolled the
@@ -422,6 +428,79 @@ class RetryProcessor {
         }
 
         return strpos($r, 'success') !== false || strpos($r, 'confirmed') !== false;
+    }
+
+    /**
+     * Send the customer the enrollment confirmation a successful retry owes
+     * them.
+     *
+     * The normal AJAX success handler emails the customer; the retry path
+     * bypasses it, so a customer whose enrollment only succeeded on a retry
+     * never heard back despite the form promising "check your email". Mirrors
+     * that behaviour (customer email only — SMS and team notifications on retry
+     * are a separate follow-up). Best-effort: a mail failure must never break
+     * the retry loop.
+     */
+    private function maybe_notify_customer(array $item, array $result): void {
+        try {
+            $submission = $this->db->get_submission($item['submission_id']);
+            if (!$submission) {
+                return;
+            }
+
+            $instance = $this->db->get_instance($item['instance_id']);
+
+            $args = $this->customer_confirmation_args($submission, $instance ?? [], $result);
+            if ($args === null) {
+                return;
+            }
+
+            require_once ISF_PLUGIN_DIR . 'includes/forms/class-email-handler.php';
+            (new Forms\EmailHandler())->sendCustomerConfirmation($args['form_data'], $args['confirmation']);
+        } catch (\Throwable $e) {
+            $this->db->log('warning', 'Retry confirmation email failed: ' . $e->getMessage(), [
+                'queue_id' => $item['id'],
+                'submission_id' => $item['submission_id'],
+            ], $item['instance_id']);
+        }
+    }
+
+    /**
+     * Decide whether a successful retry should send a customer confirmation,
+     * and with what data. Returns null to skip. Pure, so it is unit-testable.
+     *
+     * Skips when: there is no customer email; the item is an appointment
+     * booking rather than an enrollment (a booking is not an enrollment
+     * confirmation); or the instance has confirmation emails disabled — the
+     * same `send_confirmation_email` setting the normal success path honours.
+     *
+     * @param array $submission Decrypted submission row.
+     * @param array $instance   Instance row (settings decoded).
+     * @param array $result     Retry result (carries the API response).
+     * @return array{form_data: array, confirmation: string}|null
+     */
+    private function customer_confirmation_args(array $submission, array $instance, array $result): ?array {
+        $form_data = $submission['form_data'] ?? [];
+
+        if (empty($form_data['email'])) {
+            return null;
+        }
+
+        // Bookings are scheduling, not enrollment confirmations.
+        if (!empty($form_data['schedule_date']) && !empty($form_data['schedule_time'])) {
+            return null;
+        }
+
+        if (!($instance['settings']['send_confirmation_email'] ?? true)) {
+            return null;
+        }
+
+        $response = is_array($result['response'] ?? null) ? $result['response'] : [];
+
+        return [
+            'form_data' => $form_data,
+            'confirmation' => (string) ($response['confirmation_number'] ?? $response['confirmation'] ?? ''),
+        ];
     }
 
     /**
