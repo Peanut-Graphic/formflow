@@ -40,6 +40,13 @@ class ConnectorRegistry {
     private array $metadata_cache = [];
 
     /**
+     * Whether init_connectors() has already fired.
+     *
+     * @var bool
+     */
+    private bool $initialized = false;
+
+    /**
      * Get singleton instance
      *
      * @return ConnectorRegistry
@@ -60,9 +67,20 @@ class ConnectorRegistry {
     }
 
     /**
-     * Initialize connector registration
+     * Initialize connector registration.
+     *
+     * Safe to call multiple times — guarded by $initialized. This mirrors
+     * DestinationRegistry::init_destinations(): the plugins_loaded@5 self-hook
+     * added in the constructor is unreliable because the singleton is first
+     * instantiated inside isf_init() on plugins_loaded@10, by which point
+     * priority 5 has already run — so isf_init() calls this method explicitly.
      */
     public function init_connectors(): void {
+        if ($this->initialized) {
+            return;
+        }
+        $this->initialized = true;
+
         /**
          * Action: Register API connectors
          *
