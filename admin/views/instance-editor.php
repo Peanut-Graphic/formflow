@@ -347,9 +347,20 @@ $wizard_steps = [
                                                 <?php echo !$is_edit ? '<span class="required">*</span>' : ''; ?>
                                                 <?php isf_help_tooltip(__('Securely encrypted before storage.', 'formflow')); ?>
                                             </label>
+                                            <?php
+                                            // Never render the stored API password back into the page. Echoing
+                                            // the decrypted secret into an admin input exposes it to anyone who
+                                            // can view source, a shared screen, or a cached/proxied response.
+                                            // The field is always blank; the save path keeps the existing value
+                                            // when it is left empty (Database::update_instance only re-encrypts a
+                                            // non-empty api_password). autocomplete=new-password stops browsers
+                                            // from silently refilling it.
+                                            ?>
                                             <input type="password" id="api_password" name="api_password" class="isf-field-input"
-                                                   value="<?php echo esc_attr($instance['api_password'] ?? ''); ?>"
-                                                   <?php echo $is_edit ? '' : 'required'; ?>>
+                                                   value="" autocomplete="new-password"
+                                                   <?php echo $is_edit
+                                                       ? 'placeholder="' . esc_attr__('(saved, leave blank to keep)', 'formflow') . '"'
+                                                       : 'required'; ?>>
                                             <?php if ($is_edit) : ?>
                                                 <p class="isf-field-help"><?php esc_html_e('Leave blank to keep existing password.', 'formflow'); ?></p>
                                             <?php endif; ?>
