@@ -245,7 +245,20 @@ class FieldMapper {
             $key = $level . '%-Pro-VHF';
         }
 
-        return self::CONTRACT_CODES[$key] ?? '09'; // Default to 100%-Pro-VHF
+        if (!isset(self::CONTRACT_CODES[$key])) {
+            // Never silently fall back to '09' (100%-Pro-VHF). An unmapped
+            // level/device combination is invalid input, and '09' is MAXIMUM
+            // load-control cycling — silently enrolling a customer to have
+            // their equipment curtailed 100% of the time is a real harm. Fail
+            // loud so the bad data surfaces instead of shipping a wrong,
+            // maximally-aggressive contract to IntelliSource.
+            throw new FieldMappingException(
+                sprintf('Unsupported cycling level / device combination: "%s".', $key),
+                ['cycling_level']
+            );
+        }
+
+        return self::CONTRACT_CODES[$key];
     }
 
     /**
