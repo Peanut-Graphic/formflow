@@ -55,11 +55,30 @@ final class EmbedEndpointGuardsTest extends TestCase
 
     public function test_cors_allows_the_nonce_header(): void
     {
-        $body = $this->methodBody($this->source(), 'function add_cors_headers(');
+        $body = $this->methodBody($this->source(), 'function cors_headers_for(');
         $this->assertMatchesRegularExpression(
             '/Access-Control-Allow-Headers:[^\']*X-WP-Nonce/i',
             $body,
             'CORS must advertise X-WP-Nonce so the nonce survives the cross-origin preflight.'
+        );
+    }
+
+    public function test_cors_does_not_pair_credentials_with_wildcard(): void
+    {
+        $body = $this->methodBody($this->source(), 'function cors_headers_for(');
+
+        // Allow-Credentials must appear only in the explicit-allowlist (else)
+        // branch, i.e. after the wildcard Allow-Origin line — never in the
+        // wildcard branch.
+        $wildcardPos = strpos($body, "Access-Control-Allow-Origin: ' . (\$origin ?: '*')");
+        $credsPos    = strpos($body, 'Access-Control-Allow-Credentials: true');
+
+        $this->assertNotFalse($wildcardPos, 'the wildcard origin branch must exist');
+        $this->assertNotFalse($credsPos, 'credentials must still be sent for explicit allowlists');
+        $this->assertGreaterThan(
+            $wildcardPos,
+            $credsPos,
+            'Allow-Credentials must live in the explicit-allowlist branch, not the wildcard one.'
         );
     }
 }

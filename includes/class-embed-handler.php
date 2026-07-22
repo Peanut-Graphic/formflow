@@ -107,23 +107,63 @@ class EmbedHandler {
             return;
         }
 
-        $allowed_origins = $this->get_allowed_origins();
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-
-        if (in_array($origin, $allowed_origins) || in_array('*', $allowed_origins)) {
-            header('Access-Control-Allow-Origin: ' . ($origin ?: '*'));
-            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-            // X-WP-Nonce must be allowed or the browser preflight strips it and
-            // the nonce-gated validate/schedule calls fail cross-origin.
-            header('Access-Control-Allow-Headers: Content-Type, X-Embed-Token, X-WP-Nonce');
-            header('Access-Control-Allow-Credentials: true');
+        foreach ($this->cors_headers_for($origin, $this->get_allowed_origins()) as $line) {
+            header($line);
         }
 
         // Handle preflight requests
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
             status_header(200);
             exit;
         }
+    }
+
+    /**
+     * Build the CORS header set for an embed request.
+     *
+     * Pure (returns the header lines rather than emitting them) so the
+     * credential/origin policy is unit-testable. Empty array when the origin is
+     * not allowed.
+     *
+     * Policy: with an explicit allowlist the request origin is matched exactly,
+     * so it is safe to reflect it and allow credentials. With a wildcard ('*')
+     * allowlist the embed is public — reflect the origin (or '*') but send NO
+     * credentials: the Fetch spec rejects '*' + credentials outright, and
+     * pairing Allow-Credentials:true with a reflected-any origin would let any
+     * site make cookie-bearing cross-origin calls and read the response. Embed
+     * auth is the token + per-token nonce, which need no cookies.
+     *
+     * @param string   $origin  Request Origin header (may be '').
+     * @param string[] $allowed Configured allowlist ('*' or explicit origins).
+     * @return string[] Header lines to emit.
+     */
+    private function cors_headers_for(string $origin, array $allowed): array {
+        $is_wildcard = in_array('*', $allowed, true);
+
+        if (!$is_wildcard && !in_array($origin, $allowed, true)) {
+            return [];
+        }
+
+        // X-WP-Nonce must be allowed or the browser preflight strips it and the
+        // nonce-gated validate/schedule calls fail cross-origin.
+        $headers = [
+            'Access-Control-Allow-Methods: GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers: Content-Type, X-Embed-Token, X-WP-Nonce',
+        ];
+
+        if ($is_wildcard) {
+            $headers[] = 'Access-Control-Allow-Origin: ' . ($origin ?: '*');
+        } else {
+            $headers[] = 'Access-Control-Allow-Origin: ' . $origin;
+            $headers[] = 'Access-Control-Allow-Credentials: true';
+        }
+
+        // Responses vary by Origin — keep shared caches from serving one
+        // origin's ACAO header to another.
+        $headers[] = 'Vary: Origin';
+
+        return $headers;
     }
 
     /**

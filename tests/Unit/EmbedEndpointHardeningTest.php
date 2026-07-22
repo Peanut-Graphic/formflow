@@ -127,5 +127,40 @@ namespace ISF\Tests\Unit {
             $this->assertArrayHasKey('customer_data', $out, 'On success the confirm-flow data must be preserved.');
             $this->assertSame($raw, $out);
         }
+
+        public function test_wildcard_cors_reflects_origin_without_credentials(): void
+        {
+            $headers = $this->call($this->handler(), 'cors_headers_for', 'https://evil.example', ['*']);
+            $joined = implode("\n", $headers);
+
+            $this->assertStringContainsString('Access-Control-Allow-Origin: https://evil.example', $joined);
+            $this->assertStringNotContainsString(
+                'Access-Control-Allow-Credentials',
+                $joined,
+                'A wildcard (public) embed must NOT pair Allow-Credentials with a reflected-any origin.'
+            );
+            $this->assertStringContainsString('X-WP-Nonce', $joined, 'The nonce header must stay advertised.');
+            $this->assertStringContainsString('Vary: Origin', $joined);
+        }
+
+        public function test_explicit_allowlist_reflects_match_with_credentials(): void
+        {
+            $allowed = ['https://client.example', 'https://portal.example'];
+            $headers = $this->call($this->handler(), 'cors_headers_for', 'https://client.example', $allowed);
+            $joined = implode("\n", $headers);
+
+            $this->assertStringContainsString('Access-Control-Allow-Origin: https://client.example', $joined);
+            $this->assertStringContainsString(
+                'Access-Control-Allow-Credentials: true',
+                $joined,
+                'An exact allowlist match may carry credentials.'
+            );
+        }
+
+        public function test_unlisted_origin_gets_no_cors_headers(): void
+        {
+            $headers = $this->call($this->handler(), 'cors_headers_for', 'https://evil.example', ['https://client.example']);
+            $this->assertSame([], $headers, 'An origin not on an explicit allowlist gets no CORS headers.');
+        }
     }
 }
