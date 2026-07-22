@@ -2887,20 +2887,35 @@ class Database {
         $sql = "SELECT * FROM {$this->table_submissions} ORDER BY created_at DESC";
         $all_submissions = $this->wpdb->get_results($sql, ARRAY_A) ?: [];
 
+        $email = strtolower(trim($email));
+        $account_number = $account_number !== null ? trim($account_number) : null;
+
+        // A person's account number is stored under different keys depending on
+        // the form path: Dominion PTR writes utility_no, Energy Wise writes
+        // account_number, Comverge writes ca_no / comverge_no. Checking only
+        // account_number silently missed everyone enrolled through the other
+        // paths — a GDPR erase/export must find them all.
+        $account_keys = ['account_number', 'utility_no', 'account', 'ca_no', 'comverge_no'];
+
         foreach ($all_submissions as $sub) {
             $form_data = $this->encryption->decrypt_array($sub['form_data'] ?? '');
 
             $matches = false;
 
             // Check email
-            if (!empty($form_data['email']) && strtolower($form_data['email']) === strtolower($email)) {
+            if ($email !== '' && !empty($form_data['email'])
+                && strtolower(trim((string) $form_data['email'])) === $email) {
                 $matches = true;
             }
 
-            // Check account number
-            if ($account_number && !empty($form_data['account_number'])) {
-                if ($form_data['account_number'] === $account_number) {
-                    $matches = true;
+            // Check account number across every key it may be stored under.
+            if (!$matches && $account_number !== null && $account_number !== '') {
+                foreach ($account_keys as $account_key) {
+                    if (!empty($form_data[$account_key])
+                        && (string) $form_data[$account_key] === $account_number) {
+                        $matches = true;
+                        break;
+                    }
                 }
             }
 
