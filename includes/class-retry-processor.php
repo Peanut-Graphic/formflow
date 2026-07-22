@@ -247,10 +247,7 @@ class RetryProcessor {
             }
 
             // String response might be success
-            if (is_string($response) && (
-                stripos($response, 'success') !== false ||
-                stripos($response, 'confirmed') !== false
-            )) {
+            if (is_string($response) && $this->booking_response_reads_as_success($response)) {
                 return [
                     'success' => true,
                     'response' => $response,
@@ -268,6 +265,34 @@ class RetryProcessor {
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Does a plain-string booking response indicate success?
+     *
+     * The old check was `stripos($r,'success') || stripos($r,'confirmed')`,
+     * which matched the substring inside "unsuccessful" — so a response like
+     * "Booking unsuccessful" was read as a SUCCESS, marking a failed booking
+     * completed and firing enrollment.completed while the appointment was
+     * silently lost. Guard against the negative words before accepting a
+     * positive token.
+     *
+     * @param string $response Raw string response from the booking API.
+     * @return bool True only when the response reads as an unambiguous success.
+     */
+    private function booking_response_reads_as_success(string $response): bool {
+        $r = strtolower($response);
+
+        // Any negative marker disqualifies the response, even if it also
+        // contains "success" (as "unsuccessful" does).
+        $negatives = ['unsuccess', 'not success', 'unable', 'fail', 'error', 'denied', 'invalid', 'reject'];
+        foreach ($negatives as $needle) {
+            if (strpos($r, $needle) !== false) {
+                return false;
+            }
+        }
+
+        return strpos($r, 'success') !== false || strpos($r, 'confirmed') !== false;
     }
 
     /**

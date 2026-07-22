@@ -1826,8 +1826,15 @@ class Database {
         $new_count = (int)$item['retry_count'] + 1;
 
         if ($new_count >= (int)$item['max_retries']) {
-            // Max retries exceeded - mark as failed
-            return $this->update_retry_status($queue_id, 'failed', $error);
+            // Max retries exceeded — mark as failed and report FALSE per the
+            // documented contract. update_retry_status() returns true on a
+            // successful write, so returning it here inverted the signal:
+            // RetryProcessor computes `$maxed = !increment_retry(...)`, so a
+            // truthy return made it treat a permanent failure as "still
+            // retrying" — the permanent-failure branch and the
+            // enrollment.failed webhook never fired.
+            $this->update_retry_status($queue_id, 'failed', $error);
+            return false;
         }
 
         // Calculate next retry with exponential backoff
