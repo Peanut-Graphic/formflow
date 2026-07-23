@@ -37,10 +37,13 @@ $settings = $features['sms_notifications'] ?? [];
             <label for="sms_auth_token"><?php esc_html_e('Auth Token', 'formflow'); ?></label>
         </th>
         <td>
+            <?php // Never render the stored token back into the page — it is encrypted at rest and must not leak into HTML. Blank field; a blank submit keeps the saved value. ?>
             <input type="password" id="sms_auth_token" name="settings[features][sms_notifications][auth_token]"
-                   class="regular-text" value="<?php echo esc_attr($settings['auth_token'] ?? ''); ?>"
-                   placeholder="<?php esc_attr_e('Enter your Auth Token', 'formflow'); ?>">
-            <p class="description"><?php esc_html_e('Your Twilio Auth Token (will be encrypted)', 'formflow'); ?></p>
+                   class="regular-text" value="" autocomplete="new-password"
+                   placeholder="<?php echo !empty($settings['auth_token'])
+                       ? esc_attr__('Saved, leave blank to keep', 'formflow')
+                       : esc_attr__('Enter your Auth Token', 'formflow'); ?>">
+            <p class="description"><?php esc_html_e('Your Twilio Auth Token (encrypted at rest; leave blank to keep the saved value)', 'formflow'); ?></p>
         </td>
     </tr>
     <tr>

@@ -18,6 +18,14 @@ class Encryption {
     private const METHOD = 'AES-256-CBC';
     private const IV_LENGTH = 16;
 
+    /**
+     * Marker prefixing an encrypted secret stored inside a settings JSON blob.
+     * decrypt() cannot tell ciphertext from plaintext (it returns '' on
+     * plaintext), so a tag is required to migrate values in place: reads
+     * decrypt only tagged values and pass legacy plaintext through unchanged.
+     */
+    private const SECRET_PREFIX = 'enc:';
+
     private string $key;
 
     private \Peanut\FormCore\Crypto\Encryptor $encryptor;
@@ -52,6 +60,36 @@ class Encryption {
      */
     public function decrypt(string $data): string {
         return $this->encryptor->decrypt($data);
+    }
+
+    /**
+     * Encrypt a secret for at-rest storage inside a settings JSON blob.
+     *
+     * Tags the ciphertext with SECRET_PREFIX so reads can distinguish it from
+     * legacy plaintext. Idempotent: an empty value, or one that is already
+     * tagged, is returned unchanged (so re-saving never double-encrypts).
+     */
+    public function encrypt_secret(string $value): string {
+        if ($value === '' || strncmp($value, self::SECRET_PREFIX, strlen(self::SECRET_PREFIX)) === 0) {
+            return $value;
+        }
+
+        return self::SECRET_PREFIX . $this->encrypt($value);
+    }
+
+    /**
+     * Read a secret that may be tagged ciphertext or legacy plaintext.
+     *
+     * Tagged values are decrypted; untagged values are returned unchanged, so
+     * existing installs that stored these secrets in plaintext keep working
+     * with no migration step.
+     */
+    public function decrypt_secret(string $value): string {
+        if (strncmp($value, self::SECRET_PREFIX, strlen(self::SECRET_PREFIX)) === 0) {
+            return $this->decrypt(substr($value, strlen(self::SECRET_PREFIX)));
+        }
+
+        return $value;
     }
 
     /**

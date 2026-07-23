@@ -55,9 +55,11 @@ $providers = \ISF\CRMIntegration::get_providers();
             <label for="crm_api_secret"><?php esc_html_e('Client Secret', 'formflow'); ?></label>
         </th>
         <td>
+            <?php // Never render the stored secret back into the page — encrypted at rest. Blank field; a blank submit keeps the saved value. ?>
             <input type="password" id="crm_api_secret" name="settings[features][crm_integration][api_secret]"
-                   class="regular-text" value="<?php echo esc_attr($settings['api_secret'] ?? ''); ?>">
-            <p class="description"><?php esc_html_e('Will be encrypted when saved', 'formflow'); ?></p>
+                   class="regular-text" value="" autocomplete="new-password"
+                   placeholder="<?php echo !empty($settings['api_secret']) ? esc_attr__('Saved, leave blank to keep', 'formflow') : ''; ?>">
+            <p class="description"><?php esc_html_e('Encrypted at rest; leave blank to keep the saved value', 'formflow'); ?></p>
         </td>
     </tr>
 
