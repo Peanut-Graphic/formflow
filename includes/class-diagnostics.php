@@ -142,8 +142,9 @@ class Diagnostics {
         // Memory Limit
         $memory_limit = ini_get('memory_limit');
         $memory_bytes = $this->convert_to_bytes($memory_limit);
-        if ($memory_bytes >= 64 * 1024 * 1024) {
-            $this->add_result($category, 'Memory Limit', 'passed', "Memory limit ({$memory_limit}) is sufficient");
+        if ($this->memory_limit_is_sufficient($memory_bytes)) {
+            $shown = $memory_bytes === -1 ? 'unlimited' : $memory_limit;
+            $this->add_result($category, 'Memory Limit', 'passed', "Memory limit ({$shown}) is sufficient");
         } else {
             $this->add_result($category, 'Memory Limit', 'warning', "Memory limit ({$memory_limit}) may be too low, recommend 64M+");
         }
@@ -645,6 +646,16 @@ class Diagnostics {
     // =========================================================================
     // Helpers
     // =========================================================================
+
+    /**
+     * Is the configured memory_limit sufficient for the plugin?
+     *
+     * A memory_limit of -1 means "unlimited" — treat it as sufficient rather
+     * than, as the naive numeric compare did, flagging it as too low.
+     */
+    private function memory_limit_is_sufficient(int $bytes): bool {
+        return $bytes === -1 || $bytes >= 64 * 1024 * 1024;
+    }
 
     private function convert_to_bytes(string $value): int {
         $value = trim($value);
