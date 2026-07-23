@@ -22,10 +22,16 @@ class TeamNotifications {
     private Database\Database $db;
 
     /**
+     * Encryption helper (for reading the tagged-encrypted webhook URL).
+     */
+    private Encryption $encryption;
+
+    /**
      * Constructor
      */
     public function __construct() {
         $this->db = new Database\Database();
+        $this->encryption = new Encryption();
     }
 
     /**
@@ -59,7 +65,7 @@ class TeamNotifications {
 
         // Build message based on provider
         $provider = $config['provider'] ?? 'slack';
-        $webhook_url = $config['webhook_url'] ?? '';
+        $webhook_url = $this->encryption->decrypt_secret($config['webhook_url'] ?? '');
 
         if (empty($webhook_url)) {
             return false;
@@ -129,7 +135,7 @@ class TeamNotifications {
         $customer_name = trim(($form_data['first_name'] ?? '') . ' ' . ($form_data['last_name'] ?? ''));
 
         $provider = $config['provider'] ?? 'slack';
-        $webhook_url = $config['webhook_url'] ?? '';
+        $webhook_url = $this->encryption->decrypt_secret($config['webhook_url'] ?? '');
 
         if (empty($webhook_url)) {
             return false;

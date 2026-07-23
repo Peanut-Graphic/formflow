@@ -1008,6 +1008,38 @@ class Admin {
             'require_wifi' => !empty($_POST['require_wifi']) && $_POST['require_wifi'] !== '0'
         ]);
 
+        // Encrypt per-instance feature secrets at rest (Twilio auth token, CRM
+        // api_secret, Slack/Teams webhook URL). Same encrypt-or-keep contract as
+        // the destination configs below: a newly entered value is tagged and
+        // encrypted, and a blank submit preserves the stored value — the fields
+        // render masked, so blank means "keep", not "wipe". encrypt_secret() is
+        // idempotent, so an already-encrypted value passed through untouched is
+        // never double-encrypted.
+        $feature_secret_keys = [
+            'sms_notifications'  => ['auth_token'],
+            'crm_integration'    => ['api_secret'],
+            'team_notifications' => ['webhook_url'],
+        ];
+        if (!empty($settings['features']) && is_array($settings['features'])) {
+            $secret_encryptor = new \ISF\Encryption();
+            foreach ($feature_secret_keys as $feature => $keys) {
+                if (!isset($settings['features'][$feature]) || !is_array($settings['features'][$feature])) {
+                    continue;
+                }
+                foreach ($keys as $key) {
+                    $new_val = (string) ($settings['features'][$feature][$key] ?? '');
+                    $old_val = (string) ($existing_settings['features'][$feature][$key] ?? '');
+
+                    if ($new_val === '' && $old_val !== '') {
+                        // Masked field left blank on edit — keep the stored value.
+                        $settings['features'][$feature][$key] = $old_val;
+                    } elseif ($new_val !== '') {
+                        $settings['features'][$feature][$key] = $secret_encryptor->encrypt_secret($new_val);
+                    }
+                }
+            }
+        }
+
         // Destinations (2.9.0+): posted as a separate destinations_json
         // string by the destinations pod's inline JS. Server-side:
         //   1. decode the JSON

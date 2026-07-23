@@ -149,7 +149,7 @@ class CRMIntegration {
             'body' => [
                 'grant_type' => 'client_credentials',
                 'client_id' => $config['api_key'],
-                'client_secret' => $this->encryption->decrypt($config['api_secret']),
+                'client_secret' => $this->encryption->decrypt_secret($config['api_secret'] ?? ''),
             ],
             'timeout' => 30,
         ]);
@@ -333,7 +333,7 @@ class CRMIntegration {
             return $cached_token;
         }
 
-        $refresh_token = $this->encryption->decrypt($config['api_secret']);
+        $refresh_token = $this->encryption->decrypt_secret($config['api_secret'] ?? '');
 
         $response = wp_remote_post('https://accounts.zoho.com/oauth/v2/token', [
             'body' => [

@@ -27,9 +27,10 @@ $settings = $features['team_notifications'] ?? [];
             <label for="team_webhook_url"><?php esc_html_e('Webhook URL', 'formflow'); ?></label>
         </th>
         <td>
+            <?php // Never render the stored webhook back into the page — encrypted at rest, and the URL is itself a secret. Blank field; a blank submit keeps the saved value. ?>
             <input type="url" id="team_webhook_url" name="settings[features][team_notifications][webhook_url]"
-                   class="large-text" value="<?php echo esc_attr($settings['webhook_url'] ?? ''); ?>"
-                   placeholder="https://hooks.slack.com/services/...">
+                   class="large-text" value="" autocomplete="off"
+                   placeholder="<?php echo !empty($settings['webhook_url']) ? esc_attr__('Saved, leave blank to keep', 'formflow') : 'https://hooks.slack.com/services/...'; ?>">
             <p class="description isf-slack-help" <?php echo ($settings['provider'] ?? 'slack') !== 'slack' ? 'style="display:none;"' : ''; ?>>
                 <?php printf(
                     esc_html__('Create an incoming webhook in your %s', 'formflow'),

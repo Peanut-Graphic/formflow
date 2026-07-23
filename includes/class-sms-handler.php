@@ -157,17 +157,11 @@ class SmsHandler {
     private function send_sms(array $instance, string $to, string $message): bool {
         $sms_config = FeatureManager::get_feature($instance, 'sms_notifications');
 
-        $account_sid = $sms_config['account_sid'] ?? '';
-        $auth_token = $sms_config['auth_token'] ?? '';
+        // Credentials may be stored tagged-encrypted or as legacy plaintext;
+        // decrypt_secret() handles both.
+        $account_sid = $this->encryption->decrypt_secret($sms_config['account_sid'] ?? '');
+        $auth_token  = $this->encryption->decrypt_secret($sms_config['auth_token'] ?? '');
         $from_number = $sms_config['from_number'] ?? '';
-
-        // Decrypt credentials if encrypted
-        if (!empty($account_sid) && strpos($account_sid, 'enc:') === 0) {
-            $account_sid = $this->encryption->decrypt(substr($account_sid, 4));
-        }
-        if (!empty($auth_token) && strpos($auth_token, 'enc:') === 0) {
-            $auth_token = $this->encryption->decrypt(substr($auth_token, 4));
-        }
 
         if (empty($account_sid) || empty($auth_token) || empty($from_number)) {
             $this->log('error', 'SMS credentials not configured', [], $instance['id']);
@@ -294,8 +288,10 @@ class SmsHandler {
     public static function test_configuration(array $config, string $test_number): array {
         $handler = new self();
 
-        $account_sid = $config['account_sid'] ?? '';
-        $auth_token = $config['auth_token'] ?? '';
+        // Accept either a live plaintext value (from the admin test form) or a
+        // stored tagged-encrypted one.
+        $account_sid = $handler->encryption->decrypt_secret($config['account_sid'] ?? '');
+        $auth_token  = $handler->encryption->decrypt_secret($config['auth_token'] ?? '');
         $from_number = $config['from_number'] ?? '';
 
         // Validate configuration
