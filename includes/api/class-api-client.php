@@ -445,15 +445,12 @@ class ApiClient {
             $this->get_promo_codes();
 
             $result['latency_ms'] = round((microtime(true) - $start_time) * 1000);
-            $result['status'] = 'healthy';
 
-            // Classify latency
-            if ($result['latency_ms'] > 5000) {
-                $result['status'] = 'degraded';
-                $result['warning'] = 'High latency detected';
-            } elseif ($result['latency_ms'] > 10000) {
-                $result['status'] = 'slow';
-                $result['warning'] = 'Very high latency';
+            // Classify latency (worst-first, so the >10s tier is reachable).
+            $latency = self::classify_latency((int) $result['latency_ms']);
+            $result['status'] = $latency['status'];
+            if ($latency['warning'] !== null) {
+                $result['warning'] = $latency['warning'];
             }
 
         } catch (ApiException $e) {
@@ -468,6 +465,27 @@ class ApiClient {
         }
 
         return $result;
+    }
+
+    /**
+     * Classify an API round-trip time into a health status.
+     *
+     * Ordered worst-first. The previous order tested >5000 before >10000, so
+     * the 'slow' (>10s) tier was unreachable — anything over 10s is also over
+     * 5s and was reported merely 'degraded'.
+     *
+     * @param int $ms Latency in milliseconds.
+     * @return array{status: string, warning: string|null}
+     */
+    public static function classify_latency(int $ms): array {
+        if ($ms > 10000) {
+            return ['status' => 'slow', 'warning' => 'Very high latency'];
+        }
+        if ($ms > 5000) {
+            return ['status' => 'degraded', 'warning' => 'High latency detected'];
+        }
+
+        return ['status' => 'healthy', 'warning' => null];
     }
 
     /**
