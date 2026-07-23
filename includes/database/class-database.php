@@ -2968,10 +2968,6 @@ class Database {
     public function find_submissions_for_gdpr(string $email, ?string $account_number = null): array {
         $submissions = [];
 
-        // Get all submissions and check decrypted data
-        $sql = "SELECT * FROM {$this->table_submissions} ORDER BY created_at DESC";
-        $all_submissions = $this->wpdb->get_results($sql, ARRAY_A) ?: [];
-
         $email = strtolower(trim($email));
         $account_number = $account_number !== null ? trim($account_number) : null;
 
@@ -2982,36 +2978,66 @@ class Database {
         // paths — a GDPR erase/export must find them all.
         $account_keys = ['account_number', 'utility_no', 'account', 'ca_no', 'comverge_no'];
 
-        foreach ($all_submissions as $sub) {
-            $form_data = $this->encryption->decrypt_array($sub['form_data'] ?? '');
+        // The submission body is encrypted, so we can't filter in SQL — each row
+        // must be decrypted and matched in PHP. A single unbounded SELECT would
+        // then pull the whole table into memory and decrypt every row at once
+        // (OOM / timeout risk on a large table), so page through it holding at
+        // most $chunk rows at a time.
+        $chunk = 500;
+        $offset = 0;
+        do {
+            $rows = $this->wpdb->get_results(
+                $this->wpdb->prepare(
+                    "SELECT * FROM {$this->table_submissions} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+                    $chunk,
+                    $offset
+                ),
+                ARRAY_A
+            ) ?: [];
 
-            $matches = false;
+            foreach ($rows as $sub) {
+                $form_data = $this->encryption->decrypt_array($sub['form_data'] ?? '');
 
-            // Check email
-            if ($email !== '' && !empty($form_data['email'])
-                && strtolower(trim((string) $form_data['email'])) === $email) {
-                $matches = true;
-            }
-
-            // Check account number across every key it may be stored under.
-            if (!$matches && $account_number !== null && $account_number !== '') {
-                foreach ($account_keys as $account_key) {
-                    if (!empty($form_data[$account_key])
-                        && (string) $form_data[$account_key] === $account_number) {
-                        $matches = true;
-                        break;
-                    }
+                if ($this->gdpr_subject_matches($form_data, $email, $account_number, $account_keys)) {
+                    $sub['form_data'] = $form_data;
+                    $sub['api_response'] = $this->encryption->decrypt_array($sub['api_response'] ?? '');
+                    $submissions[] = $sub;
                 }
             }
 
-            if ($matches) {
-                $sub['form_data'] = $form_data;
-                $sub['api_response'] = $this->encryption->decrypt_array($sub['api_response'] ?? '');
-                $submissions[] = $sub;
+            $offset += $chunk;
+        } while (count($rows) === $chunk);
+
+        return $submissions;
+    }
+
+    /**
+     * Does a decrypted submission belong to the GDPR subject?
+     *
+     * Matches the subject email (case-insensitive) or the account number under
+     * any of the keys it may be stored beneath. Pure, so it is unit-testable.
+     *
+     * @param array<string, mixed> $form_data      Decrypted submission form data.
+     * @param string               $email          Normalised (lowercased/trimmed) subject email.
+     * @param string|null          $account_number Trimmed subject account number, or null.
+     * @param array<int, string>   $account_keys   Keys the account number may live under.
+     */
+    private function gdpr_subject_matches(array $form_data, string $email, ?string $account_number, array $account_keys): bool {
+        if ($email !== '' && !empty($form_data['email'])
+            && strtolower(trim((string) $form_data['email'])) === $email) {
+            return true;
+        }
+
+        if ($account_number !== null && $account_number !== '') {
+            foreach ($account_keys as $account_key) {
+                if (!empty($form_data[$account_key])
+                    && (string) $form_data[$account_key] === $account_number) {
+                    return true;
+                }
             }
         }
 
-        return $submissions;
+        return false;
     }
 
     /**
