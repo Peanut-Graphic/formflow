@@ -1,22 +1,21 @@
 # FormFlow Pro Changelog
 
-## 4.1.0 — WiFi eligibility gate
+## 4.2.0 — 2026-07-22 — Dominion PTR connector + security hardening
 
-### Added
+### Fixed (security & reliability — microscope PRs #63–#75)
 
-- **WiFi eligibility gate for the Web-Programmable Thermostat.** A thermostat cannot be installed in a home without WiFi, but the enrollment form never asked — so those enrollments completed, got scheduled, and a technician was dispatched to a home where the install could not succeed. Found in testing on the Pepco/Delmarva forms before launch. Step 1 now asks "Does your home have WiFi?" when the thermostat is selected; answering **No** opens a callout offering one-click conversion to the Outdoor Switch program.
-- **Per-instance opt-in** (`settings.require_wifi`, "Require WiFi for thermostat" under Form Fields → Eligibility). **Default off.** FormFlow serves several Itron utilities from one enrollment flow and only PHI asked for this, so every other instance renders and behaves exactly as before. Stored `"0"`, `"false"`, `"off"` and `"no"` are read as OFF despite being truthy strings in PHP.
-- **Server-side enforcement.** `FormHandler::validateStep1()` takes an opt-in `$require_wifi` flag and rejects thermostat + no/missing WiFi, and the final-submission path passes it. The client-side gate alone is bypassable with a hand-crafted POST, which would defeat the entire purpose. Fails closed: only an explicit `"yes"` clears it.
-- **`has_wifi` and `device_converted` columns on submissions**, in both the `CREATE TABLE` and a guarded, idempotent migration. These need real columns because `form_data` is encrypted at rest and cannot be queried. `has_wifi` is nullable on purpose — NULL means "never asked", which keeps switch-first and pre-4.1.0 enrollments distinguishable from an actual answer.
-- **Report figures**: how many customers were asked, how many answered No, and how many of those the gate converted rather than lost. A switch-first enrollment is never counted as a conversion.
-- **69 tests**, each written and watched fail before the code existed.
-
-### Notes
-
-- **The "same bill credits" line in the callout is not verified.** Participation-level parity *is* — Step 2 renders the same 50/75/100 cycling options for both devices — but no incentive figures exist anywhere in this codebase; that lives in the utility's tariff. It is a financial claim in a regulated enrollment form and needs written client confirmation. All callout copy is instance-editable content, so softening it is a settings change rather than a release.
-- The unused `ISF\Database\Traits\Submissions` trait carries a stale copy of `create_submission()` and was deliberately left untouched — nothing references it. Worth deleting separately.
-
-## Unreleased (Dominion PTR)
+- **P0 — connector registry never initialized.** `isf_register_connectors` never fired (a `plugins_loaded` priority trap), so no API connector was ever registered and every connector-backed request 500'd. Mirrors the existing `DestinationRegistry` fix. (#63)
+- **P0 — double-enrollment on ambiguous retry failures.** The non-idempotent enroll POST was re-sent on timeouts / dropped connections / unparseable responses — any of which may already have enrolled the customer — risking duplicate IntelliSource enrollments. Only provably pre-transmission failures are retried now; ambiguous outcomes are parked for manual review. (#64)
+- **Retry detection bugs.** `increment_retry()` inverted its own return contract, so permanent failures were treated as "still retrying" and never fired the failure webhook; `retry_booking()` read "unsuccessful" as success via a substring match. (#65)
+- **Retry concurrency + abandoned rows.** Added a MySQL advisory lock so overlapping cron runs can't both claim a row and double-enroll, plus a reaper that surfaces rows abandoned mid-attempt for review rather than losing them. (#66)
+- **Uninstall preserves data by default.** Deleting the plugin no longer drops every submission / PII / audit / GDPR table unless an admin has explicitly set `delete_data_on_uninstall`. (#67)
+- **Admin no longer renders the stored API password** back into the instance-editor field. (#68)
+- **Embed endpoints hardened.** `/embed/validate` and `/embed/schedule` were an unauthenticated PII / account-enumeration oracle over the live API; they are now per-IP + per-token rate-limited and require the per-token nonce, the failed-probe response is trimmed, and the CORS wildcard-with-credentials misconfiguration is fixed. (#69)
+- **Contract code fails loud** on an unmapped cycling-level / device combination instead of silently enrolling the customer at 100% load-control cycling. (#70)
+- **GDPR subject lookup** now matches the account number across every key it may be stored under (`utility_no` / `ca_no` / `comverge_no`, not just `account_number`), and pages the encrypted scan in bounded chunks instead of loading the whole submissions table into memory. (#71, #74)
+- **Successful retries now send the customer their confirmation email** — the retry path bypassed the normal success handler, so an enrollment that only succeeded on retry left the customer with nothing. (#72)
+- **Per-instance feature secrets encrypted at rest** — the Twilio auth token, CRM `api_secret`, and Slack/Teams webhook URL — with a prefix-tagged, plaintext-tolerant migration. Also repaired the CRM OAuth path, which called `decrypt()` unconditionally on the plaintext it actually stored and was silently broken. (#73)
+- **Diagnostic accuracy** — the health-check "slow" latency tier (>10s) was unreachable dead code behind the >5s tier; an unlimited (`-1`) `memory_limit` was misreported as "too low". (#75)
 
 ### Added
 
@@ -43,6 +42,22 @@
 - PTR is a rate/bill-credit program with no device and no install, so `get_schedule_slots()` and `book_appointment()` report `unsupported` by design, not as pending work.
 - Stage 2 (the `powerportal-json` base + verification/hand-off scaffold) follows in #60. It was ported here from Lite's PR #24, which is now closed; Lite's copy of the connector is removed in formflow-lite#29, so Dominion has exactly one home.
 
+## 4.1.0 — WiFi eligibility gate
+
+### Added
+
+- **WiFi eligibility gate for the Web-Programmable Thermostat.** A thermostat cannot be installed in a home without WiFi, but the enrollment form never asked — so those enrollments completed, got scheduled, and a technician was dispatched to a home where the install could not succeed. Found in testing on the Pepco/Delmarva forms before launch. Step 1 now asks "Does your home have WiFi?" when the thermostat is selected; answering **No** opens a callout offering one-click conversion to the Outdoor Switch program.
+- **Per-instance opt-in** (`settings.require_wifi`, "Require WiFi for thermostat" under Form Fields → Eligibility). **Default off.** FormFlow serves several Itron utilities from one enrollment flow and only PHI asked for this, so every other instance renders and behaves exactly as before. Stored `"0"`, `"false"`, `"off"` and `"no"` are read as OFF despite being truthy strings in PHP.
+- **Server-side enforcement.** `FormHandler::validateStep1()` takes an opt-in `$require_wifi` flag and rejects thermostat + no/missing WiFi, and the final-submission path passes it. The client-side gate alone is bypassable with a hand-crafted POST, which would defeat the entire purpose. Fails closed: only an explicit `"yes"` clears it.
+- **`has_wifi` and `device_converted` columns on submissions**, in both the `CREATE TABLE` and a guarded, idempotent migration. These need real columns because `form_data` is encrypted at rest and cannot be queried. `has_wifi` is nullable on purpose — NULL means "never asked", which keeps switch-first and pre-4.1.0 enrollments distinguishable from an actual answer.
+- **Report figures**: how many customers were asked, how many answered No, and how many of those the gate converted rather than lost. A switch-first enrollment is never counted as a conversion.
+- **69 tests**, each written and watched fail before the code existed.
+
+### Notes
+
+- **The "same bill credits" line in the callout is not verified.** Participation-level parity *is* — Step 2 renders the same 50/75/100 cycling options for both devices — but no incentive figures exist anywhere in this codebase; that lives in the utility's tariff. It is a financial claim in a regulated enrollment form and needs written client confirmation. All callout copy is instance-editable content, so softening it is a settings change rather than a release.
+- The unused `ISF\Database\Traits\Submissions` trait carries a stale copy of `create_submission()` and was deliberately left untouched — nothing references it. Worth deleting separately.
+
 ## 4.0.8 — 2026-07-05 (delivery fix)
 
 ### Fixed
@@ -66,8 +81,6 @@
 
 - **Removed the hardcoded `FFTEST-ADMIN-DEV-MODE` license-bypass key** — anyone who entered it unlocked all Pro/Agency features for free. The legitimate wp-config `FORMFLOW_ADMIN_KEY` operator escape hatch is kept.
 - **Removed the tester-bridge test harness** (`includes/class-tester-bridge.php`, `tester/`) — it no longer ships to client installs.
-
-## Unreleased (security)
 
 ### Security
 - **Removed the hardcoded license-bypass key `FFTEST-ADMIN-DEV-MODE`.** `LicenseManager::ADMIN_TEST_KEY` shipped in client installs; anyone who entered that literal string as their license key had every Pro/Agency feature unlocked for free (`is_admin_testing_mode()` short-circuited to true, `is_pro()` rode on top, and `activate_license()` minted a local `agency` license without contacting the license server). Deleted the constant and every branch that special-cased it. The legitimate operator escape hatch — the wp-config-defined `FORMFLOW_ADMIN_KEY` constant — is kept. Also dropped the tools-settings UI hint that advertised the key and the `uninstall.php` special-case. Regression-guarded by `LicenseAdminBypassKeyTest`.
