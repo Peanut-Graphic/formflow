@@ -15,3 +15,7 @@ coverage/
 
 # Local agent tooling
 .superpowers/
+
+# --- added by gitignore-sync on 2026-08-03 ---
+.cursor/*
+!.cursor/rules/
