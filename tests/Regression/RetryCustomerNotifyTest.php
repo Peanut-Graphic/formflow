@@ -21,7 +21,6 @@ final class RetryCustomerNotifyTest extends TestCase
     {
         $p = (new \ReflectionClass(RetryProcessor::class))->newInstanceWithoutConstructor();
         $m = new \ReflectionMethod($p, 'customer_confirmation_args');
-        $m->setAccessible(true);
         return $m->invoke($p, $submission, $instance, $result);
     }
 

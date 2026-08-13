@@ -31,7 +31,6 @@ final class RetryEnrollmentDoubleSubmitTest extends TestCase
         // the pure classifier directly.
         $processor = (new \ReflectionClass(RetryProcessor::class))->newInstanceWithoutConstructor();
         $method = new \ReflectionMethod($processor, 'enroll_failure_is_transmission_safe');
-        $method->setAccessible(true);
 
         return $method->invoke($processor, $status, $message);
     }

@@ -1,5 +1,13 @@
 # FormFlow Pro Changelog
 
+## Unreleased
+
+### Testing
+
+- Removed obsolete reflection-access calls from the blocking regression suite so it
+  remains clean under PHP 8.5, and configured PHPUnit to fail when a test is risky.
+  The enforced property and regression gates now pass without hidden risky results.
+
 ## 4.2.0 — 2026-07-22 — Dominion PTR connector + security hardening
 
 ### Fixed (security & reliability — microscope PRs #63–#75)

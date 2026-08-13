@@ -23,7 +23,6 @@ final class BookingSuccessDetectionTest extends TestCase
     {
         $processor = (new \ReflectionClass(RetryProcessor::class))->newInstanceWithoutConstructor();
         $method = new \ReflectionMethod($processor, 'booking_response_reads_as_success');
-        $method->setAccessible(true);
 
         return $method->invoke($processor, $response);
     }

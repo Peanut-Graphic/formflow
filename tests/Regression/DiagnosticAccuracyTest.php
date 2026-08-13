@@ -39,7 +39,6 @@ final class DiagnosticAccuracyTest extends TestCase
         $diag = (new \ReflectionClass(\ISF\Diagnostics::class))->newInstanceWithoutConstructor();
 
         $sufficient = new \ReflectionMethod($diag, 'memory_limit_is_sufficient');
-        $sufficient->setAccessible(true);
 
         $this->assertTrue($sufficient->invoke($diag, -1), 'unlimited (-1) must be sufficient');
         $this->assertTrue($sufficient->invoke($diag, 128 * 1024 * 1024), '128M is sufficient');

@@ -143,7 +143,6 @@ final class IntelliSourceSsrfGuardTest extends TestCase
     private function invokeMakeRequest(IntelliSourceConnector $connector, string $endpoint)
     {
         $ref = new \ReflectionMethod($connector, 'make_request');
-        $ref->setAccessible(true);
 
         return $ref->invoke($connector, $endpoint, '/promo_codes', ['pswd' => 'x'], 'GET', false);
     }

@@ -57,7 +57,6 @@ final class ConnectorRegistryInitTest extends TestCase
         $GLOBALS['__isf_fired_actions'] = [];
         // Reset the singleton so each test gets a fresh, uninitialized registry.
         $ref = new \ReflectionProperty(ConnectorRegistry::class, 'instance');
-        $ref->setAccessible(true);
         $ref->setValue(null, null);
     }
 

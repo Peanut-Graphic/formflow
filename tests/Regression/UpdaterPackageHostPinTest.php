@@ -39,7 +39,6 @@ final class UpdaterPackageHostPinTest extends TestCase
     {
         $updater = new Updater();
         $ref = new \ReflectionMethod($updater, 'assert_trusted_package_url');
-        $ref->setAccessible(true);
 
         return $ref->invoke($updater, $url);
     }
