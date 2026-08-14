@@ -1,0 +1,118 @@
+schema_version: 1
+project:
+  id: formflow
+  name: FormFlow Pro
+  classification: distributed-plugin
+  repository: https://github.com/Peanut-Graphic/formflow.git
+  lifecycle: active
+ownership:
+  platform: Peanut Graphic
+  deployment: Peanut Graphic
+  rollback: Peanut Graphic
+environments:
+  - name: distribution
+    kind: production
+    provider: GitHub Releases and Peanut License Server
+    url: "https://github.com/Peanut-Graphic/formflow/releases"
+runtimes:
+  - name: php
+    baseline: WordPress compatibility matrix
+    declarations:
+      - { scope: dependency, source: formflow.php, value: "Requires PHP 8.0" }
+      - { scope: dependency, source: composer.json, value: "require >=8.0; platform 8.3" }
+      - { scope: ci, source: .github/workflows/tests.yml, value: "PHP 8.3" }
+      - { scope: ci, source: .github/workflows/wp-contract.yml, value: "PHP 8.4" }
+      - { scope: ci, source: .github/workflows/accessibility.yml, value: "PHP 8.4" }
+    production_observation: { status: not-applicable }
+  - name: node
+    baseline: "22"
+    declarations:
+      - { scope: dependency, source: package.json, value: "engines and packageManager missing; stale package version 2.8.6" }
+      - { scope: ci, source: .github/workflows/accessibility.yml, value: "Node 20" }
+    production_observation: { status: not-applicable }
+  - name: wordpress
+    baseline: WordPress 6.0+
+    declarations:
+      - { scope: dependency, source: formflow.php, value: "Requires at least 6.0" }
+      - { scope: test, source: .github/workflows/wp-contract.yml, value: "WordPress latest" }
+      - { scope: release, source: Peanut License Server /updates/check, value: "requires 6.0; tested 6.4" }
+    production_observation: { status: not-applicable }
+databases:
+  - name: host-database
+    role: transactional
+    baseline: Host MySQL or MariaDB compatibility
+    declarations:
+      - { scope: dependency, source: includes/class-activator.php, value: "WordPress dbDelta plus versioned INFORMATION_SCHEMA and ALTER TABLE migrations on activation and plugin-version drift" }
+      - { scope: ci, source: .github/workflows/wp-contract.yml, value: "mysql:8 real WordPress REST contract lane" }
+    production_equivalent_test: "yes"
+    production_observation: { status: not-applicable }
+services:
+  - kind: other
+    baseline: Peanut License Server for licensing and entitlement-gated signed updates
+    declarations:
+      - { scope: dependency, source: includes/class-license-manager.php, value: "license validation and activation at https://peanutgraphic.com/wp-json/peanut-api/v1" }
+      - { scope: dependency, source: includes/class-updater.php, value: "update metadata and package distribution from the same API" }
+    production_observation: { status: unverified }
+  - kind: other
+    baseline: Instance-configured external utility integrations
+    declarations:
+      - { scope: dependency, source: connectors/intellisource and connectors/powerportal-json, value: "HTTPS enrollment, validation, scheduling, and portal handoff APIs" }
+      - { scope: dependency, source: connectors/sftp/class-sftp-destination.php, value: "SFTP submission delivery with password or SSH-key authentication" }
+    production_observation: { status: unverified }
+distribution:
+  mode: signed-github-release
+  source_of_truth: Peanut Meta scripts/publish-plugin.sh
+  versioned_artifact: "yes"
+  signed: "yes"
+  canary: "yes"
+  rollback: unknown
+exceptions:
+  - id: PAR-207
+    concern: PHP and JavaScript runtime declarations do not define one supported build and host matrix
+    reason: The plugin permits PHP 8.0, Composer resolves for PHP 8.3, CI spans PHP 8.3 and 8.4, accessibility uses Node 20, and package.json declares neither engines.node nor packageManager.
+    risk: Customer hosts, dependency resolution, CI, and release verification can exercise materially different runtimes and package-manager behavior.
+    owner: Peanut Graphic
+    verification: Approve the supported WordPress PHP matrix, align the header and Composer platform declaration, exercise every supported PHP lane, and pin fleet Node and npm versions.
+    review_date: "2026-11-14"
+    status: proposed
+  - id: PAR-306
+    concern: Distributed host databases include MariaDB but required CI exercises only MySQL 8
+    reason: The plugin performs dbDelta and hand-written INFORMATION_SCHEMA and ALTER TABLE migrations during activation and ordinary plugin-version drift, while the real WordPress contract lane provides only mysql:8.
+    risk: MariaDB-specific DDL, ENUM, index, collation, or migration behavior can fail on client sites without appearing in the required gate.
+    owner: Peanut Graphic
+    verification: Run activation, sequential upgrade, and real-WordPress contracts against every supported MySQL and MariaDB lane.
+    review_date: "2026-11-14"
+    status: accepted
+  - id: PAR-405
+    concern: Release metadata, verification gates, and rollback evidence drift
+    reason: The plugin and signed release are 4.2.0 while package.json reports 2.8.6. The live update endpoint serves Peanut Suite description, installation, changelog, and FAQ content for FormFlow. Composer audit remains non-blocking, legacy unit and integration suites are non-blocking, and the publisher has no rollback assertion.
+    risk: Operators and clients receive misleading product metadata, release-critical failures can be advisory only, and an update incident has no source-verifiable rollback control.
+    owner: Peanut Graphic
+    verification: Establish one version and product-metadata source, promote release-critical dependency and test gates after repairing known debt, and add a tested rollback check to the canonical publisher.
+    review_date: "2026-11-14"
+    status: proposed
+verification:
+  status: source-audited
+  audited_commit: a0c1d1c4c99918086dda5999bf4fefe50707ff6c
+  last_reviewed: "2026-08-14"
+  sources:
+    - formflow.php
+    - composer.json
+    - package.json
+    - includes/class-activator.php
+    - includes/class-license-manager.php
+    - includes/class-updater.php
+    - connectors/intellisource
+    - connectors/powerportal-json
+    - connectors/sftp
+    - .github/workflows/tests.yml
+    - .github/workflows/accessibility.yml
+    - .github/workflows/wp-contract.yml
+    - Peanut-Graphic/peanut-meta:scripts/publish-plugin.sh
+    - Peanut-Graphic/peanut-meta:scripts/verify-plugin-release.sh
+    - GitHub Release v4.2.0 assets and signed manifest
+    - Peanut License Server /updates/check and /updates/info responses for formflow
+  outstanding:
+    - Align and pin PHP, Node, and npm declarations under PAR-207 and PAR-205.
+    - Add supported MariaDB activation, migration, and real-WordPress contract lanes under PAR-306.
+    - Reconcile versions, product metadata, blocking release gates, and rollback under PAR-405.
