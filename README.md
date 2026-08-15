@@ -7,6 +7,12 @@
 
 A white-label, API-integrated WordPress plugin for multi-step enrollment and scheduling forms. Originally built for EnergyWise Rewards utility programs, now available as a flexible platform for any enrollment workflow.
 
+## Development Toolchain
+
+Repository JavaScript tooling uses exact Node 22.22.2 and npm 10.9.7. Run
+`nvm use`, `npm ci`, and `npm run runtime:verify`; the package metadata,
+lockfile, `.nvmrc`, and CI runtime must remain identical.
+
 ## Description
 
 FormFlow (powered by the FormFlow Pro platform) provides multi-step enrollment and scheduling forms with a pluggable connector architecture. The bundled IntelliSource connector integrates with the PowerPortal IntelliSOURCE API, but the platform can be extended with custom connectors for any backend system.

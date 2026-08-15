@@ -30,10 +30,12 @@ runtimes:
       - { scope: ci, source: .github/workflows/accessibility.yml, value: "PHP 8.4" }
     production_observation: { status: verified, value: "PHP 8.5.9 on the central first-party installation; distributed client hosts unverified", observed_at: "2026-08-15T01:09:00-04:00", evidence: "read-only host interpreter and active-plugin inventory" }
   - name: node
-    baseline: "22"
+    baseline: "22.22.2 with npm 10.9.7"
     declarations:
-      - { scope: dependency, source: package.json, value: "engines and packageManager missing; stale package version 2.8.6" }
-      - { scope: ci, source: .github/workflows/accessibility.yml, value: "Node 20" }
+      - { scope: dependency, source: package.json and package-lock.json, value: "Node 22.22.2; npm 10.9.7; npm package manager and empty dependency graph locked; stale package version 2.8.6 remains a release-identity exception" }
+      - { scope: development, source: .nvmrc, value: "22.22.2" }
+      - { scope: ci, source: .github/workflows/accessibility.yml, value: "Node 22.22.2 with npm 10.9.7 assertion" }
+      - { scope: test, source: scripts/verify-runtime-contract.cjs, value: "Node, npm, version file, package metadata, lockfile, and CI declarations must remain internally consistent" }
     production_observation: { status: not-applicable }
   - name: wordpress
     baseline: WordPress 6.0+
@@ -72,14 +74,6 @@ distribution:
   canary: "yes"
   rollback: unknown
 exceptions:
-  - id: PAR-207
-    concern: The PHP minimum is reconciled, but JavaScript runtime declarations do not define one supported build matrix
-    reason: The plugin source uses a PHP 8.2-only standalone true type, and the header, README, Composer requirement/platform, lockfile, and required minimum CI now agree on PHP 8.2 alongside PHP 8.3 and real WordPress PHP 8.4 lanes. The central first-party installation runs PHP 8.5.9, while accessibility uses Node 20 and package.json declares neither engines.node nor packageManager.
-    risk: The distributed PHP minimum is protected from regression, but JavaScript build and release verification can still exercise materially different runtimes and package-manager behavior.
-    owner: Peanut Graphic
-    verification: Keep the PHP 8.2 declaration contract and required minimum lane green, then pin the fleet Node and npm versions for every JavaScript build.
-    review_date: "2026-11-14"
-    status: proposed
   - id: PAR-306
     concern: Distributed host databases include MariaDB but required CI exercises only MySQL 8
     reason: The plugin performs dbDelta and hand-written INFORMATION_SCHEMA and ALTER TABLE migrations during activation and ordinary plugin-version drift. The central first-party installation runs MariaDB 10.6.27 with latin1_swedish_ci and a non-strict SQL mode, while the real WordPress contract lane provides only mysql:8 and distributed client hosts remain unverified.
@@ -98,12 +92,14 @@ exceptions:
     status: proposed
 verification:
   status: live-verified
-  audited_commit: 20f67c6c164f0ad5e411807067b1ee8b79225a57
+  audited_commit: a4b182c04583d7ffccf86f66cfa19cdd55f36322
   last_reviewed: "2026-08-15"
   sources:
     - formflow.php
     - composer.json
     - package.json
+    - package-lock.json
+    - .nvmrc
     - includes/class-activator.php
     - includes/class-license-manager.php
     - includes/class-updater.php
@@ -112,6 +108,7 @@ verification:
     - connectors/sftp
     - .github/workflows/tests.yml
     - .github/workflows/accessibility.yml
+    - scripts/verify-runtime-contract.cjs
     - .github/workflows/wp-contract.yml
     - Peanut-Graphic/peanut-meta:scripts/publish-plugin.sh
     - Peanut-Graphic/peanut-meta:scripts/verify-plugin-release.sh
@@ -120,6 +117,5 @@ verification:
     - Read-only central first-party PHP, WordPress, active-plugin, MariaDB version, collation, and SQL-mode metadata on 2026-08-15
   outstanding:
     - Inventory supported distributed client-host PHP, WordPress, database version, collation, and SQL-mode compatibility without collecting customer data.
-    - Align and pin PHP, Node, and npm declarations under PAR-207 and PAR-205.
     - Add supported MariaDB activation, migration, and real-WordPress contract lanes under PAR-306.
     - Reconcile versions, product metadata, blocking release gates, and rollback under PAR-405.
