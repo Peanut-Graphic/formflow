@@ -68,6 +68,9 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Verify declared PHP support
+        run: php scripts/verify-php-runtime.php
+
       # Net 2: dependency vulnerability audit. Non-blocking for now (|| true) so a
       # newly-published advisory doesn't wall the team overnight; ratchet to
       # blocking (drop the `|| true`) once the team is watching it.
@@ -114,3 +117,28 @@ jobs:
       - name: Integration tests (non-blocking until infra wired)
         continue-on-error: true
         run: vendor/bin/phpunit --testsuite=integration
+
+  php-minimum-tests:
+    name: Property + Regression (PHP 8.2 minimum)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup declared minimum PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          coverage: none
+          tools: composer
+
+      - name: Install dependencies from the lockfile
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Verify declared PHP support
+        run: php scripts/verify-php-runtime.php --expect-runtime=8.2
+
+      - name: Property tests (Net 6)
+        run: vendor/bin/phpunit --testsuite=property
+
+      - name: Regression tests
+        run: vendor/bin/phpunit --testsuite=regression

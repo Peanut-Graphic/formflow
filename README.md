@@ -2,7 +2,7 @@
 
 **Version:** 2.8.4
 **Requires WordPress:** 6.0+
-**Requires PHP:** 8.0+
+**Requires PHP:** 8.2+
 **License:** GPL v2 or later
 
 A white-label, API-integrated WordPress plugin for multi-step enrollment and scheduling forms. Originally built for EnergyWise Rewards utility programs, now available as a flexible platform for any enrollment workflow.
@@ -900,7 +900,7 @@ See `includes/class-hooks.php` for full documentation. Key hooks include:
 ## Requirements
 
 - WordPress 6.0 or higher
-- PHP 8.0 or higher
+- PHP 8.2 or higher
 - MySQL 5.7 or higher
 - OpenSSL extension (for encryption)
 - cURL extension (for API calls)
