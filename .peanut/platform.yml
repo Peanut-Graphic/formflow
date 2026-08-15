@@ -22,9 +22,10 @@ runtimes:
   - name: php
     baseline: WordPress compatibility matrix
     declarations:
-      - { scope: dependency, source: formflow.php, value: "Requires PHP 8.0" }
-      - { scope: dependency, source: composer.json, value: "require >=8.0; platform 8.3" }
-      - { scope: ci, source: .github/workflows/tests.yml, value: "PHP 8.3" }
+      - { scope: dependency, source: formflow.php, value: "Requires PHP 8.2" }
+      - { scope: documentation, source: README.md, value: "Requires PHP 8.2+" }
+      - { scope: dependency, source: composer.json, value: "require >=8.2; platform 8.2.0" }
+      - { scope: ci, source: .github/workflows/tests.yml, value: "required PHP 8.2 minimum property/regression lane and PHP 8.3 current lane" }
       - { scope: ci, source: .github/workflows/wp-contract.yml, value: "PHP 8.4" }
       - { scope: ci, source: .github/workflows/accessibility.yml, value: "PHP 8.4" }
     production_observation: { status: verified, value: "PHP 8.5.9 on the central first-party installation; distributed client hosts unverified", observed_at: "2026-08-15T01:09:00-04:00", evidence: "read-only host interpreter and active-plugin inventory" }
@@ -72,11 +73,11 @@ distribution:
   rollback: unknown
 exceptions:
   - id: PAR-207
-    concern: PHP and JavaScript runtime declarations do not define one supported build and host matrix
-    reason: The plugin permits PHP 8.0, Composer resolves for PHP 8.3, CI spans PHP 8.3 and 8.4, the central first-party installation runs PHP 8.5.9, accessibility uses Node 20, and package.json declares neither engines.node nor packageManager.
-    risk: Customer hosts, dependency resolution, CI, and release verification can exercise materially different runtimes and package-manager behavior.
+    concern: The PHP minimum is reconciled, but JavaScript runtime declarations do not define one supported build matrix
+    reason: The plugin source uses a PHP 8.2-only standalone true type, and the header, README, Composer requirement/platform, lockfile, and required minimum CI now agree on PHP 8.2 alongside PHP 8.3 and real WordPress PHP 8.4 lanes. The central first-party installation runs PHP 8.5.9, while accessibility uses Node 20 and package.json declares neither engines.node nor packageManager.
+    risk: The distributed PHP minimum is protected from regression, but JavaScript build and release verification can still exercise materially different runtimes and package-manager behavior.
     owner: Peanut Graphic
-    verification: Approve the supported WordPress PHP matrix, align the header and Composer platform declaration, exercise every supported PHP lane, and pin fleet Node and npm versions.
+    verification: Keep the PHP 8.2 declaration contract and required minimum lane green, then pin the fleet Node and npm versions for every JavaScript build.
     review_date: "2026-11-14"
     status: proposed
   - id: PAR-306
