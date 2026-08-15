@@ -50,8 +50,8 @@ databases:
     baseline: Host MySQL or MariaDB compatibility
     declarations:
       - { scope: dependency, source: includes/class-activator.php, value: "WordPress dbDelta plus versioned INFORMATION_SCHEMA and ALTER TABLE migrations on activation and plugin-version drift" }
-      - { scope: ci, source: .github/workflows/wp-contract.yml, value: "mysql:8 real WordPress REST contract lane" }
-    production_equivalent_test: "yes"
+      - { scope: ci, source: .github/workflows/wp-contract.yml, value: "mysql:8 compatibility and mariadb:10.6 production-family real WordPress REST/schema contract lanes" }
+    production_equivalent_test: "yes - real WordPress on MySQL 8 and MariaDB 10.6"
     production_observation: { status: verified, value: "MariaDB 10.6.27, latin1_swedish_ci server collation, SQL mode ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION on the central first-party installation; distributed client hosts unverified", observed_at: "2026-08-15T01:09:00-04:00", evidence: "read-only database metadata query; no application rows read" }
 services:
   - kind: other
@@ -75,11 +75,11 @@ distribution:
   rollback: unknown
 exceptions:
   - id: PAR-306
-    concern: Distributed host databases include MariaDB but required CI exercises only MySQL 8
-    reason: The plugin performs dbDelta and hand-written INFORMATION_SCHEMA and ALTER TABLE migrations during activation and ordinary plugin-version drift. The central first-party installation runs MariaDB 10.6.27 with latin1_swedish_ci and a non-strict SQL mode, while the real WordPress contract lane provides only mysql:8 and distributed client hosts remain unverified.
-    risk: MariaDB-specific DDL, ENUM, index, collation, or migration behavior can fail on client sites without appearing in the required gate.
+    concern: Distributed client database versions, collations, and SQL modes remain unverified
+    reason: Real WordPress contracts now exercise MySQL 8 and the central installation's MariaDB 10.6 family, including on-demand dbDelta table creation. Distributed client-host versions, collations, SQL modes, and sequential historical upgrades remain unknown.
+    risk: A client-specific legacy engine, strict mode, collation, or multi-version upgrade path can still expose DDL, ENUM, index, or migration behavior outside the two CI lanes.
     owner: Peanut Graphic
-    verification: Run activation, sequential upgrade, and real-WordPress contracts against every supported MySQL and MariaDB lane.
+    verification: Keep both real-WordPress lanes green; inventory supported client database contracts and add sanitized sequential-upgrade fixtures for each retained family.
     review_date: "2026-11-14"
     status: accepted
   - id: PAR-405
@@ -117,5 +117,5 @@ verification:
     - Read-only central first-party PHP, WordPress, active-plugin, MariaDB version, collation, and SQL-mode metadata on 2026-08-15
   outstanding:
     - Inventory supported distributed client-host PHP, WordPress, database version, collation, and SQL-mode compatibility without collecting customer data.
-    - Add supported MariaDB activation, migration, and real-WordPress contract lanes under PAR-306.
+    - Inventory supported distributed-client database contracts and add sanitized sequential-upgrade fixtures for each retained family under PAR-306/PAR-309.
     - Reconcile versions, product metadata, blocking release gates, and rollback under PAR-405.
