@@ -12,7 +12,11 @@ on:
       - 'formflow/**'
       - 'tests/accessibility/**'
       - '.github/workflows/accessibility.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
       - 'scripts/accessibility-scan.cjs'
+      - 'scripts/verify-runtime-contract.cjs'
   push:
     branches:
       - main
@@ -22,6 +26,11 @@ on:
       - 'includes/**'
       - 'formflow/**'
       - 'tests/accessibility/**'
+      - '.github/workflows/accessibility.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.nvmrc'
+      - 'scripts/verify-runtime-contract.cjs'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,7 +52,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.22.2'
+          cache: 'npm'
+
+      - name: Verify Node/npm contract
+        run: test "$(npm --version)" = "10.9.7" && npm run runtime:verify
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
