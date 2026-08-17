@@ -142,3 +142,23 @@ jobs:
 
       - name: Regression tests
         run: vendor/bin/phpunit --testsuite=regression
+
+  release-readiness:
+    name: Release readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Could this be released AT ALL? Read-only: no signing key, no network,
+      # nothing published. It proves the artifact the publisher WOULD build is
+      # coherent -- version constants that agree, every INCLUDE path present,
+      # vendor/ shipped so the bundled signature verifier reaches the site, a
+      # changelog entry for this version.
+      #
+      # The checker is synced here from peanut-meta by configs-sync, so this
+      # job needs no credentials to reach that private repo. Drift is reported
+      # by configs-sync itself and surfaced in the weekly audit; see
+      # docs/plugin-release-readiness.md there. PAR-406.
+      - name: Could this be released at all?
+        run: bash .peanut/release/verify-release-readiness.sh formflow
