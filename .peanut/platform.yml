@@ -51,7 +51,7 @@ databases:
     declarations:
       - { scope: dependency, source: includes/class-activator.php, value: "WordPress dbDelta plus versioned INFORMATION_SCHEMA and ALTER TABLE migrations on activation and plugin-version drift" }
       - { scope: ci, source: .github/workflows/wp-contract.yml, value: "mysql:8 compatibility and mariadb:10.6 production-family real WordPress REST/schema contract lanes" }
-    production_equivalent_test: "yes - real WordPress on MySQL 8 and MariaDB 10.6"
+    production_equivalent_test: "yes"
     production_observation: { status: verified, value: "MariaDB 10.6.27, latin1_swedish_ci server collation, SQL mode ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION on the central first-party installation; distributed client hosts unverified", observed_at: "2026-08-15T01:09:00-04:00", evidence: "read-only database metadata query; no application rows read" }
 services:
   - kind: other
