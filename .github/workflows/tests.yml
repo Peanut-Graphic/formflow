@@ -1,7 +1,7 @@
 # Peanut Testing Protocol v2 — FormFlow (Pro) test + security gate.
 #
 # Layered "nets" enforced here:
-#   Net 2 (security)  — composer audit (non-blocking; ratchet to blocking later)
+#   Net 2 (security)  — composer audit (BLOCKING as of 2026-08-20)
 #                       + gitleaks secret scan; fail-fast on the job.
 #   Net 6 (property)  — tests/Property  (pure, WordPress-free invariants).
 #   CLASS-007         — semgrep PHP foot-gun gate (BLOCKING) from the #38 sweep.
@@ -75,7 +75,7 @@ jobs:
       # newly-published advisory doesn't wall the team overnight; ratchet to
       # blocking (drop the `|| true`) once the team is watching it.
       - name: Dependency audit (composer audit)
-        run: composer audit || true
+        run: composer audit
 
       # Net 2: secret scan. This one IS fail-fast — a committed secret should
       # block the merge. We run the FREE gitleaks CLI (the gitleaks-action@v2
