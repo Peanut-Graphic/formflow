@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 4.2.1 — 2026-08-21 — CI and platform contract hardening
+
 ### Testing
 
 - Removed obsolete reflection-access calls from the blocking regression suite so it
