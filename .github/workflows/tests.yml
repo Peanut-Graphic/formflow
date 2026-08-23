@@ -71,11 +71,36 @@ jobs:
       - name: Verify declared PHP support
         run: php scripts/verify-php-runtime.php
 
-      # Net 2: dependency vulnerability audit. Non-blocking for now (|| true) so a
-      # newly-published advisory doesn't wall the team overnight; ratchet to
-      # blocking (drop the `|| true`) once the team is watching it.
+      # Net 2: dependency vulnerability audits are blocking.
       - name: Dependency audit (composer audit)
         run: composer audit
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install locked Python auditor
+        run: |
+          python -m venv "$RUNNER_TEMP/dependency-audit-venv"
+          "$RUNNER_TEMP/dependency-audit-venv/bin/python" -m pip install \
+            --require-hashes \
+            --no-deps \
+            -r requirements-dependency-audit.lock
+
+      - name: Audit the locked Python auditor
+        run: |
+          "$RUNNER_TEMP/dependency-audit-venv/bin/pip-audit" \
+            -r requirements-dependency-audit.lock \
+            --no-deps \
+            --disable-pip
+
+      - name: Audit the locked platform validator
+        working-directory: .peanut/platform
+        run: |
+          "$RUNNER_TEMP/dependency-audit-venv/bin/pip-audit" \
+            -r requirements.lock \
+            --no-deps \
+            --disable-pip
 
       # Net 2: secret scan. This one IS fail-fast — a committed secret should
       # block the merge. We run the FREE gitleaks CLI (the gitleaks-action@v2
