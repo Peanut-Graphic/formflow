@@ -103,13 +103,20 @@ jobs:
             --disable-pip
 
       # Net 2: secret scan. This one IS fail-fast — a committed secret should
-      # block the merge. We run the FREE gitleaks CLI (the gitleaks-action@v2
-      # requires a paid GITLEAKS_LICENSE for org repos). Allowlist for the
-      # documented example placeholders lives in .gitleaks.toml.
+      # block the merge. The local installer verifies the exact upstream asset
+      # digest; no action wrapper or network-time `latest` lookup is trusted.
       - name: Secret scan (gitleaks)
-        uses: gacts/gitleaks@c9a0338361dc45a01aa7ebaaa5330179f3c62873 # v1.3.2
-        with:
-          config-path: .gitleaks.toml
+        uses: ./.github/actions/install-gitleaks
+
+      - name: Scan for secrets (blocking)
+        run: |
+          gitleaks detect \
+            --config .gitleaks.toml \
+            --verbose \
+            --redact \
+            --report-format sarif \
+            --report-path "$RUNNER_TEMP/gitleaks.sarif" \
+            --source .
 
   php-tests:
     name: Property + Regression
