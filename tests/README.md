@@ -4,7 +4,7 @@ This directory contains automated tests for the FormFlow plugin.
 
 ## Prerequisites
 
-1. **PHP 8.0+** installed locally with CLI access
+1. **PHP 8.2+** installed locally with CLI access
 2. **Composer** installed globally
 
 ## Installation
@@ -144,6 +144,9 @@ Make sure you're extending `ISF\Tests\Unit\TestCase` which sets up Brain Monkey.
 Use `$this->mockWpdb()` to mock database operations in unit tests.
 
 ## Continuous Integration
+
+The Unit, Property, and Regression suites are blocking CI gates. The Integration
+suite remains advisory until its WordPress infrastructure is fully wired.
 
 These tests can be run in CI/CD pipelines. Example GitHub Actions workflow:
 

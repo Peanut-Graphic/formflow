@@ -124,10 +124,18 @@ abstract class TestCase extends PHPUnitTestCase
         $wpdb->prefix = 'wp_';
 
         foreach ($methods as $method => $return) {
+            // insert_id is a public wpdb property, not a callable method. Treating
+            // it as shouldReceive('insert_id') leaves production property reads
+            // undefined and turns otherwise valid tests into false errors.
+            if ($method === 'insert_id') {
+                $wpdb->insert_id = $return;
+                continue;
+            }
+
             if (is_callable($return)) {
-                $wpdb->shouldReceive($method)->andReturnUsing($return);
+                $wpdb->shouldReceive($method)->andReturnUsing($return)->byDefault();
             } else {
-                $wpdb->shouldReceive($method)->andReturn($return);
+                $wpdb->shouldReceive($method)->andReturn($return)->byDefault();
             }
         }
 
@@ -135,7 +143,7 @@ abstract class TestCase extends PHPUnitTestCase
         if (!isset($methods['prepare'])) {
             $wpdb->shouldReceive('prepare')->andReturnUsing(function ($query, ...$args) {
                 return vsprintf(str_replace(['%s', '%d'], ["'%s'", '%d'], $query), $args);
-            });
+            })->byDefault();
         }
 
         $GLOBALS['wpdb'] = $wpdb;

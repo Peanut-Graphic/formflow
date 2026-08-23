@@ -9,8 +9,9 @@
  * a future PHI (Pepco/Delmarva) XML->JSON migration has a home; it deliberately
  * ships NO utility presets, so nothing here implies PHI is validated.
  *
- * Lives in the REGRESSION suite (blocking Net 6 gate), not `unit` — CI runs
- * `unit` with `continue-on-error: true`, so these would have been unenforced.
+ * Lives in the REGRESSION suite because it pins an external connector contract.
+ * It was originally moved here while `unit` was advisory; both suites are now
+ * blocking CI.
  *
  * @package FormFlow\Tests\Regression
  */
