@@ -84,10 +84,10 @@ exceptions:
     status: accepted
   - id: PAR-405
     concern: Release metadata, verification gates, and rollback evidence drift
-    reason: The plugin and signed release are 4.2.0 while package.json reports 2.8.6. The live update endpoint serves Peanut Suite description, installation, changelog, and FAQ content for FormFlow. Composer audit remains non-blocking, legacy unit and integration suites are non-blocking, and the publisher has no rollback assertion.
+    reason: The plugin and signed release are 4.2.0 while package.json reports 2.8.6. The live update endpoint serves Peanut Suite description, installation, changelog, and FAQ content for FormFlow. Composer audit is blocking; legacy unit and integration suites remain non-blocking, and the publisher has no rollback assertion.
     risk: Operators and clients receive misleading product metadata, release-critical failures can be advisory only, and an update incident has no source-verifiable rollback control.
     owner: Peanut Graphic
-    verification: Establish one version and product-metadata source, promote release-critical dependency and test gates after repairing known debt, and add a tested rollback check to the canonical publisher.
+    verification: Establish one version and product-metadata source, promote the remaining release-critical test gates after repairing known debt, and add a tested rollback check to the canonical publisher.
     review_date: "2026-11-14"
     status: proposed
 verification:
