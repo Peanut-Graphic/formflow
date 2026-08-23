@@ -62,18 +62,15 @@ class ConnectorRegistry {
      * Private constructor for singleton
      */
     private function __construct() {
-        // Allow plugins to register connectors early
-        add_action('plugins_loaded', [$this, 'init_connectors'], 5);
+        // Registration is started explicitly by isf_init() after bundled
+        // connector loaders have attached their callbacks.
     }
 
     /**
      * Initialize connector registration.
      *
-     * Safe to call multiple times — guarded by $initialized. This mirrors
-     * DestinationRegistry::init_destinations(): the plugins_loaded@5 self-hook
-     * added in the constructor is unreliable because the singleton is first
-     * instantiated inside isf_init() on plugins_loaded@10, by which point
-     * priority 5 has already run — so isf_init() calls this method explicitly.
+     * Safe to call multiple times — guarded by $initialized. isf_init() calls
+     * this explicitly after bundled connector loaders are loaded.
      */
     public function init_connectors(): void {
         if ($this->initialized) {

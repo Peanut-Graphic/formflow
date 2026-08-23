@@ -259,15 +259,11 @@ function isf_init() {
     // whether it registers a Connector or a Destination).
     isf_load_bundled_connectors();
 
-    // Explicitly fire connector AND destination registration. Both
-    // registries self-hook on plugins_loaded@5, which is unreliable
-    // because each singleton is first instantiated inside isf_init on
-    // plugins_loaded@10 (priority 5 is already past). Calling the init
-    // methods here ensures every loaded loader.php has its add_action()
-    // callbacks fired. Without the connector call, isf_register_connectors
-    // never fires and the registry stays empty — every connector-backed
-    // path (embed validate/schedule, queued enroll) returns 'Connector
-    // not available'.
+    // Explicitly fire connector AND destination registration after every
+    // bundled loader has attached its registration callback. The registries
+    // intentionally do not self-hook an earlier plugins_loaded priority:
+    // they are first instantiated here at plugins_loaded@10, after that
+    // priority would already have passed.
     ISF\Api\ConnectorRegistry::instance()->init_connectors();
     ISF\Destinations\DestinationRegistry::instance()->init_destinations();
 
