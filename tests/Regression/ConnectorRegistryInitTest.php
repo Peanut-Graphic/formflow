@@ -2,19 +2,14 @@
 /**
  * Regression guard: the connector registry must actually be initialized.
  *
- * ConnectorRegistry self-hooks init_connectors() on plugins_loaded@5 in its
- * constructor, but the singleton is first instantiated inside isf_init() on
- * plugins_loaded@10 — priority 5 has already run, so the self-hook never fires.
- * The result was that do_action('isf_register_connectors') never ran and the
- * registry stayed permanently empty: every connector-backed path (embed
- * validate/schedule, queued enrollment) returned 'Connector not available'.
- *
- * The sibling DestinationRegistry hit the identical bug and was fixed with an
- * explicit init_destinations() call in isf_init(); the connector equivalent
- * was missed. This test guards BOTH halves of the fix:
+ * Both registries are first instantiated inside isf_init() on
+ * plugins_loaded@10. Registering their initialization callbacks for an earlier
+ * priority from their constructors is therefore invalid. These tests guard the
+ * explicit, ordered initialization contract:
  *   1. init_connectors() fires the registration action and is idempotent.
  *   2. isf_init() explicitly calls init_connectors() after loading the
  *      bundled connectors — the call site whose absence was the bug.
+ *   3. Neither registry reintroduces a late plugins_loaded self-hook.
  *
  * Self-contained: the WordPress hook functions are shimmed in the ISF\Api
  * namespace, so no booted WordPress or Brain Monkey is required.
@@ -25,7 +20,6 @@ namespace ISF\Api;
 if (!function_exists(__NAMESPACE__ . '\\add_action')) {
     function add_action($hook, $cb, $priority = 10, $args = 1)
     {
-        // The registry's constructor self-hook is irrelevant to these tests.
         return true;
     }
 }
@@ -120,5 +114,16 @@ final class ConnectorRegistryInitTest extends TestCase
             $initPos,
             'init_connectors() must be called AFTER isf_load_bundled_connectors() so the loaders are registered on the action first.'
         );
+    }
+
+    public function test_registries_do_not_register_past_plugins_loaded_priorities(): void
+    {
+        $connectorSource = file_get_contents(dirname(__DIR__, 2) . '/includes/api/class-connector-registry.php');
+        $destinationSource = file_get_contents(dirname(__DIR__, 2) . '/includes/destinations/class-destination-registry.php');
+
+        $this->assertIsString($connectorSource);
+        $this->assertIsString($destinationSource);
+        $this->assertStringNotContainsString("add_action('plugins_loaded'", $connectorSource);
+        $this->assertStringNotContainsString("add_action('plugins_loaded'", $destinationSource);
     }
 }

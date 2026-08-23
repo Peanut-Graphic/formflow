@@ -42,7 +42,8 @@ class DestinationRegistry {
     }
 
     private function __construct() {
-        add_action('plugins_loaded', [$this, 'init_destinations'], 5);
+        // Registration is started explicitly by isf_init() after bundled
+        // destination loaders have attached their callbacks.
     }
 
     /**
