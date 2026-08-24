@@ -15,8 +15,9 @@
  * IP allowlist. Treat a green suite here as "we built what we read", not
  * "Dominion enrollment works".
  *
- * Lives in the REGRESSION suite (blocking Net 6 gate), not `unit` — CI runs
- * `unit` with `continue-on-error: true`, so these would have been unenforced.
+ * Lives in the REGRESSION suite because it pins an external connector contract.
+ * It was originally moved here while `unit` was advisory; both suites are now
+ * blocking CI.
  *
  * @package FormFlow\Tests\Regression
  */

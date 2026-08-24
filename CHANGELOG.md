@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Testing
+
+- Repaired the shared `$wpdb` unit-test mock so public properties and per-test
+  method overrides behave like WordPress. The complete 315-test Unit suite is
+  green and now blocks CI; two obsolete HandoffTracker quarantines are active
+  regression tests again.
+
 ## 4.2.1 — 2026-08-21 — CI and platform contract hardening
 
 ### Testing

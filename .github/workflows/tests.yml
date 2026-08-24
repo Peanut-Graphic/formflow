@@ -7,10 +7,8 @@
 #   CLASS-007         — semgrep PHP foot-gun gate (BLOCKING) from the #38 sweep.
 #
 # Blocking gate = static-and-security + class-007 + property + regression.
-# The legacy Unit + Integration suites run NON-BLOCKING: the Analytics handoff/
-# touch tests carry pre-existing $wpdb-mock test-quality debt (they were dormant
-# behind a missing wp_salt()/ARRAY_A bootstrap stub and only began executing once
-# that was fixed). Tracked in known-gaps.md; promote Unit to blocking once repaired.
+# The Unit suite is blocking. Integration remains non-blocking until its WordPress
+# infrastructure is wired; that separate gap is tracked in known-gaps.md.
 #
 # PHP is pinned to 8.3 (the ecosystem CI baseline). The local dev toolchain runs
 # PHP 8.5, where ReflectionMethod::setAccessible() emits a deprecation that trips
@@ -139,9 +137,7 @@ jobs:
       - name: Regression tests
         run: vendor/bin/phpunit --testsuite=regression
 
-      # Legacy suites — non-blocking until the analytics $wpdb-mock debt is repaired.
-      - name: Unit tests (non-blocking — see known-gaps.md)
-        continue-on-error: true
+      - name: Unit tests
         run: vendor/bin/phpunit --testsuite=unit
 
       - name: Integration tests (non-blocking until infra wired)

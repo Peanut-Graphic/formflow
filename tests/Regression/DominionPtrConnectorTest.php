@@ -13,11 +13,9 @@
  * The unsupported scheduling paths are pinned deliberately so a future change
  * cannot quietly turn them into "not implemented yet".
  *
- * Lives in the REGRESSION suite, not `unit`: CI runs `unit` with
- * `continue-on-error: true` (non-blocking until the analytics $wpdb-mock debt
- * is repaired), so these would have been unenforced there — green CI would not
- * have meant the connector works. `regression` is part of the blocking Net 6
- * gate.
+ * Lives in the REGRESSION suite because these are connector characterization
+ * tests. They were originally moved here while `unit` was advisory; both suites
+ * are now blocking CI.
  *
  * @package FormFlow\Tests\Regression
  */
