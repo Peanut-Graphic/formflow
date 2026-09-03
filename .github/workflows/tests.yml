@@ -70,8 +70,11 @@ jobs:
         run: php scripts/verify-php-runtime.php
 
       # Net 2: dependency vulnerability audits are blocking.
+      - name: Verify Composer audit transport contract
+        run: bash scripts/tests/composer-audit-transport.test.sh
+
       - name: Dependency audit (composer audit)
-        run: composer audit
+        run: bash scripts/run-dependency-audit-transport.sh composer
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
