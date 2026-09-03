@@ -6,6 +6,12 @@ WORKFLOW="$ROOT/.github/workflows/tests.yml"
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
+[ -x "$ROOT/scripts/run-dependency-audit-transport.sh" ] || fail "Composer audit wrapper is missing or not executable"
+[ -x "$ROOT/scripts/tests/composer-audit-transport.test.sh" ] || fail "Composer adversarial contract is missing or not executable"
+grep -q 'bash scripts/run-dependency-audit-transport.sh composer' "$WORKFLOW" || fail "Composer audit bypasses wrapper"
+grep -q 'bash scripts/tests/composer-audit-transport.test.sh' "$WORKFLOW" || fail "Composer adversarial contract is not executed"
+! grep -Eq 'run:[[:space:]]+composer audit' "$WORKFLOW" || fail "workflow retains a direct Composer audit"
+
 [ -x "$ROOT/scripts/run-pip-audit.sh" ] || fail "pip-audit transport wrapper is missing or not executable"
 [ -x "$ROOT/scripts/tests/dependency-audit-transport.test.sh" ] \
   || fail "pip-audit adversarial contract is missing or not executable"
@@ -30,4 +36,4 @@ grep -q 'bash scripts/tests/dependency-audit-workflow.test.sh' "$WORKFLOW" \
 grep -q 'bash scripts/tests/wp-contract-image-pins.test.sh' "$WORKFLOW" \
   || fail "workflow does not execute the WordPress service-image contract"
 
-echo "FORMFLOW DEPENDENCY-AUDIT WORKFLOW CONTRACT PASSED"
+echo "FORMFLOW COMPOSER/PIP AUDIT WORKFLOW CONTRACT PASSED"
