@@ -16,7 +16,8 @@
 #   - a composer build with no vendor/ in INCLUDE, so a bundled signature
 #     verifier never reaches the site and every update goes unverified
 #   - a changelog with nothing about the version being shipped
-#   - a readme Stable tag that disagrees with the plugin header
+#   - a readme whose Stable tag line the publisher's bump cannot match, so it
+#     silently ships a readme advertising the wrong version
 #
 # Read-only. No network, no key, no publish. PAR-406.
 set -uo pipefail
@@ -112,15 +113,32 @@ if [ -n "${HEADER_V:-}" ]; then
   fi
 fi
 
-# ---- 5. stable tag agrees with the header -----------------------------------
-if [ -n "$STABLE" ] && [ -f "$STABLE" ] && [ -n "${HEADER_V:-}" ]; then
-  TAG_V="$(grep -m1 -oE '^Stable tag: *[0-9][0-9.]*' "$STABLE" | grep -oE '[0-9][0-9.]*' || true)"
-  if [ -z "$TAG_V" ]; then
-    bad "$STABLE has no 'Stable tag:' line"
-  elif [ "$TAG_V" != "$HEADER_V" ]; then
-    bad "$STABLE Stable tag is $TAG_V but the plugin header says $HEADER_V"
+# ---- 5. the publisher's stable-tag bump can actually match -------------------
+# NOT "does the tag equal the header". The publisher rewrites the header, the
+# version constants AND the Stable tag from whatever main says to the version
+# being released, so a tag trailing the header in main is the normal state
+# between a version bump and its release -- Peanut Connect sat at header 3.37.0
+# with Stable tag 3.36.0, which is correct, since 3.36.0 is what is released.
+# Failing on that would have made this check red on every plugin with an
+# unreleased bump pending.
+#
+# What IS worth asserting is the same failure the constant bump had: publish
+# does `[ -f "$STABLE" ] && perl … || true`, which CANNOT fail. If the line is
+# missing or written in a shape the pattern does not match, the bump silently
+# does nothing and the released readme advertises the wrong version.
+if [ -n "$STABLE" ]; then
+  if [ ! -f "$STABLE" ]; then
+    bad "$STABLE is declared for this plugin but does not exist"
   else
-    ok "Stable tag agrees with the header ($TAG_V)"
+    TAG_V="$(grep -m1 -oE '^Stable tag: *[0-9][0-9.]*' "$STABLE" | grep -oE '[0-9][0-9.]*' || true)"
+    if [ -z "$TAG_V" ]; then
+      bad "$STABLE has no 'Stable tag: <version>' line the publisher's bump can match"
+    else
+      ok "Stable tag line is present and matchable (currently $TAG_V)"
+      if [ -n "${HEADER_V:-}" ] && [ "$TAG_V" != "$HEADER_V" ]; then
+        note "Stable tag $TAG_V trails header $HEADER_V — expected for an unreleased bump; publish rewrites it"
+      fi
+    fi
   fi
 fi
 

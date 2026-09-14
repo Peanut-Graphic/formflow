@@ -45,11 +45,15 @@ peanut_release_config() {
       # carries the signed-update verifier it registers at boot. Without vendor/ in
       # the package the gate cannot load and updates go unverified (audit L1).
       REPO=Peanut-Graphic/formflow-lite; BUILD=composer; MAINPHP=formflow-lite.php
-      VCONST=FFFL_VERSION; STABLE=readme.txt
+      # No WordPress readme.txt in this repo (it ships README.md), so there is
+      # no stable tag to rewrite. Declaring one made publish's `|| true` bump a
+      # silent no-op and the readiness check red.
+      VCONST=FFFL_VERSION; STABLE=""
       INCLUDE=(admin assets composer.json composer.lock connectors frontend includes public formflow-lite.php README.md CHANGELOG.md vendor) ;;
     peanut-license-server)
       REPO=Peanut-Graphic/peanut-license-server; BUILD=fulltree; MAINPHP=peanut-license-server.php
-      VCONST=PEANUT_LICENSE_SERVER_VERSION; STABLE=readme.txt; INCLUDE=() ;;
+      # Same as formflow-lite: README.md, no readme.txt, nothing to rewrite.
+      VCONST=PEANUT_LICENSE_SERVER_VERSION; STABLE=""; INCLUDE=() ;;
     peanut-festival)
       # BUILD=composer since 1.3.2: Festival now bundles peanut/formflow-core,
       # which carries the signed-update verifier it registers at boot. Without
