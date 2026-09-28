@@ -33,6 +33,24 @@ final class EncryptionTest extends TestCase
         $this->enc = new Encryption();
     }
 
+    public function test_reads_the_authenticated_v2_format_from_the_same_key_material(): void
+    {
+        // A formflow-core 0.6 writer with authenticated writes on, over the same
+        // key material. Only an Encryption built with fromKeyMaterial() derives
+        // the matching V2 key; the old constructor would derive it from the
+        // truncated legacy key and read nothing.
+        $writer = \Peanut\FormCore\Crypto\Encryptor::fromKeyMaterial(null, str_repeat('k', 64), true);
+        $stored = $writer->encrypt('sftp-password');
+
+        $this->assertStringStartsWith('ffc2:', $stored);
+        $this->assertSame('sftp-password', $this->enc->decrypt($stored));
+    }
+
+    public function test_still_writes_the_legacy_format_so_a_rollback_can_read_it(): void
+    {
+        $this->assertStringStartsNotWith('ffc2:', $this->enc->encrypt('x'));
+    }
+
     public function test_round_trips_plain_text(): void
     {
         $this->assertSame('hello world', $this->enc->decrypt($this->enc->encrypt('hello world')));
