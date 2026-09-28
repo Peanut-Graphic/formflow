@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Security
+
+- Data at rest now uses `peanut/formflow-core` ^0.6.0 (phase 1 of authenticated encryption):
+  stored values in the new XChaCha20-Poly1305 format (keyed by HKDF over the full
+  `ISF_ENCRYPTION_KEY` / `wp_salt('auth')`) are readable, while writes stay in the legacy format
+  so a rollback to an older release keeps reading everything. Encryption is built with
+  `Encryptor::fromKeyMaterial()`. Phase 2 (a later release) switches writes to the new format.
+
 ### Testing
 
 - Repaired the shared `$wpdb` unit-test mock so public properties and per-test

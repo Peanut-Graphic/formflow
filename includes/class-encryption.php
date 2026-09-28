@@ -9,14 +9,15 @@ if (!defined('ABSPATH')) {
 /**
  * Encryption Utilities
  *
- * Handles AES-256-CBC encryption/decryption for sensitive data storage.
+ * Data at rest via peanut/formflow-core's Encryptor: reads both the legacy
+ * AES-256-CBC format and the authenticated V2 format (XChaCha20-Poly1305,
+ * HKDF over the full key material); still writes legacy until phase 2 of the
+ * formflow-core rollout, so a rollback to an older release keeps reading
+ * everything.
  */
 
 
 class Encryption {
-
-    private const METHOD = 'AES-256-CBC';
-    private const IV_LENGTH = 16;
 
     /**
      * Marker prefixing an encrypted secret stored inside a settings JSON blob.
@@ -26,23 +27,16 @@ class Encryption {
      */
     private const SECRET_PREFIX = 'enc:';
 
-    private string $key;
-
     private \Peanut\FormCore\Crypto\Encryptor $encryptor;
 
     /**
      * Constructor
+     *
+     * fromKeyMaterial() derives the legacy key exactly as before and the V2 key
+     * from the untruncated ISF_ENCRYPTION_KEY / wp_salt('auth').
      */
     public function __construct() {
-        $this->key       = $this->get_encryption_key();
-        $this->encryptor = new \Peanut\FormCore\Crypto\Encryptor($this->key);
-    }
-
-    /**
-     * Get or generate the encryption key
-     */
-    private function get_encryption_key(): string {
-        return \Peanut\FormCore\Crypto\Encryptor::deriveKey(
+        $this->encryptor = \Peanut\FormCore\Crypto\Encryptor::fromKeyMaterial(
             defined('ISF_ENCRYPTION_KEY') ? (string) ISF_ENCRYPTION_KEY : null,
             (string) wp_salt('auth')
         );
