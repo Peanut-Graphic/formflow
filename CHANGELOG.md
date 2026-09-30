@@ -1,9 +1,12 @@
 # FormFlow Pro Changelog
 
-## Unreleased
+## 4.2.2 — 2026-09-30 — Security: phpseclib key-recovery fix + authenticated-encryption reader
 
 ### Security
 
+- Bundled `phpseclib/phpseclib` 3.0.55 → 3.0.57 (PKSA-12sz-bcny-pk4m): the X25519 scalar
+  multiplication was not constant-time and permitted full private-key recovery. Used by the
+  SFTP destination connector.
 - Data at rest now uses `peanut/formflow-core` ^0.6.0 (phase 1 of authenticated encryption):
   stored values in the new XChaCha20-Poly1305 format (keyed by HKDF over the full
   `ISF_ENCRYPTION_KEY` / `wp_salt('auth')`) are readable, while writes stay in the legacy format
