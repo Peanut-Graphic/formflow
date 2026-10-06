@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f8ba7ad851a1c69b0beb054673c9dcc8",
+    "content-hash": "8f957e0c10151ae3c5fc7f618315ebdd",
     "packages": [
         {
             "name": "paragonie/constant_time_encoding",
@@ -130,7 +130,7 @@
             "version": "v0.6.0",
             "source": {
                 "type": "git",
-                "url": "git@github.com:Peanut-Graphic/formflow-core.git",
+                "url": "https://github.com/Peanut-Graphic/formflow-core.git",
                 "reference": "40c480529efae73bfbbe6239a5b41ce7185a5912"
             },
             "dist": {
