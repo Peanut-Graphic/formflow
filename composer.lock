@@ -130,7 +130,7 @@
             "version": "v0.6.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/Peanut-Graphic/formflow-core.git",
+                "url": "git@github.com:Peanut-Graphic/formflow-core.git",
                 "reference": "40c480529efae73bfbbe6239a5b41ce7185a5912"
             },
             "dist": {
