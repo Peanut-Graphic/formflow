@@ -1,5 +1,17 @@
 # FormFlow Pro Changelog
 
+## Unreleased
+
+### Changed
+
+- Bundled `phpseclib/phpseclib` 3.0.57 → 4.0.1 (includes the 4.0.1 Curve25519/448
+  timing-attack hardening, CVE-2026-84308). The SFTP destination moves to the `phpseclib4`
+  namespace and its v4 API: `put()` and `nlist()` now throw `FileSystemException` instead of
+  returning `false` (under 4.x an unchanged `if (!$sftp->put(...))` would have reported every
+  successful upload as failed and retried it), `getLastError()` is gone (login failures read
+  `getErrors()`), a missing host key is `null` rather than `false`, and an unencrypted private
+  key loads with a `null` passphrase. phpseclib 4 requires PHP 8.1; FormFlow already requires 8.2.
+
 ## 4.2.2 — 2026-09-30 — Security: phpseclib key-recovery fix + authenticated-encryption reader
 
 ### Security
