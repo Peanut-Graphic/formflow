@@ -4,13 +4,17 @@
 
 ### Changed
 
-- Bundled `phpseclib/phpseclib` 3.0.57 → 4.0.1 (includes the 4.0.1 Curve25519/448
-  timing-attack hardening, CVE-2026-84308). The SFTP destination moves to the `phpseclib4`
+- Bundled `phpseclib/phpseclib` 3.0.57 → 4.0.1. This is a major-version upgrade, not a
+  security fix: CVE-2026-84308 (Curve25519/448 timing, GHSA-q97c-8qh3-fpc6) is patched in both
+  3.0.57 and 4.0.1, and only 4.0.0 is affected on the 4.x line. The SFTP destination moves to the `phpseclib4`
   namespace and its v4 API: `put()` and `nlist()` now throw `FileSystemException` instead of
   returning `false` (under 4.x an unchanged `if (!$sftp->put(...))` would have reported every
   successful upload as failed and retried it), `getLastError()` is gone (login failures read
   `getErrors()`), a missing host key is `null` rather than `false`, and an unencrypted private
   key loads with a `null` passphrase. phpseclib 4 requires PHP 8.1; FormFlow already requires 8.2.
+  Behavior change: an upload into a remote directory that does not exist (SFTP status
+  `NO_SUCH_FILE`/`NO_SUCH_PATH`) is now a `config` failure (no retry, alert), as the delivery
+  failure contract specifies. 3.x returned a bare `false`, so it was always `transient`.
 
 ## 4.2.2 — 2026-09-30 — Security: phpseclib key-recovery fix + authenticated-encryption reader
 
