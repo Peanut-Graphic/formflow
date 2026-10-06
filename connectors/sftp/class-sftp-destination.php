@@ -3,7 +3,11 @@
  * SFTP Destination
  *
  * Delivers finished submissions to a remote SFTP endpoint. Built on
- * phpseclib3 — no PECL ssh2 extension required.
+ * phpseclib 4 — no PECL ssh2 extension required.
+ *
+ * phpseclib 4 reports SFTP failures by throwing (nlist/put no longer
+ * return false; put() returns void), so file-system errors are caught as
+ * FileSystemException and mapped to the same results v3's false returns gave.
  *
  * Supports both password and SSH-key authentication (Itron undecided as
  * of 2026-05-26; admin picks at setup time).
@@ -22,8 +26,10 @@ namespace ISF\Destinations\Sftp;
 use ISF\Destinations\BaseDestination;
 use ISF\Destinations\DeliveryFailure;
 use ISF\Destinations\DeliveryResult;
-use phpseclib3\Crypt\PublicKeyLoader;
-use phpseclib3\Net\SFTP;
+use phpseclib4\Crypt\PublicKeyLoader;
+use phpseclib4\Exception\FileSystemException;
+use phpseclib4\Net\SFTP;
+use phpseclib4\Net\SFTP\StatusCode;
 
 if (!defined('ABSPATH')) {
     exit;
@@ -237,10 +243,15 @@ class SftpDestination extends BaseDestination {
         try {
             $sftp = $this->open_connection($config);
             $remote = (string) ($config['remote_path'] ?? '/');
-            $listing = $sftp->nlist($remote);
-            $sftp->disconnect();
+            try {
+                $listing = $sftp->nlist($remote);
+            } catch (FileSystemException $e) {
+                $listing = null;
+            } finally {
+                $sftp->disconnect();
+            }
 
-            if ($listing === false) {
+            if ($listing === null) {
                 return [
                     'success' => false,
                     'message' => sprintf(
@@ -257,7 +268,7 @@ class SftpDestination extends BaseDestination {
                 'message' => sprintf(
                     /* translators: %d: number of entries listed */
                     __('Connected. Remote path readable (%d entries).', 'formflow'),
-                    is_array($listing) ? count($listing) : 0
+                    count($listing)
                 ),
                 'code' => 'ok',
             ];
@@ -276,19 +287,23 @@ class SftpDestination extends BaseDestination {
             $remote_dir = rtrim((string) ($config['remote_path'] ?? '/'), '/');
             $remote_path = $remote_dir . '/' . $filename;
 
-            $ok = $sftp->put($remote_path, $bytes);
-            $sftp->disconnect();
-
-            if (!$ok) {
+            try {
+                // phpseclib 4: put() returns void and throws on failure.
+                $sftp->put($remote_path, $bytes);
+            } catch (FileSystemException $e) {
                 return DeliveryResult::fail(
                     sprintf(
                         /* translators: %s: remote file path */
                         __('SFTP upload failed for %s.', 'formflow'),
                         $remote_path
-                    ),
-                    DeliveryFailure::TRANSIENT,
+                    ) . ($e->getMessage() !== '' ? ' (' . $e->getMessage() . ')' : ''),
+                    $this->is_missing_path_status($e->getCode())
+                        ? DeliveryFailure::CONFIG
+                        : DeliveryFailure::TRANSIENT,
                     ['remote_path' => $remote_path]
                 );
+            } finally {
+                $sftp->disconnect();
             }
 
             return DeliveryResult::ok(
@@ -331,13 +346,13 @@ class SftpDestination extends BaseDestination {
             throw new \RuntimeException(__('Host and username are required.', 'formflow'));
         }
 
-        $sftp = new SFTP($host, $port, self::CONNECT_TIMEOUT);
+        $sftp = $this->create_client($host, $port);
 
         // Optional host-key fingerprint check (sha256:base64 or hex form).
         $expected_fp = trim((string) ($config['host_key_fingerprint'] ?? ''));
         if ($expected_fp !== '') {
             $server_fp = $sftp->getServerPublicHostKey();
-            if ($server_fp === false) {
+            if ($server_fp === null || $server_fp === '') {
                 throw new \RuntimeException(__('Could not read server host key for fingerprint check.', 'formflow'));
             }
             $actual_fp = 'sha256:' . base64_encode(hash('sha256', (string) $server_fp, true));
@@ -350,10 +365,13 @@ class SftpDestination extends BaseDestination {
         $logged_in = $sftp->login($username, $credential);
 
         if (!$logged_in) {
-            $err = $sftp->getLastError();
+            // phpseclib 4 removed getLastError(); getErrors() holds SFTP-layer errors.
+            $errors = $sftp->getErrors();
+            $err = $errors ? (string) end($errors) : '';
+            $sftp->disconnect();
             throw new \RuntimeException(
                 __('SFTP login failed.', 'formflow')
-                . ($err ? ' (' . $err . ')' : '')
+                . ($err !== '' ? ' (' . $err . ')' : '')
             );
         }
 
@@ -361,9 +379,24 @@ class SftpDestination extends BaseDestination {
     }
 
     /**
+     * Construct the (not yet connected) SFTP client. phpseclib connects
+     * lazily on first use. Seam for unit tests, which substitute a mock.
+     */
+    protected function create_client(string $host, int $port): SFTP {
+        return new SFTP($host, $port, self::CONNECT_TIMEOUT);
+    }
+
+    /**
+     * True when an SFTP status code means the remote path does not exist.
+     */
+    private function is_missing_path_status(int $status): bool {
+        return $status === StatusCode::NO_SUCH_FILE || $status === StatusCode::NO_SUCH_PATH;
+    }
+
+    /**
      * Build the credential object phpseclib's login() accepts.
      *
-     * @return string|object Password string, or a PrivateKey instance.
+     * @return string|\phpseclib4\Crypt\Common\PrivateKey Password string, or a PrivateKey instance.
      * @throws \RuntimeException
      */
     private function build_credential(string $auth_mode, array $config) {
@@ -374,7 +407,7 @@ class SftpDestination extends BaseDestination {
             }
             $passphrase = (string) ($config['private_key_passphrase'] ?? '');
             try {
-                $key = PublicKeyLoader::load($key_text, $passphrase !== '' ? $passphrase : false);
+                $key = PublicKeyLoader::load($key_text, $passphrase !== '' ? $passphrase : null);
             } catch (\Throwable $e) {
                 throw new \RuntimeException(
                     __('Private key could not be parsed.', 'formflow')

@@ -146,7 +146,7 @@ function isf_init() {
         return;
     }
 
-    // Composer autoloader — required for phpseclib3 (SFTP destination) and
+    // Composer autoloader — required for phpseclib 4 (SFTP destination) and
     // any future vendored runtime dependencies. Guarded so a dev clone
     // without `composer install --no-dev` doesn't fatal; instead surfaces
     // a clear admin notice.
