@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### Security
+
+- **Cached-page session sharing (HIGH).** The enrollment wizard rendered its session id into
+  the page HTML (`data-session`) and every wizard AJAX handler found the submission by that
+  client-sent id alone, so behind a full-page cache every visitor of a cached copy shared one
+  session: visitor B could load and overwrite visitor A's name, email, phone, address and
+  account number. Sessions are now issued only by a new uncached `isf_start_session` /
+  `formflow_start_session` AJAX call as an id plus an HMAC token (`SessionGuard`, keyed by
+  `wp_salt('auth')`, compared with `hash_equals`). Nothing session-related is rendered into
+  HTML, every wizard handler (`load_step`, `validate_account`, `get_schedule_slots`,
+  `submit_enrollment`, `book_appointment`, `save_progress`, `save_and_email`, `track_step`)
+  refuses a missing or mismatched pair before touching the database, clients can no longer
+  choose their own session ids, and a completed session refuses further writes (only its
+  confirmation step can still be loaded). Resume links re-bind the saved session to the new
+  browser with a fresh token. Form pages also send `nocache_headers()` from
+  `template_redirect`, define `DONOTCACHEPAGE` and signal LiteSpeed Cache when the shortcode
+  renders (wizard, external-handoff and iframe-embed pages).
+  Compatibility: browser tabs left open across the upgrade hold no token; their next step
+  shows "Your session has expired. Please refresh the page to start again."
+
 ### Changed
 
 - Bundled `phpseclib/phpseclib` 3.0.57 → 4.0.1. This is a major-version upgrade, not a

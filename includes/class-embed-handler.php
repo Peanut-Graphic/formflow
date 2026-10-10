@@ -197,6 +197,9 @@ class EmbedHandler {
             wp_die(__('Invalid embed token', 'formflow'), '', ['response' => 403]);
         }
 
+        // Never let a page cache store the iframe page (per-visitor nonce/handoff).
+        SessionGuard::mark_page_uncacheable();
+
         // Output minimal iframe page
         $this->render_iframe_page($instance);
         exit;

@@ -17,6 +17,7 @@ if (!defined('ABSPATH')) {
 
 use ISF\Database\Database;
 use ISF\Security;
+use ISF\SessionGuard;
 use ISF\Encryption;
 use ISF\Api\ApiClient;
 use ISF\Api\MockApiClient;
@@ -35,6 +36,56 @@ use ISF\Analytics;
  */
 trait Frontend_Ajax_Handlers {
     /**
+     * Issue an enrollment session (uncached bootstrap).
+     *
+     * The wizard calls this once on page load. The session id and its HMAC
+     * token are never rendered into page HTML, so a full-page cache cannot
+     * hand one visitor's session to another (see SessionGuard).
+     */
+    public function isf_start_session(): void {
+        SessionGuard::send_private_headers();
+
+        if (!Security::verify_ajax_request('isf_form_nonce')) {
+            return;
+        }
+
+        $instance = $this->get_instance_from_request();
+        if (!$instance || empty($instance['is_active'])) {
+            wp_send_json_error(['message' => __('Invalid form.', 'formflow')]);
+            return;
+        }
+
+        wp_send_json_success(SessionGuard::issue((int) $instance['id']));
+    }
+
+    /**
+     * Resolve the caller's verified session id, or send the session error.
+     *
+     * @return string|null Verified session id; null after an error was sent.
+     */
+    private function require_session(int $instance_id): ?string {
+        $session_id = SessionGuard::from_request($instance_id);
+        if ($session_id === null) {
+            wp_send_json_error(SessionGuard::invalid_error());
+            return null;
+        }
+        return $session_id;
+    }
+
+    /**
+     * Send the completed-session error when $submission is already completed.
+     *
+     * @return bool True when the request must stop.
+     */
+    private function refuse_if_completed(?array $submission): bool {
+        if (SessionGuard::is_completed($submission)) {
+            wp_send_json_error(SessionGuard::completed_error());
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Load a form step
      */
     public function isf_load_step(): void {
@@ -42,14 +93,32 @@ trait Frontend_Ajax_Handlers {
             return;
         }
 
+        $instance = $this->get_instance_from_request();
+        if (!$instance) {
+            wp_send_json_error(['message' => __('Invalid form.', 'formflow')]);
+            return;
+        }
+
+        // The rendered steps are pre-filled from the session's stored data
+        // (name, email, phone, address), so only the verified owner may load them.
+        $session_id = $this->require_session((int) $instance['id']);
+        if ($session_id === null) {
+            return;
+        }
+
+        // Check for 'success' step BEFORE casting to int
+        $raw_step = $_POST['step'] ?? 1;
+        $is_success_step = ($raw_step === 'success' || $raw_step === 'complete');
+
+        $instance_id = $instance['id'];
+        $submission = $this->db->get_submission_by_session($session_id, $instance_id);
+
+        // A completed enrollment can only show its confirmation page.
+        if (!$is_success_step && $this->refuse_if_completed($submission)) {
+            return;
+        }
+
         try {
-            $instance = $this->get_instance_from_request();
-            $session_id = sanitize_text_field($_POST['session_id'] ?? '');
-
-            // Check for 'success' step BEFORE casting to int
-            $raw_step = $_POST['step'] ?? 1;
-            $is_success_step = ($raw_step === 'success' || $raw_step === 'complete');
-
             $step = $is_success_step ? 'success' : (int)$raw_step;
             // Ensure numeric step is at least 1
             if (!$is_success_step && $step < 1) {
@@ -57,16 +126,6 @@ trait Frontend_Ajax_Handlers {
             }
             $form_data_json = stripslashes($_POST['form_data'] ?? '{}');
             $posted_form_data = json_decode($form_data_json, true) ?: [];
-
-            if (!$instance) {
-                wp_send_json_error(['message' => __('Invalid form.', 'formflow')]);
-                return;
-            }
-
-            $instance_id = $instance['id'];
-
-            // Get or create submission
-            $submission = $this->db->get_submission_by_session($session_id, $instance_id);
 
             // Ensure form_data is always an array before merging
             $existing_data = [];
@@ -163,7 +222,6 @@ trait Frontend_Ajax_Handlers {
         }
 
         $instance = $this->get_instance_from_request();
-        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
         $account_number = sanitize_text_field($_POST['utility_no'] ?? $_POST['account_number'] ?? '');
         $zip_code = sanitize_text_field($_POST['zip'] ?? $_POST['zip_code'] ?? '');
 
@@ -182,6 +240,16 @@ trait Frontend_Ajax_Handlers {
 
         $instance_id = $instance['id'];
 
+        $session_id = $this->require_session((int) $instance_id);
+        if ($session_id === null) {
+            return;
+        }
+
+        $submission = $this->db->get_submission_by_session($session_id, $instance_id);
+        if ($this->refuse_if_completed($submission)) {
+            return;
+        }
+
         try {
             // Call API to validate account
             $api = $this->get_api_client($instance);
@@ -195,9 +263,7 @@ trait Frontend_Ajax_Handlers {
                 return;
             }
 
-            // Get or create submission record
-            $submission = $this->db->get_submission_by_session($session_id, $instance_id);
-            $form_data = $submission ? $submission['form_data'] : [];
+            $form_data = ($submission && is_array($submission['form_data'] ?? null)) ? $submission['form_data'] : [];
 
             // Store validation data
             $form_data['account_number'] = $account_number;
@@ -298,7 +364,6 @@ trait Frontend_Ajax_Handlers {
         }
 
         $instance = $this->get_instance_from_request();
-        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
 
         if (!$instance) {
             wp_send_json_error(['message' => __('Invalid form.', 'formflow')]);
@@ -307,9 +372,17 @@ trait Frontend_Ajax_Handlers {
 
         $instance_id = $instance['id'];
 
+        $session_id = $this->require_session((int) $instance_id);
+        if ($session_id === null) {
+            return;
+        }
+
         $submission = $this->db->get_submission_by_session($session_id, $instance_id);
         if (!$submission) {
             wp_send_json_error(['message' => __('Session expired. Please start over.', 'formflow')]);
+            return;
+        }
+        if ($this->refuse_if_completed($submission)) {
             return;
         }
 
@@ -383,7 +456,6 @@ trait Frontend_Ajax_Handlers {
         }
 
         $instance = $this->get_instance_from_request();
-        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
         $submitted_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : [];
 
         if (!$instance) {
@@ -393,9 +465,17 @@ trait Frontend_Ajax_Handlers {
 
         $instance_id = $instance['id'];
 
+        $session_id = $this->require_session((int) $instance_id);
+        if ($session_id === null) {
+            return;
+        }
+
         $submission = $this->db->get_submission_by_session($session_id, $instance_id);
         if (!$submission) {
             wp_send_json_error(['message' => __('Session expired. Please start over.', 'formflow')]);
+            return;
+        }
+        if ($this->refuse_if_completed($submission)) {
             return;
         }
 
@@ -815,7 +895,6 @@ trait Frontend_Ajax_Handlers {
         }
 
         $instance = $this->get_instance_from_request();
-        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
         $schedule_date = sanitize_text_field($_POST['schedule_date'] ?? '');
         $schedule_time = sanitize_text_field($_POST['schedule_time'] ?? '');
 
@@ -833,9 +912,17 @@ trait Frontend_Ajax_Handlers {
 
         $instance_id = $instance['id'];
 
+        $session_id = $this->require_session((int) $instance_id);
+        if ($session_id === null) {
+            return;
+        }
+
         $submission = $this->db->get_submission_by_session($session_id, $instance_id);
         if (!$submission) {
             wp_send_json_error(['message' => __('Session expired. Please start over.', 'formflow')]);
+            return;
+        }
+        if ($this->refuse_if_completed($submission)) {
             return;
         }
 
@@ -948,7 +1035,6 @@ trait Frontend_Ajax_Handlers {
         }
 
         $instance = $this->get_instance_from_request();
-        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
         $step = (int)($_POST['step'] ?? 1);
         $submitted_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : [];
 
@@ -959,7 +1045,15 @@ trait Frontend_Ajax_Handlers {
 
         $instance_id = $instance['id'];
 
+        $session_id = $this->require_session((int) $instance_id);
+        if ($session_id === null) {
+            return;
+        }
+
         $submission = $this->db->get_submission_by_session($session_id, $instance_id);
+        if ($this->refuse_if_completed($submission)) {
+            return;
+        }
 
         $sanitized_data = is_array($submitted_data) ? Security::sanitize_form_data($submitted_data) : [];
 
@@ -992,17 +1086,26 @@ trait Frontend_Ajax_Handlers {
             return;
         }
 
+        $instance = $this->get_instance_from_request();
+        if (!$instance) {
+            wp_send_json_error(['message' => __('Invalid form.', 'formflow')]);
+            return;
+        }
+
+        $session_id = $this->require_session((int) $instance['id']);
+        if ($session_id === null) {
+            return;
+        }
+
+        $submission = $this->db->get_submission_by_session($session_id, (int) $instance['id']);
+        if ($this->refuse_if_completed($submission)) {
+            return;
+        }
+
         try {
-            $instance = $this->get_instance_from_request();
-            $session_id = sanitize_text_field($_POST['session_id'] ?? '');
             $email = sanitize_email($_POST['email'] ?? '');
             $step = (int)($_POST['step'] ?? 1);
             $submitted_data = isset($_POST['form_data']) ? json_decode(stripslashes($_POST['form_data']), true) : [];
-
-            if (!$instance) {
-                wp_send_json_error(['message' => __('Invalid form.', 'formflow')]);
-                return;
-            }
 
             if (!is_email($email)) {
                 wp_send_json_error(['message' => __('Please enter a valid email address.', 'formflow')]);
@@ -1012,7 +1115,6 @@ trait Frontend_Ajax_Handlers {
             $instance_id = $instance['id'];
 
             // Save progress first
-            $submission = $this->db->get_submission_by_session($session_id, $instance_id);
             $sanitized_data = is_array($submitted_data) ? Security::sanitize_form_data($submitted_data) : [];
 
             if ($submission) {
@@ -1127,11 +1229,19 @@ trait Frontend_Ajax_Handlers {
             return;
         }
 
+        if ($this->refuse_if_completed($submission)) {
+            return;
+        }
+
         // Mark token as used
         $this->db->mark_resume_token_used($token);
 
+        // The emailed, single-use resume token proves ownership; re-bind this
+        // browser to the saved session with a fresh session token.
+        SessionGuard::send_private_headers();
         wp_send_json_success([
             'session_id' => $resume_data['session_id'],
+            'session_token' => SessionGuard::token_for((string) $resume_data['session_id'], (int) $instance['id']),
             'step' => $submission['step'],
             'form_data' => $submission['form_data']
         ]);
@@ -1146,7 +1256,6 @@ trait Frontend_Ajax_Handlers {
         }
 
         $instance = $this->get_instance_from_request();
-        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
         $step = (int)($_POST['step'] ?? 1);
         $action = sanitize_text_field($_POST['event_action'] ?? 'enter');
         $step_name = sanitize_text_field($_POST['step_name'] ?? '');
@@ -1155,8 +1264,13 @@ trait Frontend_Ajax_Handlers {
         $is_mobile = (int)($_POST['is_mobile'] ?? 0);
         $referrer = esc_url_raw($_POST['referrer'] ?? '');
 
-        if (!$instance || empty($session_id)) {
+        if (!$instance) {
             wp_send_json_error(['message' => __('Invalid request.', 'formflow')]);
+            return;
+        }
+
+        $session_id = $this->require_session((int) $instance['id']);
+        if ($session_id === null) {
             return;
         }
 

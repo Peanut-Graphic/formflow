@@ -13,6 +13,10 @@
         totalSteps: 5,
         formData: {},
         sessionId: '',
+        // HMAC token proving the server issued sessionId. Both come from the
+        // uncached start_session call; neither is ever in the page HTML.
+        sessionToken: '',
+        sessionReady: null,
         instanceSlug: '',
         formType: 'enrollment',
         isSubmitting: false,
@@ -48,7 +52,6 @@
         if (!$container.length) return;
 
         ISFEnrollment.instanceSlug = $container.data('instance');
-        ISFEnrollment.sessionId = $container.data('session');
         ISFEnrollment.currentStep = parseInt($container.data('step')) || 1;
         ISFEnrollment.formType = $container.data('form-type') || 'enrollment';
         ISFEnrollment.totalSteps = ISFEnrollment.formType === 'scheduler' ? 2 : 5;
@@ -57,6 +60,10 @@
         var urlParams = new URLSearchParams(window.location.search);
         ISFEnrollment.resumeToken = urlParams.get('isf_resume');
 
+        // Hold form submits until a session exists (registered before
+        // bindEvents so it runs first among the delegated submit handlers).
+        $(document).on('submit', '.isf-form-container form', holdSubmitUntilSession);
+
         bindEvents();
 
         // Only update progress bar for enrollment forms
@@ -64,12 +71,16 @@
             updateProgressBar();
         }
 
-        // If there's a resume token, try to restore session
+        // If there's a resume token, try to restore session; otherwise ask the
+        // server for a fresh one.
         if (ISFEnrollment.resumeToken) {
-            resumeFromToken();
+            ISFEnrollment.sessionReady = resumeFromToken();
         } else {
-            // Track initial step entry
-            trackStepEvent('enter', ISFEnrollment.currentStep);
+            ISFEnrollment.sessionReady = startSession();
+            ISFEnrollment.sessionReady.done(function() {
+                // Track initial step entry
+                trackStepEvent('enter', ISFEnrollment.currentStep);
+            });
         }
 
         // Start auto-save timer
@@ -85,6 +96,73 @@
                 trackStepEvent('abandon', ISFEnrollment.currentStep, true);
             }
         });
+    }
+
+    /**
+     * Remember the server-issued session for this tab.
+     */
+    function setSession(sessionId, sessionToken) {
+        ISFEnrollment.sessionId = sessionId || '';
+        ISFEnrollment.sessionToken = sessionToken || '';
+        // auto-save.js reads these off the container.
+        $('.isf-form-container')
+            .data('session', ISFEnrollment.sessionId)
+            .data('sessionToken', ISFEnrollment.sessionToken);
+    }
+
+    /**
+     * Obtain a session from the uncached bootstrap endpoint.
+     *
+     * @return {jQuery.Promise} resolved once sessionId/sessionToken are set.
+     */
+    function startSession() {
+        var deferred = $.Deferred();
+
+        $.ajax({
+            url: isf_frontend.ajax_url,
+            type: 'POST',
+            cache: false,
+            data: {
+                action: 'formflow_start_session',
+                nonce: isf_frontend.nonce,
+                instance: ISFEnrollment.instanceSlug
+            },
+            success: function(response) {
+                if (response && response.success && response.data && response.data.session_id) {
+                    setSession(response.data.session_id, response.data.session_token);
+                    deferred.resolve();
+                } else {
+                    showAlert((response && response.data && response.data.message) || isf_frontend.strings.error, 'error');
+                    deferred.reject();
+                }
+            },
+            error: function() {
+                showAlert(isf_frontend.strings.network_error, 'error');
+                deferred.reject();
+            }
+        });
+
+        return deferred.promise();
+    }
+
+    /**
+     * Defer a submit that happens before the session exists, then replay it.
+     */
+    function holdSubmitUntilSession(e) {
+        if (ISFEnrollment.sessionToken) {
+            return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        var $form = $(this);
+        if (ISFEnrollment.sessionReady && !$form.data('isfAwaitingSession')) {
+            $form.data('isfAwaitingSession', true);
+            ISFEnrollment.sessionReady.done(function() {
+                $form.removeData('isfAwaitingSession');
+                $form.trigger('submit');
+            });
+        }
     }
 
     /**
@@ -371,6 +449,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 utility_no: utilityNo,
                 zip: zip
             },
@@ -582,6 +661,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 form_data: JSON.stringify(ISFEnrollment.formData)
             },
             success: function(response) {
@@ -665,6 +745,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 step: step,
                 form_data: JSON.stringify(ISFEnrollment.formData)
             },
@@ -736,6 +817,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 step: ISFEnrollment.currentStep,
                 form_data: JSON.stringify(ISFEnrollment.formData)
             }
@@ -785,6 +867,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 account_number: ISFEnrollment.formData.account_number || ISFEnrollment.formData.utility_no,
                 device_type: ISFEnrollment.formData.device_type
             },
@@ -1278,6 +1361,7 @@
             nonce: isf_frontend.nonce,
             instance: ISFEnrollment.instanceSlug,
             session_id: ISFEnrollment.sessionId,
+            session_token: ISFEnrollment.sessionToken,
             step: step,
             step_name: stepName,
             event_action: action,
@@ -1437,6 +1521,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 step: ISFEnrollment.currentStep,
                 form_data: JSON.stringify(ISFEnrollment.formData)
             },
@@ -1608,6 +1693,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 step: ISFEnrollment.currentStep,
                 email: email,
                 form_data: JSON.stringify(ISFEnrollment.formData)
@@ -1642,6 +1728,7 @@
      * Resume form from token
      */
     function resumeFromToken() {
+        var deferred = $.Deferred();
         var $content = $('.isf-form-content');
         $content.addClass('isf-loading');
 
@@ -1656,13 +1743,12 @@
             },
             success: function(response) {
                 if (response.success) {
-                    // Restore session and form data
-                    ISFEnrollment.sessionId = response.data.session_id;
+                    // Restore session (re-bound to this browser by the
+                    // server-issued token) and form data
+                    setSession(response.data.session_id, response.data.session_token);
                     ISFEnrollment.formData = response.data.form_data || {};
                     ISFEnrollment.currentStep = response.data.step || 1;
-
-                    // Update container data
-                    $('.isf-form-container').data('session', ISFEnrollment.sessionId);
+                    deferred.resolve();
 
                     // Show restored message
                     showAlert('Welcome back! Your progress has been restored.', 'info');
@@ -1678,15 +1764,20 @@
                     }
                 } else {
                     showAlert(response.data.message || 'Unable to restore your progress.', 'error');
+                    // Fall back to a fresh session so the form stays usable.
+                    startSession().then(deferred.resolve, deferred.reject);
                 }
             },
             error: function() {
                 showAlert(isf_frontend.strings.network_error, 'error');
+                deferred.reject();
             },
             complete: function() {
                 $content.removeClass('isf-loading');
             }
         });
+
+        return deferred.promise();
     }
 
     // =========================================================================
@@ -1883,6 +1974,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 utility_no: utilityNo,
                 zip: zip
             },
@@ -1944,6 +2036,7 @@
                 nonce: isf_frontend.nonce,
                 instance: ISFEnrollment.instanceSlug,
                 session_id: ISFEnrollment.sessionId,
+                session_token: ISFEnrollment.sessionToken,
                 schedule_date: scheduleDate,
                 schedule_time: scheduleTime,
                 schedule_fsr: scheduleFsr
