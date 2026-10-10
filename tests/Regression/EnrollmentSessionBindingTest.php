@@ -106,7 +106,11 @@ final class EnrollmentSessionBindingTest extends TestCase
 
         $this->frontend = (new \ReflectionClass(Frontend::class))->newInstanceWithoutConstructor();
         $prop = new \ReflectionProperty(Frontend::class, 'db');
-        $prop->setValue($this->frontend, $this->fakeDatabase());
+        $db = $this->fakeDatabase();
+        $prop->setValue($this->frontend, $db);
+
+        $handler = new \ReflectionProperty(Frontend::class, 'form_handler');
+        $handler->setValue($this->frontend, new \ISF\Forms\FormHandler($db, new \ISF\Security()));
     }
 
     protected function tearDown(): void
@@ -391,5 +395,146 @@ final class EnrollmentSessionBindingTest extends TestCase
         ]);
         $this->assertFalse($sent->ok, 'A completed session must not re-open earlier (PII-bearing) steps.');
         $this->assertSame(SessionGuard::ERROR_COMPLETED, $sent->payload['code'] ?? null);
+    }
+
+    // ------------------------------------------------------------------
+    // Final submit trusts only the server-validated account (audit 2026-10, MEDIUM)
+    // ------------------------------------------------------------------
+
+    /** Complete, valid step 1-5 data as the browser would post it at submit. */
+    private function clientSubmitData(array $overrides = []): array
+    {
+        return array_merge([
+            'has_ac'           => 'yes',
+            'device_type'      => 'thermostat',
+            'cycling_level'    => '100',
+            'utility_no'       => '1234567890',
+            'zip'              => '20001',
+            'zip_confirm'      => '20001',
+            'agree_adult'      => true,
+            'first_name'       => 'Ada',
+            'last_name'        => 'Lovelace',
+            'email'            => 'ada@example.com',
+            'phone'            => '2025550123',
+            'street'           => '1 Main St',
+            'city'             => 'Washington',
+            'state'            => 'DC',
+            'ownership'        => 'own',
+            'thermostat_count' => '1',
+            'agree_terms'      => true,
+            'schedule_later'   => true,
+        ], $overrides);
+    }
+
+    /**
+     * Submit and return the form_data the handler tried to persist as completed.
+     */
+    private function submitAndCaptureCompletion(array $session, array $client): ?array
+    {
+        $this->haltOnStatus = 'completed';
+        try {
+            $sent = $this->call('isf_submit_enrollment', [
+                'session_id'    => $session['session_id'],
+                'session_token' => $session['session_token'],
+                'form_data'     => json_encode($client),
+            ]);
+        } catch (HaltAtWrite $halt) {
+            return $halt->data['form_data'];
+        } finally {
+            $this->haltOnStatus = null;
+        }
+        $this->lastRefusal = $sent;
+        return null;
+    }
+
+    private ?JsonResponseSent $lastRefusal = null;
+
+    public function test_submit_refuses_a_session_whose_account_was_never_validated(): void
+    {
+        $a = $this->startSession();
+
+        // Seed everything — including an account number — through save_progress,
+        // never calling validate_account.
+        $this->call('isf_save_progress', [
+            'session_id'    => $a['session_id'],
+            'session_token' => $a['session_token'],
+            'step'          => 4,
+            'form_data'     => json_encode($this->clientSubmitData([
+                'account_number'    => '5555555555',
+                'account_validated' => true,
+                'ca_no'             => 'CA-FORGED',
+            ])),
+        ]);
+
+        $completed = $this->submitAndCaptureCompletion($a, $this->clientSubmitData(['account_number' => '5555555555']));
+
+        $this->assertNull($completed, 'An enrollment whose account was never validated server-side reached completion.');
+        $this->assertFalse($this->lastRefusal->ok);
+        $this->assertSame('account_not_validated', $this->lastRefusal->payload['code'] ?? null);
+    }
+
+    public function test_save_progress_cannot_seed_server_owned_keys(): void
+    {
+        $a = $this->startSession();
+
+        $this->call('isf_save_progress', [
+            'session_id'    => $a['session_id'],
+            'session_token' => $a['session_token'],
+            'step'          => 2,
+            'form_data'     => json_encode([
+                'first_name'        => 'Eve',
+                'account_number'    => '5555555555',
+                'utility_no'        => '5555555555',
+                'account_validated' => true,
+                'ca_no'             => 'CA-FORGED',
+                'comverge_no'       => 'CV-FORGED',
+            ]),
+        ]);
+
+        $stored = reset($this->rows)['form_data'];
+        $this->assertSame('Eve', $stored['first_name']);
+        foreach (['account_number', 'utility_no', 'account_validated', 'ca_no', 'comverge_no'] as $key) {
+            $this->assertArrayNotHasKey($key, $stored, "save_progress must not let the client write {$key}.");
+        }
+    }
+
+    public function test_submit_enrolls_the_validated_account_not_the_posted_one(): void
+    {
+        $a = $this->startSession();
+        $this->seedRow($a['session_id'], [
+            'account_validated' => true,
+            'account_number'    => '1234567890',
+            'utility_no'        => '1234567890',
+            'zip_code'          => '20001',
+            'ca_no'             => 'CA-REAL',
+            'comverge_no'       => 'CV-REAL',
+        ]);
+
+        $completed = $this->submitAndCaptureCompletion($a, $this->clientSubmitData([
+            'utility_no'     => '9999999999',
+            'account_number' => '9999999999',
+            'ca_no'          => 'CA-EVIL',
+            'comverge_no'    => 'CV-EVIL',
+        ]));
+
+        $this->assertNotNull($completed, 'A validated session with complete data must still be able to submit: '
+            . json_encode($this->lastRefusal->payload ?? null));
+        $this->assertSame('1234567890', $completed['account_number']);
+        $this->assertSame('1234567890', $completed['utility_no'],
+            'utility_no is what FieldMapper sends to the enroll API first; it must be the validated account.');
+        $this->assertSame('CA-REAL', $completed['ca_no']);
+        $this->assertSame('CV-REAL', $completed['comverge_no']);
+
+        $mapped = \ISF\Api\FieldMapper::mapEnrollmentData($completed);
+        $this->assertSame('1234567890', $mapped['utility_no'] ?? null, 'The enroll API call must carry the validated account.');
+    }
+
+    public function test_validate_account_stores_the_validated_account_as_server_owned_fields(): void
+    {
+        $source = file_get_contents(ISF_PLUGIN_DIR . 'public/traits/trait-ajax-handlers.php');
+        preg_match('/function isf_validate_account\(.*?\n    }\n/s', $source, $m);
+        $this->assertNotEmpty($m);
+        $this->assertStringContainsString("\$form_data['account_validated'] = true;", $m[0]);
+        $this->assertStringContainsString("\$form_data['utility_no'] = \$account_number;", $m[0]);
     }
 }

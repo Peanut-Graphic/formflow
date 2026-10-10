@@ -21,6 +21,17 @@
   renders (wizard, external-handoff and iframe-embed pages).
   Compatibility: browser tabs left open across the upgrade hold no token; their next step
   shows "Your session has expired. Please refresh the page to start again."
+- **Final submit trusted the client's account number (MEDIUM).** `isf_submit_enrollment`
+  merged the posted `form_data` over the session, so a client could validate one account and
+  enroll another (`utility_no` / `account_number` / `ca_no` / `comverge_no`), and
+  `isf_save_progress` could seed a session that never validated at all. Server-owned keys
+  (`account_number`, `utility_no`, `zip_code`, `ca_no`, `comverge_no`, `validation_result`,
+  `account_validated`, `fsr_no`, `scheduling_result`, `confirmation_number`) are now stripped
+  from every client `form_data` before merge, `isf_validate_account` records the validated
+  account as server-owned `account_number` + `utility_no` and an `account_validated` flag, and
+  the final submit refuses (`account_not_validated`) a session without that flag.
+  Compatibility: a resume link for a session validated before this release must re-run the
+  account-validation step before submitting.
 
 ### Changed
 

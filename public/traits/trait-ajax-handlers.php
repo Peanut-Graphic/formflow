@@ -36,6 +36,25 @@ use ISF\Analytics;
  */
 trait Frontend_Ajax_Handlers {
     /**
+     * Server-side keys that only the server may write into a session's
+     * form_data. Client form_data posts are stripped of these before merge, so
+     * the account that was validated against the utility API is the account
+     * that gets enrolled.
+     */
+    private static array $protected_form_keys = [
+        'account_number',
+        'utility_no',
+        'zip_code',
+        'ca_no',
+        'comverge_no',
+        'validation_result',
+        'account_validated',
+        'fsr_no',
+        'scheduling_result',
+        'confirmation_number',
+    ];
+
+    /**
      * Issue an enrollment session (uncached bootstrap).
      *
      * The wizard calls this once on page load. The session id and its HMAC
@@ -86,6 +105,20 @@ trait Frontend_Ajax_Handlers {
     }
 
     /**
+     * Sanitize client form_data and drop the server-owned keys.
+     */
+    private function client_form_data($submitted): array {
+        if (!is_array($submitted)) {
+            return [];
+        }
+        $clean = Security::sanitize_form_data($submitted);
+        foreach (self::$protected_form_keys as $key) {
+            unset($clean[$key]);
+        }
+        return $clean;
+    }
+
+    /**
      * Load a form step
      */
     public function isf_load_step(): void {
@@ -126,6 +159,12 @@ trait Frontend_Ajax_Handlers {
             }
             $form_data_json = stripslashes($_POST['form_data'] ?? '{}');
             $posted_form_data = json_decode($form_data_json, true) ?: [];
+            if (!is_array($posted_form_data)) {
+                $posted_form_data = [];
+            }
+            foreach (self::$protected_form_keys as $key) {
+                unset($posted_form_data[$key]);
+            }
 
             // Ensure form_data is always an array before merging
             $existing_data = [];
@@ -265,8 +304,11 @@ trait Frontend_Ajax_Handlers {
 
             $form_data = ($submission && is_array($submission['form_data'] ?? null)) ? $submission['form_data'] : [];
 
-            // Store validation data
+            // Store validation data. account_validated is a server-only flag
+            // (stripped from client posts) that the final submit requires.
+            $form_data['account_validated'] = true;
             $form_data['account_number'] = $account_number;
+            $form_data['utility_no'] = $account_number;
             $form_data['zip_code'] = $zip_code;
             $form_data['ca_no'] = $result->get_ca_no();
             $form_data['comverge_no'] = $result->get_comverge_no();
@@ -479,8 +521,21 @@ trait Frontend_Ajax_Handlers {
             return;
         }
 
-        // Merge submitted data with existing form data
-        $form_data = array_merge($submission['form_data'] ?? [], Security::sanitize_form_data($submitted_data));
+        // Merge submitted data with existing form data. Server-owned keys
+        // (validated account number, ca_no, comverge_no, ...) are stripped
+        // from the client copy so they cannot overwrite the validated values.
+        $stored_data = is_array($submission['form_data'] ?? null) ? $submission['form_data'] : [];
+        $form_data = array_merge($stored_data, $this->client_form_data($submitted_data));
+
+        // The account must have been validated server-side in THIS session.
+        if (empty($stored_data['account_validated']) || empty($stored_data['account_number'])) {
+            $this->db->log('warning', 'Enrollment submit refused: account not validated in session', [], $instance_id, $submission['id']);
+            wp_send_json_error([
+                'message' => __('Please verify your account number before submitting.', 'formflow'),
+                'code'    => 'account_not_validated',
+            ]);
+            return;
+        }
 
         // Server-side validation for all steps before final submission
         $validation_errors = $this->validate_all_form_steps($form_data, $instance);
@@ -1055,7 +1110,7 @@ trait Frontend_Ajax_Handlers {
             return;
         }
 
-        $sanitized_data = is_array($submitted_data) ? Security::sanitize_form_data($submitted_data) : [];
+        $sanitized_data = $this->client_form_data($submitted_data);
 
         if ($submission) {
             $existing_data = is_array($submission['form_data']) ? $submission['form_data'] : [];
@@ -1115,7 +1170,7 @@ trait Frontend_Ajax_Handlers {
             $instance_id = $instance['id'];
 
             // Save progress first
-            $sanitized_data = is_array($submitted_data) ? Security::sanitize_form_data($submitted_data) : [];
+            $sanitized_data = $this->client_form_data($submitted_data);
 
             if ($submission) {
                 $existing_data = is_array($submission['form_data']) ? $submission['form_data'] : [];
