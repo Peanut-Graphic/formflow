@@ -231,7 +231,7 @@ class CompletionReceiver {
                 $signed = CompletionSigner::verify($token, $signature, $instance_id);
 
                 /**
-                 * Allow recording UNSIGNED redirect completions (pre-4.2.3
+                 * Allow recording UNSIGNED redirect completions (the previous
                  * behavior) for partners that cannot sign the return URL.
                  * Completions stay once-per-handoff and rate-limited, but are
                  * forgeable by anyone who obtains a handoff token.
