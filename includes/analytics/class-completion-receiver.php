@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
 
 
 use ISF\Database\Database;
+use ISF\Security;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -59,6 +60,8 @@ class CompletionReceiver {
         // URL on completion. The token in the URL identifies which
         // FormFlow handoff completed; must accept any caller because
         // the redirect originates from external systems (Itron, etc.).
+        // A completion is only RECORDED when the partner signed the token
+        // (isf_sig, see CompletionSigner); the visitor is redirected either way.
         register_rest_route(self::NAMESPACE, '/completions/redirect', [
             'methods' => 'GET',
             'callback' => [$this, 'receive_redirect'],
@@ -73,6 +76,10 @@ class CompletionReceiver {
                     'type' => 'string',
                 ],
                 'status' => [
+                    'required' => false,
+                    'type' => 'string',
+                ],
+                'isf_sig' => [
                     'required' => false,
                     'type' => 'string',
                 ],
@@ -167,6 +174,12 @@ class CompletionReceiver {
         );
 
         if (!$completion_id) {
+            // Already-completed handoff: acknowledge so the partner stops retrying.
+            $existing = $handoff_token ? $this->handoff_tracker->get_handoff((string) $handoff_token) : null;
+            if ($existing && ($existing['status'] ?? '') === 'completed') {
+                return new WP_REST_Response(['received' => true, 'processed' => false, 'duplicate' => true], 200);
+            }
+
             return new WP_Error(
                 'storage_failed',
                 'Failed to store completion',
@@ -182,41 +195,84 @@ class CompletionReceiver {
 
     /**
      * Receive redirect callback from external system
+     *
+     * Public by design, so nothing in the query string is trusted:
+     * - the completion is recorded only with a valid partner signature
+     *   (isf_sig = HMAC-SHA256(instance secret, token)), unless a site opts
+     *   back into unsigned redirects via the
+     *   isf_allow_unsigned_completion_redirects filter;
+     * - a handoff completes at most once (atomic claim from 'redirected');
+     * - account number / email come from the stored handoff, never the URL;
+     * - the endpoint is rate-limited per client IP.
      */
     public function receive_redirect(WP_REST_Request $request): void {
-        $token = $request->get_param('token') ?? $request->get_param('isf_ref');
-        $status = $request->get_param('status') ?? 'completed';
+        $token = (string) ($request->get_param('token') ?? $request->get_param('isf_ref') ?? '');
+        $status = (string) ($request->get_param('status') ?? 'completed');
+        $signature = (string) ($request->get_param('isf_sig') ?? '');
         $external_id = $request->get_param('confirmation') ?? $request->get_param('id');
+        $external_id = is_scalar($external_id) && (string) $external_id !== ''
+            ? substr(sanitize_text_field((string) $external_id), 0, 100)
+            : null;
 
         // Default redirect URL
         $redirect_url = home_url('/');
 
-        if ($token && $status === 'completed') {
-            // Get handoff details
-            $handoff = $this->handoff_tracker->get_handoff($token);
+        if (!Security::check_rate_limit() || preg_match('/^[a-f0-9]{32}$/', $token) !== 1) {
+            wp_safe_redirect($redirect_url);
+            exit;
+        }
 
-            if ($handoff) {
-                // Record completion
-                $this->store_completion(
-                    $handoff['instance_id'],
-                    'redirect',
-                    $token,
-                    $request->get_param('account_number'),
-                    $request->get_param('email'),
-                    $external_id,
-                    'enrollment',
-                    $request->get_params()
-                );
+        $handoff = $this->handoff_tracker->get_handoff($token);
 
-                // Get instance for thank you page
-                $instance = $this->db->get_instance($handoff['instance_id']);
-                if ($instance && isset($instance['settings'])) {
-                    $settings = is_array($instance['settings'])
-                        ? $instance['settings']
-                        : (json_decode($instance['settings'], true) ?? []);
-                    if (!empty($settings['thank_you_url'])) {
-                        $redirect_url = $settings['thank_you_url'];
-                    }
+        if ($handoff) {
+            $instance_id = (int) $handoff['instance_id'];
+
+            if ($status === 'completed') {
+                $signed = CompletionSigner::verify($token, $signature, $instance_id);
+
+                /**
+                 * Allow recording UNSIGNED redirect completions (pre-4.2.3
+                 * behavior) for partners that cannot sign the return URL.
+                 * Completions stay once-per-handoff and rate-limited, but are
+                 * forgeable by anyone who obtains a handoff token.
+                 *
+                 * @param bool $allow       Default false.
+                 * @param int  $instance_id Form instance ID.
+                 */
+                $allow_unsigned = (bool) apply_filters('isf_allow_unsigned_completion_redirects', false, $instance_id);
+
+                if ($signed || $allow_unsigned) {
+                    $this->store_completion(
+                        $instance_id,
+                        'redirect',
+                        $token,
+                        $handoff['account_number'] ?? null,
+                        null,
+                        $external_id,
+                        'enrollment',
+                        [
+                            'status' => $status,
+                            'external_id' => $external_id,
+                            'signed' => $signed,
+                        ],
+                        ['redirected']
+                    );
+                } else {
+                    $this->db->log('warning', 'Unsigned completion redirect ignored', [
+                        'token' => $token,
+                        'has_signature' => $signature !== '',
+                    ], $instance_id);
+                }
+            }
+
+            // Get instance for thank you page
+            $instance = $this->db->get_instance($instance_id);
+            if ($instance && isset($instance['settings'])) {
+                $settings = is_array($instance['settings'])
+                    ? $instance['settings']
+                    : (json_decode($instance['settings'], true) ?? []);
+                if (!empty($settings['thank_you_url'])) {
+                    $redirect_url = $settings['thank_you_url'];
                 }
             }
         }
@@ -283,7 +339,8 @@ class CompletionReceiver {
         ?string $email,
         ?string $external_id,
         string $completion_type,
-        array $raw_data
+        array $raw_data,
+        array $claim_from = ['redirected', 'expired']
     ): int|false {
         global $wpdb;
         $table = $wpdb->prefix . ISF_TABLE_EXTERNAL_COMPLETIONS;
@@ -293,14 +350,24 @@ class CompletionReceiver {
         if ($handoff_token) {
             $handoff = $this->handoff_tracker->get_handoff($handoff_token);
             if ($handoff) {
-                $handoff_id = $handoff['id'];
-
-                // Mark handoff as completed
-                $this->handoff_tracker->mark_completed($handoff_token, [
+                // Complete the handoff atomically, once. A replayed or
+                // concurrent completion for the same handoff loses the claim
+                // and records nothing (no row, no conversion hook).
+                $claimed = $this->handoff_tracker->claim_completion($handoff_token, [
                     'account_number' => $account_number,
                     'external_id' => $external_id,
                     'source' => $source,
-                ]);
+                ], $claim_from);
+
+                if (!$claimed) {
+                    $this->db->log('info', 'Duplicate external completion ignored', [
+                        'source' => $source,
+                        'handoff_token' => $handoff_token,
+                    ], $instance_id);
+                    return false;
+                }
+
+                $handoff_id = $handoff['id'];
             }
         }
 

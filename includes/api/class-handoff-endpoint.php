@@ -141,14 +141,28 @@ class HandoffEndpoint {
         }
 
         $params = $request->get_param('params') ?? [];
+        if (!is_array($params)) {
+            $params = [];
+        }
 
         // Validate instance exists
         $instance = $this->db->get_instance($instance_id);
-        if (!$instance) {
+        if (!$instance || empty($instance['is_active'])) {
             return new WP_Error(
                 'invalid_instance',
                 'Form instance not found',
                 ['status' => 404]
+            );
+        }
+
+        // Open-redirect guard: the destination must be on a host this
+        // instance is configured to hand off to. Otherwise this public route
+        // would turn the site into a redirector to any URL.
+        if (!self::is_allowed_destination($destination_url, $instance)) {
+            return new WP_Error(
+                'invalid_destination',
+                'Destination URL is not an enrollment destination configured for this form.',
+                ['status' => 400]
             );
         }
 
@@ -186,27 +200,15 @@ class HandoffEndpoint {
      * This endpoint performs the actual redirect to the external system
      */
     public function process_redirect(WP_REST_Request $request): void {
-        $token = $request->get_param('token');
+        $token = (string) $request->get_param('token');
 
         $this->handoff_tracker = new HandoffTracker();
 
-        // Get the destination URL
-        $destination = $this->handoff_tracker->process_redirect($token);
+        // Resolve + re-validate (expiry, allowlisted host) the destination.
+        $destination = self::resolve_redirect_destination($token, $this->handoff_tracker, $this->db);
 
         if (!$destination) {
-            // Invalid or expired token - redirect to home
-            wp_safe_redirect(home_url('/'));
-            exit;
-        }
-
-        // Open-redirect guard (defense in depth): never redirect to a stored
-        // destination that isn't a well-formed absolute http(s) URL — even if a
-        // bad value was persisted before this validation existed.
-        if (!self::is_safe_destination_url($destination)) {
-            $this->db->log('warning', 'Handoff redirect blocked: unsafe destination', [
-                'token' => $token,
-                'destination' => $destination,
-            ]);
+            // Invalid, expired or disallowed - redirect to home
             wp_safe_redirect(home_url('/'));
             exit;
         }
@@ -272,15 +274,9 @@ class HandoffEndpoint {
             return;
         }
 
-        $handoff_tracker = new HandoffTracker();
-        $destination = $handoff_tracker->process_redirect($token);
+        $destination = self::resolve_redirect_destination($token, new HandoffTracker(), new Database());
 
         if (!$destination) {
-            return;
-        }
-
-        // Open-redirect guard (defense in depth) — mirror process_redirect().
-        if (!self::is_safe_destination_url($destination)) {
             return;
         }
 
@@ -290,6 +286,87 @@ class HandoffEndpoint {
         // Perform redirect
         wp_redirect($final_url, 302);
         exit;
+    }
+
+    /**
+     * Resolve the destination for a handoff token, or null when it must not
+     * be followed: unknown/malformed token, expired handoff, missing/inactive
+     * instance, or a stored destination that is not (or no longer) on one of
+     * the instance's configured hosts — e.g. a row written by an attacker
+     * before the allowlist existed, or after an admin changed the URL.
+     */
+    private static function resolve_redirect_destination(string $token, HandoffTracker $tracker, Database $db): ?string {
+        $destination = $tracker->process_redirect($token);
+        if (!$destination) {
+            return null;
+        }
+
+        $handoff  = $tracker->get_handoff($token);
+        $instance = $handoff ? $db->get_instance((int) $handoff['instance_id']) : null;
+
+        if (!$instance || !self::is_allowed_destination($destination, $instance)) {
+            $db->log('warning', 'Handoff redirect blocked: destination not allowed for instance', [
+                'token' => $token,
+                'destination' => $destination,
+            ], $handoff['instance_id'] ?? null);
+            return null;
+        }
+
+        return $destination;
+    }
+
+    /**
+     * Hosts an instance may hand visitors off to: the hosts of its configured
+     * external enrollment URL(s), lower-cased. Filterable for partners that
+     * use more than one host.
+     *
+     * @param array $instance Form instance (with decoded settings).
+     * @return string[]
+     */
+    public static function allowed_destination_hosts(array $instance): array {
+        $settings = $instance['settings'] ?? [];
+        if (!is_array($settings)) {
+            $settings = json_decode((string) $settings, true) ?: [];
+        }
+
+        $urls = [
+            $settings['external_url'] ?? '',
+            $settings['handoff']['destination_url'] ?? '',
+        ];
+
+        $hosts = [];
+        foreach ($urls as $url) {
+            if (is_string($url) && self::is_safe_destination_url($url)) {
+                $hosts[] = strtolower((string) parse_url($url, PHP_URL_HOST));
+            }
+        }
+
+        /**
+         * Filter the hosts a handoff for this instance may redirect to.
+         *
+         * @param string[] $hosts    Lower-cased hostnames.
+         * @param array    $instance Form instance.
+         */
+        $hosts = (array) apply_filters('isf_handoff_allowed_hosts', array_values(array_unique($hosts)), $instance);
+
+        return array_values(array_filter(array_map(
+            static fn($h) => strtolower(trim((string) $h)),
+            $hosts
+        )));
+    }
+
+    /**
+     * Whether $url is a safe absolute http(s) URL on one of the instance's
+     * configured destination hosts (exact host match, case-insensitive).
+     */
+    public static function is_allowed_destination(string $url, array $instance): bool {
+        if (!self::is_safe_destination_url($url)) {
+            return false;
+        }
+
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        return $host !== '' && in_array($host, self::allowed_destination_hosts($instance), true);
     }
 
     /**

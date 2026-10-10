@@ -116,13 +116,27 @@ final class HandoffRedirectDestinationTest extends TestCase
      */
     public function test_redirect_paths_validate_destination(): void
     {
+        // Both redirect entry points resolve through resolve_redirect_destination(),
+        // which applies is_allowed_destination() (itself built on
+        // is_safe_destination_url()) — the stronger, per-instance host allowlist
+        // added for the 2026-10 open-redirect finding.
         foreach (['process_redirect', 'handle_redirect_param'] as $method) {
             $this->assertMatchesRegularExpression(
-                '/is_safe_destination_url\s*\(/',
+                '/self::resolve_redirect_destination\s*\(/',
                 $this->methodBody($method),
-                sprintf('%s() must guard the redirect with is_safe_destination_url().', $method)
+                sprintf('%s() must resolve the redirect through resolve_redirect_destination().', $method)
             );
         }
+        $this->assertMatchesRegularExpression(
+            '/self::is_allowed_destination\s*\(/',
+            $this->methodBody('resolve_redirect_destination'),
+            'resolve_redirect_destination() must check the per-instance destination allowlist.'
+        );
+        $this->assertMatchesRegularExpression(
+            '/self::is_safe_destination_url\s*\(/',
+            $this->methodBody('is_allowed_destination'),
+            'is_allowed_destination() must build on is_safe_destination_url().'
+        );
     }
 
     /**

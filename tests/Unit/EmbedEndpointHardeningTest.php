@@ -9,21 +9,7 @@
  */
 
 namespace {
-    if (!class_exists('WP_REST_Response')) {
-        class WP_REST_Response
-        {
-            public function __construct(private $data = null, private int $status = 200) {}
-            public function get_status(): int { return $this->status; }
-            public function get_data() { return $this->data; }
-        }
-    }
-    if (!class_exists('WP_REST_Request')) {
-        class WP_REST_Request
-        {
-            public array $headers = [];
-            public function get_header($key) { return $this->headers[$key] ?? null; }
-        }
-    }
+    require_once __DIR__ . '/../Helpers/wp-rest-stubs.php';
 }
 
 namespace ISF\Tests\Unit {

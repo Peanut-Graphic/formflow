@@ -32,6 +32,24 @@
   the final submit refuses (`account_not_validated`) a session without that flag.
   Compatibility: a resume link for a session validated before this release must re-run the
   account-validation step before submitting.
+- **Forged external completions (MEDIUM).** The public `GET /isf/v1/completions/redirect`
+  recorded an `isf_external_completions` row (and fired the Peanut Suite conversion hook) for
+  any known handoff token on every hit, with `account_number` / `email` from the query string,
+  and `POST /isf/v1/handoff` minted tokens for anyone. Redirect completions now require
+  `isf_sig` = HMAC-SHA256(per-instance secret, token) (new `CompletionSigner`; the secret is
+  shown in the instance editor), are rate-limited, complete a handoff atomically at most once
+  (`UPDATE … WHERE status = 'redirected'`, new `HandoffTracker::claim_completion()`; the
+  webhook/import paths use the same claim and duplicate webhooks get a 200 `duplicate`
+  acknowledgement), and take account/email from the stored handoff. Unsigned returns still
+  land on the thank-you page but are not recorded unless the site opts in with the
+  `isf_allow_unsigned_completion_redirects` filter.
+- **Handoff open redirect (MEDIUM).** `POST /isf/v1/handoff` accepted any http(s)
+  destination and `?isf_handoff=` / `GET /isf/v1/handoff/{token}` followed it, even after the
+  handoff expired. Destinations must now be on the host of the instance's configured External
+  Enrollment URL (exact host match; `isf_handoff_allowed_hosts` filter), the instance must be
+  active, the stored destination is re-checked at redirect time (so rows created before this
+  release cannot be used), and handoffs older than 7 days (or marked expired) no longer
+  redirect.
 
 ### Changed
 

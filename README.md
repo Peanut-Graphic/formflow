@@ -414,6 +414,25 @@ Track enrollments that redirect to external systems (e.g., IntelliSOURCE platfor
 3. **Token passed in URL**: The redirect appends a `isf_handoff` token
 4. **Match completions**: Import completions via CSV or webhook to match against handoffs
 
+### Completion Return URL (signed)
+
+Partners can send the visitor's browser back to FormFlow after a completed enrollment.
+The completion is recorded **only when the return URL is signed** with the instance's secret
+(shown in the instance editor under *External Enrollment*):
+
+```
+GET /wp-json/isf/v1/completions/redirect?isf_ref=<handoff token>&status=completed
+    &isf_sig=<hex HMAC-SHA256(instance secret, handoff token)>
+    [&confirmation=<partner confirmation id>]
+```
+
+Each handoff completes at most once; account number and email are taken from the stored
+handoff, never from the query string; the endpoint is rate-limited. Unsigned returns still
+redirect the visitor to the thank-you page but record nothing (a site whose partner cannot sign
+can opt back in with `add_filter('isf_allow_unsigned_completion_redirects', '__return_true');`).
+Handoffs may only target the host(s) of the instance's configured External Enrollment URL
+(extend with the `isf_handoff_allowed_hosts` filter) and stop redirecting after 7 days.
+
 ### Inbound Webhooks
 
 Receive completion notifications from external systems:
@@ -443,7 +462,7 @@ Body:
 | `/isf/v1/analytics/touch` | POST | Record marketing touch |
 | `/isf/v1/handoff` | GET | Redirect with tracking |
 | `/isf/v1/completions/webhook` | POST | Receive external completions |
-| `/isf/v1/completions/redirect` | GET | Handle completion redirect |
+| `/isf/v1/completions/redirect` | GET | Handle completion redirect (records only with a valid `isf_sig`) |
 
 ## Troubleshooting
 

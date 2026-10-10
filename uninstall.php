@@ -60,6 +60,7 @@ if ($isf_delete_data) {
     delete_option('isf_settings');
     delete_option('isf_encryption_key_hash');
     delete_option('isf_branding');
+    delete_option('isf_completion_secrets');
 
     // Delete transients using proper prepared statements
     $wpdb->query(

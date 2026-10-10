@@ -19,6 +19,12 @@ use ISF\Database\Database;
 class HandoffTracker {
 
     /**
+     * Hours after which a handoff no longer redirects or completes from the
+     * public return URL (matches the isf_expire_handoffs cron default).
+     */
+    public const TTL_HOURS = 168;
+
+    /**
      * Database instance
      */
     private Database $db;
@@ -155,21 +161,89 @@ class HandoffTracker {
             $token
         ), ARRAY_A);
 
-        if (!$handoff) {
+        if (!$handoff || self::is_expired($handoff)) {
             return null;
         }
 
-        // Check if already completed or expired
-        if ($handoff['status'] !== 'redirected') {
-            // Still allow redirect but don't update status
-            return $handoff['destination_url'];
-        }
-
+        // A completed handoff may still be followed again (same destination,
+        // re-validated by the caller); only expiry stops the redirect.
         return $handoff['destination_url'];
     }
 
     /**
-     * Mark a handoff as completed
+     * Whether a handoff has expired: marked so by the cron, or older than
+     * TTL_HOURS even if the cron has not run yet. An unparseable timestamp
+     * fails closed.
+     */
+    public static function is_expired(array $handoff): bool {
+        if (($handoff['status'] ?? '') === 'expired') {
+            return true;
+        }
+
+        $created = strtotime((string) ($handoff['created_at'] ?? ''));
+        if ($created === false) {
+            return true;
+        }
+
+        return $created < strtotime('-' . self::TTL_HOURS . ' hours');
+    }
+
+    /**
+     * Atomically mark a handoff completed, once.
+     *
+     * The UPDATE only matches while the handoff is still in one of
+     * $from_statuses, so concurrent or replayed completions for the same
+     * token cannot each "win": exactly one caller gets true.
+     *
+     * @param string   $token           Handoff token.
+     * @param array    $completion_data Data about the completion.
+     * @param string[] $from_statuses   Statuses a completion may claim from.
+     * @return bool True when this call performed the transition.
+     */
+    public function claim_completion(string $token, array $completion_data = [], array $from_statuses = ['redirected']): bool {
+        global $wpdb;
+        $table = $wpdb->prefix . ISF_TABLE_HANDOFFS;
+
+        $from_statuses = array_values(array_intersect($from_statuses, ['redirected', 'expired']));
+        if ($from_statuses === []) {
+            return false;
+        }
+        $placeholders = implode(', ', array_fill(0, count($from_statuses), '%s'));
+
+        $set  = ["status = 'completed'", 'completed_at = %s', 'completion_data = %s'];
+        $args = [current_time('mysql'), wp_json_encode($completion_data)];
+        foreach (['account_number', 'external_id'] as $column) {
+            $value = $completion_data[$column] ?? null;
+            if ($value === null || $value === '') {
+                $set[] = "{$column} = NULL";
+            } else {
+                $set[]  = "{$column} = %s";
+                $args[] = (string) $value;
+            }
+        }
+        $set = implode(', ', $set);
+
+        $rows = $wpdb->query($wpdb->prepare(
+            "UPDATE {$table} SET {$set} WHERE handoff_token = %s AND status IN ({$placeholders})",
+            ...array_merge($args, [$token], $from_statuses)
+        ));
+
+        if ((int) $rows !== 1) {
+            return false;
+        }
+
+        $this->db->log('info', 'Handoff completed', [
+            'token' => $token,
+            'source' => $completion_data['source'] ?? '',
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Mark a handoff as completed (unconditional).
+     *
+     * @deprecated Use claim_completion(), which completes a handoff at most once.
      *
      * @param string $token Handoff token
      * @param array $completion_data Data about the completion
