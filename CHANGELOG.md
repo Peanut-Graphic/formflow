@@ -50,6 +50,22 @@
   active, the stored destination is re-checked at redirect time (so rows created before this
   release cannot be used), and handoffs older than 7 days (or marked expired) no longer
   redirect.
+- **Account-validation PII oracle (LOW).** `isf_validate_account` returned the account holder's
+  full name, email and service address to anyone holding an account number + ZIP, throttled
+  only by the shared 120/min limit. The response now carries a masked summary (first name,
+  last-name initial, masked email, city/state/ZIP — no street); the full values stay in the
+  server-side session that pre-fills later steps, and `enrollment.js` no longer copies customer
+  details out of the response into its form data. Validation also has its own per-IP budget
+  (default 20 per 10 minutes, checked before the utility API call; tunable via the
+  `validate_rate_limit_requests` / `validate_rate_limit_window` keys of `isf_settings`).
+  The household medical-acknowledgment flag is still returned because the customer must
+  acknowledge it before continuing; the new throttle is what limits its exposure.
+- **License IP whitelist trusted spoofable headers (LOW).** `LicenseManager::get_client_ip()`
+  read `CF-Connecting-IP` / `X-Forwarded-For` / `X-Real-IP` directly, so any visitor could claim a
+  whitelisted IP and unlock Pro features. It now delegates to `Security::get_client_ip()`, which
+  honors forwarded headers only from configured trusted proxies. Sites whose whitelisted
+  admins sit behind a reverse proxy/CDN must list that proxy in `ISF_TRUSTED_PROXIES` (or the
+  `trusted_proxies` setting) for the whitelist to keep matching.
 
 ### Changed
 

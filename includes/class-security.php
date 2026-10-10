@@ -158,6 +158,67 @@ class Security {
     }
 
     /**
+     * Default per-IP budget for account validation (requests per window).
+     * Validation answers "does this account + ZIP exist, and whose is it", so
+     * it gets a far tighter budget than the shared 120/min form limit.
+     */
+    public const VALIDATE_RATE_LIMIT_DEFAULT = 20;
+
+    /**
+     * Default account-validation window, in seconds.
+     */
+    public const VALIDATE_RATE_WINDOW_DEFAULT = 600;
+
+    /**
+     * Per-IP rate limit for a named bucket, independent of the shared limit.
+     *
+     * Honors the global disable_rate_limit setting. Keyed on the trusted
+     * client IP (see get_client_ip()).
+     */
+    public static function check_rate_limit_bucket(string $bucket, int $max_requests, int $window_seconds): bool {
+        $settings = get_option('isf_settings', []);
+        if (!empty($settings['disable_rate_limit'])) {
+            return true;
+        }
+
+        $ip = self::get_client_ip();
+        $key = 'isf_rate_' . preg_replace('/[^a-z0-9_]/', '', strtolower($bucket)) . '_' . md5($ip);
+        $attempts = get_transient($key);
+
+        if ($attempts === false) {
+            set_transient($key, 1, $window_seconds);
+            return true;
+        }
+
+        if ((int) $attempts >= $max_requests) {
+            self::log_security_event('rate_limit_exceeded', [
+                'ip' => $ip,
+                'bucket' => $bucket,
+                'attempts' => $attempts,
+            ]);
+            return false;
+        }
+
+        set_transient($key, (int) $attempts + 1, $window_seconds);
+        return true;
+    }
+
+    /**
+     * Mask an email address for display: first character of the local part,
+     * the rest starred, domain kept ("j*********@example.com"). Returns '' for
+     * anything that is not an email address.
+     */
+    public static function mask_email(string $email): string {
+        $at = strrpos($email, '@');
+        if ($at === false || $at === 0 || $at === strlen($email) - 1) {
+            return '';
+        }
+
+        $local = substr($email, 0, $at);
+        return substr($local, 0, 1) . str_repeat('*', max(1, strlen($local) - 1)) . substr($email, $at);
+    }
+
+    /**
      * REST permission callback for endpoints that should remain public
      * but need per-IP throttling to prevent abuse of expensive backend
      * resources (Google Maps API, DB-heavy queries, external services).
