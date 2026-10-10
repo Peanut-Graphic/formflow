@@ -105,6 +105,24 @@ trait Frontend_Ajax_Handlers {
     }
 
     /**
+     * Masked customer summary for the account-validation response.
+     *
+     * @return array{first_name: string, last_name: string, email: string, address: array{city: string, state: string, zip: string}}
+     */
+    private static function masked_customer_summary(string $first_name, string $last_name, string $email, array $address): array {
+        return [
+            'first_name' => $first_name,
+            'last_name' => $last_name !== '' ? mb_substr($last_name, 0, 1) . '.' : '',
+            'email' => Security::mask_email($email),
+            'address' => [
+                'city' => (string) ($address['city'] ?? ''),
+                'state' => (string) ($address['state'] ?? ''),
+                'zip' => (string) ($address['zip'] ?? ''),
+            ],
+        ];
+    }
+
+    /**
      * Sanitize client form_data and drop the server-owned keys.
      */
     private function client_form_data($submitted): array {
@@ -289,6 +307,20 @@ trait Frontend_Ajax_Handlers {
             return;
         }
 
+        // Account validation is an account+ZIP -> customer oracle; give it a
+        // much tighter per-IP budget than the shared form limit, checked
+        // before the utility API is called.
+        $settings = get_option('isf_settings', []);
+        $validate_limit = (int) ($settings['validate_rate_limit_requests'] ?? Security::VALIDATE_RATE_LIMIT_DEFAULT);
+        $validate_window = (int) ($settings['validate_rate_limit_window'] ?? Security::VALIDATE_RATE_WINDOW_DEFAULT);
+        if (!Security::check_rate_limit_bucket('validate', max(1, $validate_limit), max(60, $validate_window))) {
+            wp_send_json_error([
+                'message' => __('Too many account lookups. Please wait a few minutes and try again.', 'formflow'),
+                'code' => 'rate_limited',
+            ]);
+            return;
+        }
+
         try {
             // Call API to validate account
             $api = $this->get_api_client($instance);
@@ -367,15 +399,13 @@ trait Frontend_Ajax_Handlers {
                 'is_valid' => true,
             ], $instance_id);
 
-            // Build response with additional flags
+            // Build response with additional flags. Only a masked summary is
+            // returned: anyone holding an account number + ZIP can call this,
+            // and the full details already live in the server-side session
+            // that pre-fills the next steps.
             $response = [
                 'message' => __('Account validated successfully.', 'formflow'),
-                'customer' => [
-                    'first_name' => $result->get_first_name(),
-                    'last_name' => $result->get_last_name(),
-                    'email' => $result->get_email(),
-                    'address' => $result->get_address()
-                ]
+                'customer' => self::masked_customer_summary($result->get_first_name(), $result->get_last_name(), $result->get_email(), $result->get_address()),
             ];
 
             // Add medical condition flag if applicable

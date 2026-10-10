@@ -27,39 +27,9 @@ use Brain\Monkey\Functions;
 use ISF\Database\Database;
 use ISF\Frontend\Frontend;
 use ISF\SessionGuard;
+use ISF\Tests\Helpers\HaltAtWrite;
+use ISF\Tests\Helpers\JsonResponseSent;
 use ISF\Tests\Unit\TestCase;
-
-/**
- * Thrown by the wp_send_json_* stubs so a handler stops where WordPress would die().
- */
-final class JsonResponseSent extends \RuntimeException
-{
-    public bool $ok;
-    /** @var mixed */
-    public $payload;
-
-    public function __construct(bool $ok, $payload)
-    {
-        parent::__construct($ok ? 'json-success' : 'json-error');
-        $this->ok      = $ok;
-        $this->payload = $payload;
-    }
-}
-
-/**
- * Thrown from the fake store to halt a handler at a chosen write (extends
- * \Error so the handlers' catch (\Exception) blocks do not swallow it).
- */
-final class HaltAtWrite extends \Error
-{
-    public array $data;
-
-    public function __construct(array $data)
-    {
-        parent::__construct('halt');
-        $this->data = $data;
-    }
-}
 
 final class EnrollmentSessionBindingTest extends TestCase
 {
