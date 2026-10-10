@@ -250,12 +250,16 @@ class Plugin {
         add_shortcode('isf_form', [$this->public, 'render_form_shortcode']);
         add_shortcode('isf_enroll_button', [$this->public, 'render_enroll_button_shortcode']);
 
+        // Keep form pages out of full-page caches (headers must go out before output).
+        add_action('template_redirect', [$this->public, 'maybe_disable_page_cache'], 1);
+
         // Frontend assets
         add_action('wp_enqueue_scripts', [$this->public, 'enqueue_styles']);
         add_action('wp_enqueue_scripts', [$this->public, 'enqueue_scripts']);
 
         // Public AJAX handlers (both logged in and not logged in)
         $ajax_actions = [
+            'isf_start_session',     // Uncached session bootstrap (SessionGuard)
             'isf_load_step',
             'isf_validate_account',
             'isf_get_schedule_slots',

@@ -191,6 +191,12 @@
                 return;
             }
 
+            // No server session yet (enrollment.js obtains it via an uncached
+            // start_session call) - nothing to save against.
+            if (!$container.data('sessionToken')) {
+                return;
+            }
+
             // Collect current form data
             var formData = this.collectFormData();
 
@@ -208,6 +214,7 @@
                     nonce: isf_frontend.nonce,
                     instance: $container.data('instance'),
                     session_id: $container.data('session'),
+                    session_token: $container.data('sessionToken'),
                     step: $container.data('step') || 1,
                     form_data: JSON.stringify(formData)
                 },

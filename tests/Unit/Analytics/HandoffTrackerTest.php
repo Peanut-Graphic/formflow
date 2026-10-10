@@ -186,6 +186,9 @@ class HandoffTrackerTest extends TestCase
             'id' => 1,
             'destination_url' => 'https://external.com/enroll',
             'status' => 'redirected',
+            // Real rows always carry created_at (NOT NULL DEFAULT CURRENT_TIMESTAMP);
+            // process_redirect() refuses handoffs past their TTL.
+            'created_at' => date('Y-m-d H:i:s', time() - 3600),
         ];
 
         $this->wpdb->shouldReceive('get_row')->andReturn($handoffRow);

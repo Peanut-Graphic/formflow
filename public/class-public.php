@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
 
 use ISF\Database\Database;
 use ISF\Security;
+use ISF\SessionGuard;
 use ISF\Encryption;
 use ISF\Api\ApiClient;
 use ISF\Api\MockApiClient;
@@ -164,6 +165,29 @@ class Frontend {
     }
 
     /**
+     * template_redirect: mark singular pages that contain the form shortcode as
+     * uncacheable while HTTP headers can still be sent.
+     *
+     * render_form_shortcode() also calls SessionGuard::mark_page_uncacheable(),
+     * but by then the theme has usually started output, so only DONOTCACHEPAGE
+     * still takes effect there. This early pass gets Cache-Control out too.
+     */
+    public function maybe_disable_page_cache(): void {
+        if (!is_singular()) {
+            return;
+        }
+
+        $post = get_queried_object();
+        if (!$post instanceof \WP_Post) {
+            return;
+        }
+
+        if (has_shortcode((string) $post->post_content, 'isf_form')) {
+            SessionGuard::mark_page_uncacheable();
+        }
+    }
+
+    /**
      * Render the form shortcode
      *
      * @param array $atts Shortcode attributes
@@ -207,6 +231,12 @@ class Frontend {
             return $this->render_custom_form($instance, $atts);
         }
         // subsystem === 'intellisource' → fall through to the wizard.
+
+        // The wizard page must never be served from a shared page cache: its
+        // nonce and session bootstrap are per-visitor. (Session ids are no
+        // longer rendered into the HTML at all — see SessionGuard — so a page
+        // cache that ignores this is no longer a data leak, only stale.)
+        SessionGuard::mark_page_uncacheable();
 
         // Enqueue assets
         wp_enqueue_style('isf-forms');
@@ -268,8 +298,9 @@ class Frontend {
             ]
         ]);
 
-        // Generate session ID
-        $session_id = Security::generate_session_id();
+        // No session id is generated here: the browser obtains one from the
+        // uncached isf_start_session AJAX call (SessionGuard), so cached copies
+        // of this HTML carry no per-visitor state.
 
         // Get visitor ID (integrates with Peanut Suite)
         $visitor_id = apply_filters(\ISF\Hooks::GET_VISITOR_ID, null);
@@ -301,7 +332,6 @@ class Frontend {
         <div class="<?php echo esc_attr(implode(' ', $classes)); ?>"
              id="isf-form-<?php echo esc_attr($instance['slug']); ?>"
              data-instance="<?php echo esc_attr($instance['slug']); ?>"
-             data-session="<?php echo esc_attr($session_id); ?>"
              data-step="1"
              data-form-type="<?php echo esc_attr($instance['form_type']); ?>">
 
@@ -541,6 +571,10 @@ class Frontend {
      * @return string HTML output
      */
     private function render_external_form(array $instance, array $atts): string {
+        // Each render mints a per-visitor handoff token into the link below;
+        // a cached copy would attribute every visitor to one handoff.
+        SessionGuard::mark_page_uncacheable();
+
         // Enqueue styles
         wp_enqueue_style('isf-forms');
 

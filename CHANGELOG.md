@@ -2,6 +2,55 @@
 
 ## Unreleased
 
+### Security
+
+- **Cached-page session sharing (HIGH).** The enrollment wizard rendered its session id into
+  the page HTML (`data-session`) and every wizard AJAX handler found the submission by that
+  client-sent id alone, so behind a full-page cache every visitor of a cached copy shared one
+  session: visitor B could load and overwrite visitor A's name, email, phone, address and
+  account number. Sessions are now issued only by a new uncached `isf_start_session` /
+  `formflow_start_session` AJAX call as an id plus an HMAC token (`SessionGuard`, keyed by
+  `wp_salt('auth')`, compared with `hash_equals`). Nothing session-related is rendered into
+  HTML, every wizard handler (`load_step`, `validate_account`, `get_schedule_slots`,
+  `submit_enrollment`, `book_appointment`, `save_progress`, `save_and_email`, `track_step`)
+  refuses a missing or mismatched pair before touching the database, clients can no longer
+  choose their own session ids, and a completed session refuses further writes (only its
+  confirmation step can still be loaded). Resume links re-bind the saved session to the new
+  browser with a fresh token. Form pages also send `nocache_headers()` from
+  `template_redirect`, define `DONOTCACHEPAGE` and signal LiteSpeed Cache when the shortcode
+  renders (wizard, external-handoff and iframe-embed pages).
+  Compatibility: browser tabs left open across the upgrade hold no token; their next step
+  shows "Your session has expired. Please refresh the page to start again."
+- **Final submit trusted the client's account number (MEDIUM).** `isf_submit_enrollment`
+  merged the posted `form_data` over the session, so a client could validate one account and
+  enroll another (`utility_no` / `account_number` / `ca_no` / `comverge_no`), and
+  `isf_save_progress` could seed a session that never validated at all. Server-owned keys
+  (`account_number`, `utility_no`, `zip_code`, `ca_no`, `comverge_no`, `validation_result`,
+  `account_validated`, `fsr_no`, `scheduling_result`, `confirmation_number`) are now stripped
+  from every client `form_data` before merge, `isf_validate_account` records the validated
+  account as server-owned `account_number` + `utility_no` and an `account_validated` flag, and
+  the final submit refuses (`account_not_validated`) a session without that flag.
+  Compatibility: a resume link for a session validated before this release must re-run the
+  account-validation step before submitting.
+- **Forged external completions (MEDIUM).** The public `GET /isf/v1/completions/redirect`
+  recorded an `isf_external_completions` row (and fired the Peanut Suite conversion hook) for
+  any known handoff token on every hit, with `account_number` / `email` from the query string,
+  and `POST /isf/v1/handoff` minted tokens for anyone. Redirect completions now require
+  `isf_sig` = HMAC-SHA256(per-instance secret, token) (new `CompletionSigner`; the secret is
+  shown in the instance editor), are rate-limited, complete a handoff atomically at most once
+  (`UPDATE … WHERE status = 'redirected'`, new `HandoffTracker::claim_completion()`; the
+  webhook/import paths use the same claim and duplicate webhooks get a 200 `duplicate`
+  acknowledgement), and take account/email from the stored handoff. Unsigned returns still
+  land on the thank-you page but are not recorded unless the site opts in with the
+  `isf_allow_unsigned_completion_redirects` filter.
+- **Handoff open redirect (MEDIUM).** `POST /isf/v1/handoff` accepted any http(s)
+  destination and `?isf_handoff=` / `GET /isf/v1/handoff/{token}` followed it, even after the
+  handoff expired. Destinations must now be on the host of the instance's configured External
+  Enrollment URL (exact host match; `isf_handoff_allowed_hosts` filter), the instance must be
+  active, the stored destination is re-checked at redirect time (so rows created before this
+  release cannot be used), and handoffs older than 7 days (or marked expired) no longer
+  redirect.
+
 ### Changed
 
 - Bundled `phpseclib/phpseclib` 3.0.57 → 4.0.1. This is a major-version upgrade, not a

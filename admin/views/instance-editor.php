@@ -308,6 +308,21 @@ $wizard_steps = [
                                                     <?php esc_html_e('Open in new tab', 'formflow'); ?>
                                                 </label>
                                             </div>
+
+                                            <?php if (!empty($instance['id'])) : ?>
+                                            <div class="isf-field-group isf-pod-field-full">
+                                                <label for="isf_completion_secret" class="isf-field-label">
+                                                    <?php esc_html_e('Completion return URL signing secret', 'formflow'); ?>
+                                                </label>
+                                                <input type="text" id="isf_completion_secret" class="isf-field-input code" readonly
+                                                       value="<?php echo esc_attr(\ISF\Analytics\CompletionSigner::secret_for((int) $instance['id'])); ?>"
+                                                       onclick="this.select();">
+                                                <p class="description">
+                                                    <?php esc_html_e('Give this secret to the enrollment partner. Completions returned to the URL below are recorded only when signed:', 'formflow'); ?>
+                                                    <br><code><?php echo esc_html(rest_url('isf/v1/completions/redirect')); ?>?isf_ref={isf_ref}&amp;status=completed&amp;isf_sig={HMAC-SHA256(secret, isf_ref), hex}</code>
+                                                </p>
+                                            </div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
