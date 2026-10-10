@@ -664,6 +664,7 @@ class LicenseManager {
         $endpoint = $activate ? '/license/validate' : '/license/status';
 
         if ($activate) {
+            $hardware_id = apply_filters('peanut_license_hardware_id', '', 'formflow');
             $response = wp_remote_post(self::API_URL . $endpoint, [
                 'timeout' => 15,
                 'headers' => [
@@ -672,18 +673,18 @@ class LicenseManager {
                 ],
                 'body' => wp_json_encode([
                     'license_key' => $key,
+                    'hardware_id' => is_string($hardware_id) ? trim($hardware_id) : '',
                     'site_url' => home_url(),
                     'site_name' => get_bloginfo('name'),
                     'plugin_version' => ISF_VERSION,
                 ]),
             ]);
         } else {
-            $response = wp_remote_get(self::API_URL . $endpoint . '?' . http_build_query([
-                'license_key' => $key,
-            ]), [
+            $response = wp_remote_get(self::API_URL . $endpoint, [
                 'timeout' => 15,
                 'headers' => [
                     'Accept' => 'application/json',
+                    'X-Peanut-License-Key' => $key,
                 ],
             ]);
         }
