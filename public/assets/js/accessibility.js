@@ -414,6 +414,8 @@
          * Show keyboard shortcuts help
          */
         showKeyboardHelp: function() {
+            if ($('.isf-keyboard-help').length) return;
+            const previousFocus = document.activeElement;
             const shortcuts = [
                 { key: 'Tab', action: 'Move to next field' },
                 { key: 'Shift + Tab', action: 'Move to previous field' },
@@ -442,17 +444,22 @@
             // Focus trap
             $help.find('.isf-close-help').focus();
 
-            // Close handlers
-            $help.find('.isf-close-help').on('click', function() {
+            const closeHelp = function() {
                 $help.remove();
-                $('.isf-overlay').remove();
-            });
+                $(document).off('keydown.isfhelp');
+                if (previousFocus && previousFocus.isConnected) previousFocus.focus();
+            };
+
+            $help.filter('.isf-overlay').on('click', closeHelp);
+            $help.find('.isf-close-help').on('click', closeHelp);
 
             $(document).on('keydown.isfhelp', function(e) {
                 if (e.key === 'Escape') {
-                    $help.remove();
-                    $('.isf-overlay').remove();
-                    $(document).off('keydown.isfhelp');
+                    e.preventDefault();
+                    closeHelp();
+                } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    $help.find('.isf-close-help').focus();
                 }
             });
         },

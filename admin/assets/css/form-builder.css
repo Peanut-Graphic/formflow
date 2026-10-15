@@ -10,6 +10,7 @@
     display: flex;
     flex-direction: column;
     height: calc(100vh - 100px);
+    height: calc(100dvh - 100px);
     min-height: 600px;
     background: #f0f0f1;
     border-radius: 4px;
@@ -776,6 +777,29 @@
 
 /* Touch-friendly drag handle on mobile */
 @media (max-width: 768px) {
+    .isf-builder-wrapper {
+        min-height: 0;
+    }
+
+    .isf-builder-toolbar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .isf-toolbar-center {
+        min-width: 0;
+    }
+
+    .isf-form-title {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .isf-builder-wrapper button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
     .isf-field-drag-handle {
         opacity: 0.7;
         font-size: 20px;
@@ -1443,6 +1467,9 @@
         top: auto;
         bottom: 0;
         max-height: 60vh;
+        max-height: 60dvh;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        overscroll-behavior: contain;
         transform: translateY(100%);
     }
 
