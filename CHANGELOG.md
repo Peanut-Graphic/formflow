@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add a server-only account-based Dominion enrollment request planner and mock regression tests. Creates the portal session before qualification; preserves vendor program data and explicit terms. No HTTP calls or live enrollment are enabled.
+
+
+## Unreleased
+
 ### Security
 
 - **Cached-page session sharing (HIGH).** The enrollment wizard rendered its session id into
