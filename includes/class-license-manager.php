@@ -680,8 +680,17 @@ class LicenseManager {
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
 
-        if ($code !== 200 || !$data) {
-            return $data ?: null;
+        if ($code !== 200 || !is_array($data) || ($data['success'] ?? null) !== true
+            || !is_array($data['license'] ?? null) || empty($data['license'])) {
+            // WordPress REST errors use code/message rather than success/error.
+            // Never let an HTTP failure or malformed success enter activation storage.
+            $error = is_array($data) ? ($data['error'] ?? $data['code'] ?? null) : null;
+            return [
+                'success' => false,
+                'error' => is_string($error) && $error !== '' ? $error : 'invalid_license_response',
+                'message' => is_array($data) && is_string($data['message'] ?? null)
+                    ? $data['message'] : __('Invalid response from license server.', 'formflow'),
+            ];
         }
 
         return $data;
