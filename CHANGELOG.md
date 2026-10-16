@@ -4,6 +4,11 @@
 
 ## 4.2.3 — 2026-10-16 — Security: enrollment session privacy and trusted account validation
 
+### SFTP fingerprint compatibility
+
+- Match standard OpenSSH SHA256 host-key fingerprints by hashing the decoded SSH key blob. Accept `SHA256:base64` (padding optional; prefix case-insensitive) or bare 64-digit hexadecimal SHA-256. Reject malformed key structures, mismatched key types, invalid fingerprints, and mismatches before login. The previously computed text-wrapper hash is intentionally rejected.
+- Verification: public Ed25519 fixture matches `ssh-keygen -lf`; 24 focused SFTP tests / 101 assertions pass on PHP 8.4 with locked phpseclib 4.0.2. Five standard-fingerprint cases fail against the old implementation. Combined privacy/fingerprint exact-lock PHP 8.4 full suite: 608 tests / 2,661 assertions pass. No real endpoint used.
+
 ### Security
 
 - **Provider contact disclosure after validation.** Keep IntelliSource contact records in a private server bucket and expose only explicitly entered caller fields to wizard/scheduler HTML and resume JSON. Sign caller-field provenance for the session and form instance; require re-entry for ambiguous legacy contact values. Preserve Pro equipment inputs, caller-addressed enrollment mail/SMS and internal integrations. Scheduler mail uses provider contact only in a temporary provider-addressed notification payload. Revalidation clears stale appointment references; booking requires fresh availability. See `docs/PROVIDER-PRIVACY-2026-10-16.md` for qualification and boundaries.
