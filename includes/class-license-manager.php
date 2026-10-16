@@ -301,31 +301,14 @@ class LicenseManager {
     }
 
     /**
-     * Get client IP address
+     * Get client IP address.
+     *
+     * Delegates to the trusted-proxy-aware Security::get_client_ip(). Reading
+     * CF-Connecting-IP / X-Forwarded-For / X-Real-IP directly let any visitor
+     * claim a whitelisted IP and unlock Pro features without a license.
      */
     private function get_client_ip(): string {
-        $ip_keys = [
-            'HTTP_CF_CONNECTING_IP',
-            'HTTP_X_FORWARDED_FOR',
-            'HTTP_X_REAL_IP',
-            'REMOTE_ADDR'
-        ];
-
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
-
-                if (strpos($ip, ',') !== false) {
-                    $ip = trim(explode(',', $ip)[0]);
-                }
-
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
-            }
-        }
-
-        return '0.0.0.0';
+        return Security::get_client_ip();
     }
 
     /**

@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+## 4.2.3 — 2026-10-16 — Security: enrollment session privacy and trusted account validation
+
 ### Security
+
+- **Provider contact disclosure after validation.** Keep IntelliSource contact records in a private server bucket and expose only explicitly entered caller fields to wizard/scheduler HTML and resume JSON. Sign caller-field provenance for the session and form instance; require re-entry for ambiguous legacy contact values. Preserve Pro equipment inputs, caller-addressed enrollment mail/SMS and internal integrations. Scheduler mail uses provider contact only in a temporary provider-addressed notification payload. Revalidation clears stale appointment references; booking requires fresh availability. See `docs/PROVIDER-PRIVACY-2026-10-16.md` for qualification and boundaries.
 
 - **Cached-page session sharing (HIGH).** The enrollment wizard rendered its session id into
   the page HTML (`data-session`) and every wizard AJAX handler found the submission by that
@@ -50,6 +54,22 @@
   active, the stored destination is re-checked at redirect time (so rows created before this
   release cannot be used), and handoffs older than 7 days (or marked expired) no longer
   redirect.
+- **Account-validation PII oracle (LOW).** `isf_validate_account` returned the account holder's
+  full name, email and service address to anyone holding an account number + ZIP, throttled
+  only by the shared 120/min limit. The response now carries a masked summary (first name,
+  last-name initial, masked email, city/state/ZIP — no street); the full values stay in the
+  private server-side validation bucket; later steps display only caller-entered fields, and `enrollment.js` no longer copies customer
+  details out of the response into its form data. Validation also has its own per-IP budget
+  (default 20 per 10 minutes, checked before the utility API call; tunable via the
+  `validate_rate_limit_requests` / `validate_rate_limit_window` keys of `isf_settings`).
+  The household medical-acknowledgment flag is still returned because the customer must
+  acknowledge it before continuing; the new throttle is what limits its exposure.
+- **License IP whitelist trusted spoofable headers (LOW).** `LicenseManager::get_client_ip()`
+  read `CF-Connecting-IP` / `X-Forwarded-For` / `X-Real-IP` directly, so any visitor could claim a
+  whitelisted IP and unlock Pro features. It now delegates to `Security::get_client_ip()`, which
+  honors forwarded headers only from configured trusted proxies. Sites whose whitelisted
+  admins sit behind a reverse proxy/CDN must list that proxy in `ISF_TRUSTED_PROXIES` (or the
+  `trusted_proxies` setting) for the whitelist to keep matching.
 
 ### Changed
 
