@@ -1,5 +1,12 @@
 # FormFlow Pro Changelog
 
+## 4.2.4 — pending release
+
+- Add opt-in `peanut_license_hardware_id` compatibility for existing server hardware locks; no automatic rebinding.
+- Move supported license status/update request keys to headers.
+- Normalize REST errors, HTTP failures and malformed responses into explicit activation denials; preserve valid license payloads and legacy restriction codes.
+- Release is gated by the PR #98 rollout checklist and real WordPress/WooCommerce claim testing.
+
 ## Unreleased
 
 ## 4.2.3 — 2026-10-16 — Security: enrollment session privacy and trusted account validation

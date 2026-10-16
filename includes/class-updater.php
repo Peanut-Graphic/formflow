@@ -189,7 +189,6 @@ class Updater {
         $url = self::API_URL . '/updates/check?' . http_build_query([
             'plugin' => self::PLUGIN_SLUG,
             'version' => $this->version,
-            'license' => $license->get_license_key(),
             'site_url' => home_url(),
             'php_version' => PHP_VERSION,
             'wp_version' => get_bloginfo('version'),
@@ -199,6 +198,7 @@ class Updater {
             'timeout' => 15,
             'headers' => [
                 'Accept' => 'application/json',
+                'X-Peanut-License-Key' => $license->get_license_key(),
             ],
         ]);
 
