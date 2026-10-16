@@ -208,7 +208,7 @@ class SftpDestination extends BaseDestination {
                 'type' => 'text',
                 'sensitive' => false,
                 'required' => false,
-                'description' => __('SHA-256 fingerprint of the server\'s SSH host key. If set, connections to a different host key will be rejected (MITM defense).', 'formflow'),
+                'description' => __('OpenSSH SHA256:base64 fingerprint or 64 hexadecimal SHA-256 digits. If set, connections to a different host key will be rejected (MITM defense).', 'formflow'),
             ],
         ];
     }
@@ -355,8 +355,7 @@ class SftpDestination extends BaseDestination {
             if ($server_fp === null || $server_fp === '') {
                 throw new \RuntimeException(__('Could not read server host key for fingerprint check.', 'formflow'));
             }
-            $actual_fp = 'sha256:' . base64_encode(hash('sha256', (string) $server_fp, true));
-            if (!hash_equals($expected_fp, $actual_fp)) {
+            if (!hash_equals($this->decode_fingerprint($expected_fp), $this->host_key_digest($server_fp))) {
                 throw new \RuntimeException(__('Host key fingerprint does not match — connection refused (possible MITM).', 'formflow'));
             }
         }
@@ -376,6 +375,40 @@ class SftpDestination extends BaseDestination {
         }
 
         return $sftp;
+    }
+
+    /** Standard SSH fingerprints hash the decoded key blob, not its text wrapper. */
+    private function host_key_digest(string $host_key): string {
+        $parts = preg_split('/\s+/', trim($host_key), 3);
+        $blob = isset($parts[1]) ? base64_decode($parts[1], true) : false;
+        try {
+            if ($blob === false || $blob === '') {
+                throw new \RuntimeException('Invalid key blob');
+            }
+            // Also reject malformed key structures and mismatched key-type wrappers.
+            $key = PublicKeyLoader::load($host_key);
+            $canonical = preg_split('/\s+/', trim($key->toString('OpenSSH')), 3);
+            if ($parts[0] !== $canonical[0] || $blob !== base64_decode($canonical[1], true)) {
+                throw new \RuntimeException('Invalid key wrapper');
+            }
+        } catch (\Throwable $e) {
+            throw new \RuntimeException(__('Could not read server host key for fingerprint check.', 'formflow'));
+        }
+        return hash('sha256', $blob, true);
+    }
+
+    /** Accept OpenSSH SHA256 base64 (padding optional), or a bare 64-digit hex digest. */
+    private function decode_fingerprint(string $fingerprint): string {
+        if (preg_match('/\A[0-9a-f]{64}\z/i', $fingerprint)) {
+            return hex2bin($fingerprint);
+        }
+        if (preg_match('/\ASHA256:([A-Za-z0-9+\/]{43}=?)\z/i', $fingerprint, $matches)) {
+            $digest = base64_decode($matches[1], true);
+            if ($digest !== false && strlen($digest) === 32 && rtrim(base64_encode($digest), '=') === rtrim($matches[1], '=')) {
+                return $digest;
+            }
+        }
+        throw new \RuntimeException(__('Invalid host key fingerprint. Use OpenSSH SHA256:base64 or 64 hexadecimal digits.', 'formflow'));
     }
 
     /**

@@ -30,6 +30,10 @@ require_once ISF_PLUGIN_DIR . 'connectors/sftp/class-sftp-destination.php';
 
 class SftpDestinationTest extends TestCase
 {
+    // Public-only Ed25519 fixture; ssh-keygen -lf reports this exact SHA256 digest.
+    private const HOST_KEY = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILcwf3ykuRW1GjN9gh51VLe3tUYX8OdzIPXnJORGC0an formflow-sftp-fingerprint-fixture';
+    private const FINGERPRINT = 'SHA256:IqTwCpiGhxBWBob2kn+4nMM8Bg+YvPE1HNGjV9bo7pU';
+
     /** @var array<int, array{0: string, 1: int}> */
     private array $clientArgs = [];
 
@@ -199,8 +203,8 @@ class SftpDestinationTest extends TestCase
 
     public function test_host_key_fingerprint_match_allows_login(): void
     {
-        $hostKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleHostKey';
-        $fp = 'sha256:' . base64_encode(hash('sha256', $hostKey, true));
+        $hostKey = self::HOST_KEY;
+        $fp = self::FINGERPRINT;
         $sftp = $this->mockClient();
         $sftp->shouldReceive('getServerPublicHostKey')->once()->andReturn($hostKey);
         $sftp->shouldReceive('login')->once()->andReturn(true);
@@ -216,13 +220,62 @@ class SftpDestinationTest extends TestCase
     public function test_host_key_fingerprint_mismatch_refuses_before_login(): void
     {
         $sftp = $this->mockClient();
-        $sftp->shouldReceive('getServerPublicHostKey')->once()->andReturn('ssh-ed25519 AAAAOther');
+        $sftp->shouldReceive('getServerPublicHostKey')->once()->andReturn(self::HOST_KEY);
         $sftp->shouldNotReceive('login');
 
-        $result = $this->destinationWith($sftp)->test_connection($this->config(['host_key_fingerprint' => 'sha256:nope']));
+        $result = $this->destinationWith($sftp)->test_connection($this->config(['host_key_fingerprint' => 'SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA']));
 
         $this->assertFalse($result['success']);
         $this->assertSame('host_key_mismatch', $result['code']);
+    }
+
+    /** @dataProvider supportedFingerprints */
+    public function test_supported_fingerprint_formats_match_standard_ssh_digest(string $fingerprint): void
+    {
+        $sftp = $this->mockClient();
+        $sftp->shouldReceive('getServerPublicHostKey')->once()->andReturn(self::HOST_KEY);
+        $sftp->shouldReceive('login')->once()->andReturn(true);
+        $sftp->shouldReceive('nlist')->once()->andReturn([]);
+        $result = $this->destinationWith($sftp)->test_connection($this->config(['host_key_fingerprint' => $fingerprint]));
+        $this->assertTrue($result['success'], $result['message']);
+    }
+
+    public static function supportedFingerprints(): array
+    {
+        $hex = bin2hex(base64_decode('IqTwCpiGhxBWBob2kn+4nMM8Bg+YvPE1HNGjV9bo7pU='));
+        return [[self::FINGERPRINT], [strtolower('SHA256:') . substr(self::FINGERPRINT, 7) . '='], [$hex], [strtoupper($hex)]];
+    }
+
+    /** @dataProvider invalidHostKeys */
+    public function test_malformed_host_key_refuses_before_login(string $hostKey): void
+    {
+        $sftp = $this->mockClient();
+        $sftp->shouldReceive('getServerPublicHostKey')->once()->andReturn($hostKey);
+        $sftp->shouldNotReceive('login');
+        $result = $this->destinationWith($sftp)->test_connection($this->config(['host_key_fingerprint' => self::FINGERPRINT]));
+        $this->assertFalse($result['success']);
+        $this->assertSame('host_key_mismatch', $result['code']);
+    }
+
+    public static function invalidHostKeys(): array
+    {
+        return [[''], ['ssh-ed25519 %%%'], ['ssh-ed25519 AAAA'], [str_replace('ssh-ed25519', 'ssh-rsa', self::HOST_KEY)]];
+    }
+
+    /** @dataProvider invalidFingerprints */
+    public function test_malformed_fingerprint_refuses_before_login(string $fingerprint): void
+    {
+        $sftp = $this->mockClient();
+        $sftp->shouldReceive('getServerPublicHostKey')->once()->andReturn(self::HOST_KEY);
+        $sftp->shouldNotReceive('login');
+        $result = $this->destinationWith($sftp)->test_connection($this->config(['host_key_fingerprint' => $fingerprint]));
+        $this->assertFalse($result['success']);
+        $this->assertSame('host_key_mismatch', $result['code']);
+    }
+
+    public static function invalidFingerprints(): array
+    {
+        return [['SHA256:nope'], ['MD5:aa:bb'], [str_repeat('a', 63)], ['SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB']];
     }
 
     public function test_unverifiable_host_key_null_is_refused(): void
