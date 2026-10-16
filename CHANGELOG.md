@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### SFTP fingerprint compatibility
+
+- Match standard OpenSSH SHA256 host-key fingerprints by hashing the decoded SSH key blob. Accept `SHA256:base64` (padding optional; prefix case-insensitive) or bare 64-digit hexadecimal SHA-256. Reject malformed key structures, mismatched key types, invalid fingerprints, and mismatches before login. The previously computed text-wrapper hash is intentionally rejected.
+- Verification: public Ed25519 fixture matches `ssh-keygen -lf`; 24 focused SFTP tests / 101 assertions pass on PHP 8.4 with locked phpseclib 4.0.2. Five standard-fingerprint cases fail against the old implementation. No real endpoint used.
+
 ### Security
 
 - **Cached-page session sharing (HIGH).** The enrollment wizard rendered its session id into
