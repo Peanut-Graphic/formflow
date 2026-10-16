@@ -18,6 +18,7 @@ if (!defined('ABSPATH')) {
 use ISF\Database\Database;
 use ISF\Security;
 use ISF\SessionGuard;
+use ISF\PublicFormData;
 use ISF\Encryption;
 use ISF\Api\ApiClient;
 use ISF\Api\MockApiClient;
@@ -52,6 +53,9 @@ trait Frontend_Ajax_Handlers {
         'fsr_no',
         'scheduling_result',
         'confirmation_number',
+        '_provider_validation',
+        '_public_input',
+        '_legacy_form_data',
     ];
 
     /**
@@ -123,20 +127,6 @@ trait Frontend_Ajax_Handlers {
     }
 
     /**
-     * Sanitize client form_data and drop the server-owned keys.
-     */
-    private function client_form_data($submitted): array {
-        if (!is_array($submitted)) {
-            return [];
-        }
-        $clean = Security::sanitize_form_data($submitted);
-        foreach (self::$protected_form_keys as $key) {
-            unset($clean[$key]);
-        }
-        return $clean;
-    }
-
-    /**
      * Load a form step
      */
     public function isf_load_step(): void {
@@ -150,8 +140,8 @@ trait Frontend_Ajax_Handlers {
             return;
         }
 
-        // The rendered steps are pre-filled from the session's stored data
-        // (name, email, phone, address), so only the verified owner may load them.
+        // Render only explicit caller input from this session. The session token
+        // proves session possession, not utility-account ownership.
         $session_id = $this->require_session((int) $instance['id']);
         if ($session_id === null) {
             return;
@@ -189,7 +179,7 @@ trait Frontend_Ajax_Handlers {
             if ($submission && isset($submission['form_data'])) {
                 $existing_data = is_array($submission['form_data']) ? $submission['form_data'] : [];
             }
-            $form_data = array_merge($existing_data, $posted_form_data);
+            $form_data = PublicFormData::project(PublicFormData::capture($existing_data, $posted_form_data, $session_id, (int) $instance_id), $session_id, (int) $instance_id);
 
             // Render step template based on form type
             ob_start();
@@ -344,22 +334,13 @@ trait Frontend_Ajax_Handlers {
             $form_data['zip_code'] = $zip_code;
             $form_data['ca_no'] = $result->get_ca_no();
             $form_data['comverge_no'] = $result->get_comverge_no();
-            $form_data['validation_result'] = $result->to_array();
-
-            // Pre-fill customer info if available
-            if ($result->get_first_name()) {
-                $form_data['first_name'] = $result->get_first_name();
-            }
-            if ($result->get_last_name()) {
-                $form_data['last_name'] = $result->get_last_name();
-            }
-            if ($result->get_email()) {
-                $form_data['email'] = $result->get_email();
-            }
             $address = $result->get_address();
-            if (!empty($address['street'])) {
-                $form_data['address'] = $address;
-            }
+            $form_data = PublicFormData::validated($form_data, $result->to_array(), [
+                'first_name' => $result->get_first_name(),
+                'last_name' => $result->get_last_name(),
+                'email' => $result->get_email(),
+                'address' => $address,
+            ], $account_number, $zip_code, $session_id, (int) $instance_id);
 
             // Check if demo mode (auto-mark as test data)
             $is_demo = $instance['settings']['demo_mode'] ?? false;
@@ -555,7 +536,7 @@ trait Frontend_Ajax_Handlers {
         // (validated account number, ca_no, comverge_no, ...) are stripped
         // from the client copy so they cannot overwrite the validated values.
         $stored_data = is_array($submission['form_data'] ?? null) ? $submission['form_data'] : [];
-        $form_data = array_merge($stored_data, $this->client_form_data($submitted_data));
+        $form_data = PublicFormData::capture($stored_data, $submitted_data, $session_id, (int) $instance_id);
 
         // The account must have been validated server-side in THIS session.
         if (empty($stored_data['account_validated']) || empty($stored_data['account_number'])) {
@@ -1012,6 +993,11 @@ trait Frontend_Ajax_Handlers {
         }
 
         $form_data = $submission['form_data'];
+        if (empty($form_data['fsr_no'])) {
+            wp_send_json_error(['message' => __('Please refresh available appointments before booking.', 'formflow')]);
+            return;
+        }
+
 
         try {
             $api = $this->get_api_client($instance);
@@ -1059,8 +1045,7 @@ trait Frontend_Ajax_Handlers {
 
             if ($booking_code === '0') {
                 // Success - update submission
-                $form_data['schedule_date'] = $schedule_date;
-                $form_data['schedule_time'] = $schedule_time;
+                $form_data = PublicFormData::capture($form_data, ['schedule_date' => $schedule_date, 'schedule_time' => $schedule_time], $session_id, (int) $instance_id);
                 $form_data['schedule_time_display'] = $this->get_time_display($schedule_time);
 
                 $this->db->update_submission($submission['id'], [
@@ -1084,7 +1069,13 @@ trait Frontend_Ajax_Handlers {
                 ], $instance_id);
 
                 // Send confirmation email
-                $this->send_confirmation_email($instance, $form_data);
+                // Provider contact is only used in this provider-addressed mail.
+                $notification_data = $form_data;
+                if (Frontend::canonicalize_form_type((string) ($instance['form_type'] ?? '')) === 'intellisource_scheduler' && !empty($form_data['_provider_validation']['customer']['email'])) {
+                    $customer = $form_data['_provider_validation']['customer'];
+                    $notification_data = array_merge($notification_data, $customer, $customer['address'] ?? []);
+                }
+                $this->send_confirmation_email($instance, $notification_data, (string) ($form_data['confirmation_number'] ?? $fsr));
 
                 wp_send_json_success([
                     'message' => __('Your appointment has been scheduled!', 'formflow'),
@@ -1140,11 +1131,11 @@ trait Frontend_Ajax_Handlers {
             return;
         }
 
-        $sanitized_data = $this->client_form_data($submitted_data);
+        $sanitized_data = PublicFormData::capture([], $submitted_data, $session_id, (int) $instance_id);
 
         if ($submission) {
             $existing_data = is_array($submission['form_data']) ? $submission['form_data'] : [];
-            $form_data = array_merge($existing_data, $sanitized_data);
+            $form_data = PublicFormData::capture($existing_data, $submitted_data, $session_id, (int) $instance_id);
             $this->db->update_submission($submission['id'], [
                 'form_data' => $form_data,
                 'step' => $step
@@ -1200,11 +1191,11 @@ trait Frontend_Ajax_Handlers {
             $instance_id = $instance['id'];
 
             // Save progress first
-            $sanitized_data = $this->client_form_data($submitted_data);
+            $sanitized_data = PublicFormData::capture([], $submitted_data, $session_id, (int) $instance_id);
 
             if ($submission) {
                 $existing_data = is_array($submission['form_data']) ? $submission['form_data'] : [];
-                $form_data = array_merge($existing_data, $sanitized_data);
+                $form_data = PublicFormData::capture($existing_data, $submitted_data, $session_id, (int) $instance_id);
                 $this->db->update_submission($submission['id'], [
                     'form_data' => $form_data,
                     'step' => $step
@@ -1321,14 +1312,14 @@ trait Frontend_Ajax_Handlers {
         // Mark token as used
         $this->db->mark_resume_token_used($token);
 
-        // The emailed, single-use resume token proves ownership; re-bind this
+        // The emailed, single-use resume token proves session continuity, not account ownership; re-bind this
         // browser to the saved session with a fresh session token.
         SessionGuard::send_private_headers();
         wp_send_json_success([
             'session_id' => $resume_data['session_id'],
             'session_token' => SessionGuard::token_for((string) $resume_data['session_id'], (int) $instance['id']),
             'step' => $submission['step'],
-            'form_data' => $submission['form_data']
+            'form_data' => PublicFormData::project($submission['form_data'], (string) $resume_data['session_id'], (int) $instance['id'])
         ]);
     }
 

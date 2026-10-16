@@ -9,7 +9,7 @@
  *
  * AFTER: the response carries only a masked summary (first name, last-name
  * initial, masked email, city/state/ZIP — no street), the full values stay in
- * the server-side session that pre-fills later steps, the JS no longer copies
+ * private server storage and never pre-fill public steps, the JS no longer copies
  * customer details out of the response into its form data, and the handler has
  * its own, much tighter per-IP throttle that runs before the utility API call.
  *
@@ -118,7 +118,7 @@ final class ValidateAccountExposureTest extends TestCase
     public function test_full_values_stay_in_the_server_session(): void
     {
         $this->validate();
-        $stored = $this->rows[0]['form_data'];
+        $stored = $this->rows[0]['form_data']['_provider_validation']['customer'];
         $this->assertSame('Smith', $stored['last_name']);
         $this->assertSame('john.smith@example.com', $stored['email']);
         $this->assertSame('123 Main Street', $stored['address']['street']);

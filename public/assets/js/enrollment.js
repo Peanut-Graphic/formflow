@@ -459,7 +459,7 @@
                     ISFEnrollment.formData.zip = zip;
 
                     // The validated customer details live in the server-side
-                    // session (they pre-fill step 3); the response only carries
+                    // private validation bucket; later steps use caller input. The response carries
                     // a masked summary, which must never be copied into formData.
 
                     // Check if medical acknowledgment is required
@@ -1977,7 +1977,7 @@
                     ISFEnrollment.formData.zip = zip;
 
                     // The validated customer details live in the server-side
-                    // session (they pre-fill the next step); the response only
+                    // private validation bucket; later steps use caller input. The response only
                     // carries a masked summary, which must never be copied into formData.
 
                     goToStep(2);
