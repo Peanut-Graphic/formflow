@@ -4,6 +4,8 @@
 
 ### Security
 
+- **Provider contact disclosure after validation.** Keep IntelliSource contact records in a private server bucket and expose only explicitly entered caller fields to wizard/scheduler HTML and resume JSON. Sign caller-field provenance for the session and form instance; require re-entry for ambiguous legacy contact values. Preserve Pro equipment inputs, caller-addressed enrollment mail/SMS and internal integrations. Scheduler mail uses provider contact only in a temporary provider-addressed notification payload. Revalidation clears stale appointment references; booking requires fresh availability. See `docs/PROVIDER-PRIVACY-2026-10-16.md` for qualification and boundaries.
+
 - **Cached-page session sharing (HIGH).** The enrollment wizard rendered its session id into
   the page HTML (`data-session`) and every wizard AJAX handler found the submission by that
   client-sent id alone, so behind a full-page cache every visitor of a cached copy shared one
